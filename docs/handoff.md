@@ -1,5 +1,5 @@
 **Current Handoff**
-Integrated status: 2026-09-06. The Python portfolio is implemented, locally tested, and Dockerized. The public repository [pranavprem/portfolio](https://github.com/pranavprem/portfolio) has been created with local branch `main` and remote `origin`; the initial commit/push is the final setup step. **No live NAS/Cloudflare deployment is claimed.** No tunnel credential or NAS access was supplied.
+Integrated status: 2026-09-06 (GitHub runs are dated 2026-09-07 UTC). The Python portfolio is implemented, locally tested, and Dockerized. Initial commit `03cc6a2` is pushed to [pranavprem/portfolio](https://github.com/pranavprem/portfolio), public branch `main`, remote `origin`. **No live NAS/Cloudflare deployment is claimed.** No tunnel credential or NAS access was supplied.
 
 **Continue Here**
 Read [AGENTS.md](../AGENTS.md), [README.md](../README.md), [architecture.md](architecture.md), [story.md](story.md), this handoff, and [retrospective.md](retrospective.md). `CLAUDE.md` imports the canonical contributor instructions. These public documents preserve the whole account and operational context; do not ask the owner to repeat his story or reopen the private PDFs.
@@ -50,6 +50,8 @@ Environment: macOS arm64, local Python 3.13.14, Node 24.20.0/npm 11.19.0, pytest
 | GitHub CI/publication                                                               | Workflow exists and local equivalents pass; remote publication/run outcome is recorded after the initial push.                                                                                                                                                                                                        |
 
 **Corrections And Review**
+The first [Ubuntu CI run](https://github.com/pranavprem/portfolio/actions/runs/34078098276) passed Python/lint/container checks and Firefox, but Chromium/WebKit each failed the combined native-input test. It advanced between End/Home/wheel inputs on checkpoint changes while native scrolling was still running. The test now waits for actual page edges and moves the wheel pointer inside the page; application scrolling is unchanged. The rerun outcome is recorded below after observation.
+
 The first browser run was 93 passed / 6 failed: two layout defects reproduced in every engine. Large text overflowed headings/milestones and overlapped compact stats; a very short desktop viewport pinned an unreadable sheet. Wrapping, a font-relative responsive grid, flexible inventory, and measured theater fallback fixed both. All six focused regressions and the complete three-engine suite then passed.
 
 A template-only callout invented an extra-credit mechanism for the 110% result. It was replaced with the supported maximum-possible wording; the regression checks rendered copy, not just JSON. The college recollection uses "among the top" rather than inventing an exact rank. Release automation describes manual effort, not total delivery lead time.

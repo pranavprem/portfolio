@@ -49,6 +49,27 @@ def settle_layout(page):
     }""")
 
 
+def settle_scroll(page, edge=None):
+    # Playwright's string-predicate polling uses eval; keep the real CSP enforced.
+    page.evaluate(
+        """async edge => {
+          const deadline = performance.now() + 5000;
+          let settled = 0;
+          let previous = window.scrollY;
+          while (performance.now() < deadline) {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            const target = edge === 'bottom' ? document.scrollingElement.scrollHeight
+                - document.documentElement.clientHeight : edge === 'top' ? 0 : previous;
+            settled = Math.abs(window.scrollY - target) <= 1 ? settled + 1 : 0;
+            previous = window.scrollY;
+            if (settled === 3) return;
+          }
+          throw new Error('Native scrolling did not settle at the requested position');
+        }""",
+        edge,
+    )
+
+
 def open_journey(page, live_server):
     response = page.goto(live_server + "/")
     assert response.status == 200
@@ -433,15 +454,24 @@ def test_reload_history_fragments_and_native_keyboard(page, live_server, snapsho
     assert_matches_geometry(page, snapshots)
     assert page.evaluate("window.scrollY") > 0
     page.keyboard.press("End")
+    # A checkpoint can change before the browser's native key-scroll finishes.
+    settle_scroll(page, "bottom")
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "11")
     page.keyboard.press("Home")
+    settle_scroll(page, "top")
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "-1")
     page.keyboard.press("PageDown")
     expect(page.locator(".masthead")).not_to_be_in_viewport()
+    settle_scroll(page)
     page.keyboard.press("Home")
+    settle_scroll(page, "top")
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "-1")
+    page.mouse.move(200, 300)
     page.mouse.wheel(0, 500)
     expect(page.locator(".masthead")).not_to_be_in_viewport()
+    settle_scroll(page)
+    assert_matches_geometry(page, snapshots)
+    assert page.evaluate("window.testScrollWrites") == []
 
 
 def test_resize_observer_remeasures_text_reflow(page, live_server, snapshots):
