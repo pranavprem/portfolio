@@ -1,0 +1,65 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install --require-hashes -r requirements-dev.txt
+      - run: npm ci
+      - run: npm run lint
+      - run: .venv/bin/ruff check .
+      - run: .venv/bin/ruff format --check .
+      - run: .venv/bin/pytest -m 'not browser'
+      - run: docker compose -f compose.yaml -f compose.local.yaml config --quiet
+      - run: docker compose -f compose.yaml -f compose.local.yaml up -d --build --wait app
+      - name: Verify runtime image boundary
+        run: >-
+          docker compose -f compose.yaml -f compose.local.yaml exec -T app python -c
+          "import os; from pathlib import Path; root=Path('/srv/portfolio');
+          paths={str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()};
+          assert os.getuid()==10001 and os.getgid()==10001;
+          assert not os.access(root/'app/content/story.json', os.W_OK);
+          assert os.access('/tmp', os.W_OK);
+          assert len(paths)==14 and all(p=='requirements.txt' or p.startswith('app/') for p in paths);
+          assert not any(p.lower().endswith('.pdf') or 'secret' in p or '.env' in p or '__pycache__' in p for p in paths)"
+
+  browsers:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - run: python -m venv .venv
+      - run: .venv/bin/python -m pip install --require-hashes -r requirements-dev.txt
+      - run: npm ci
+      - run: .venv/bin/playwright install --with-deps ${{ matrix.browser }}
+      - run: .venv/bin/pytest -m browser --browser ${{ matrix.browser }}

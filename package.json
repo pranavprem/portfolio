@@ -1,0 +1,17 @@
+{
+  "name": "pranav-prem-portfolio-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint app/static/story.js && prettier --check .",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "axe-core": "4.13.0",
+    "eslint": "10.10.0",
+    "prettier": "3.9.6"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

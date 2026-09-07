@@ -1,0 +1,557 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "owner-brief": { "kind": "owner-supplied" },
+    "resume": { "kind": "supplied-document" },
+    "profile": { "kind": "supplied-document" },
+    "supplied-documents": { "kind": "supplied-document" }
+  },
+  "stat_definitions": [
+    {
+      "key": "coding",
+      "label": "Coding",
+      "compact_label": "Code",
+      "description": "A fictional meter for how stretched my coding muscle feels. A dip means underused abilities, not forgotten knowledge."
+    },
+    {
+      "key": "enthusiasm",
+      "label": "Enthusiasm",
+      "compact_label": "Spark",
+      "description": "A playful appetite for the current quest, not a clinical measure or a promise of endless motivation."
+    },
+    {
+      "key": "vitality",
+      "label": "Health",
+      "compact_label": "HP",
+      "description": "Fictional adventure energy: enough battery for another side quest. Game meters, not a medical chart or a skills assessment."
+    },
+    {
+      "key": "charisma",
+      "label": "Charisma",
+      "compact_label": "Charm",
+      "description": "Story shorthand for growing confidence collaborating, teaching, and leading, not a measure of anyone's worth."
+    },
+    {
+      "key": "automancy",
+      "label": "Automancy",
+      "compact_label": "Auto",
+      "description": "The fictional art of making repetitive work disappear, preferably before it notices that you have escaped."
+    },
+    {
+      "key": "sidequests",
+      "label": "Side quests",
+      "compact_label": "Quests",
+      "description": "Room for experiments, hobbies, and curiosity. Not a real project count, and definitely not a productivity quota for having fun."
+    }
+  ],
+  "initial": {
+    "stats": {
+      "coding": 0,
+      "enthusiasm": 1,
+      "vitality": 1,
+      "charisma": 1,
+      "automancy": 0,
+      "sidequests": 1
+    },
+    "badges": [],
+    "region_id": "goa",
+    "landmark_id": "home",
+    "mood": "bright"
+  },
+  "badges": [
+    {
+      "id": "first-script",
+      "label": "First Script",
+      "description": "A story symbol for the small leap from playing a game to trying to make one.",
+      "art_key": "spark"
+    },
+    {
+      "id": "cpp-unlocked",
+      "label": "C/C++ Unlocked",
+      "description": "A fictional toolkit stamp for the languages that shaped my school years.",
+      "art_key": "bolt"
+    },
+    {
+      "id": "house-captain",
+      "label": "House Captain",
+      "description": "A story token for a real school responsibility: learning to lead alongside learning to code.",
+      "art_key": "flag"
+    },
+    {
+      "id": "python-passport",
+      "label": "Python Passport",
+      "description": "An imaginary passport for Python, independent learning, and a route wider than the syllabus.",
+      "art_key": "leaf"
+    },
+    {
+      "id": "java-topper",
+      "label": "Java Topper",
+      "description": "A game symbol for topping my HSBC Java training batch, not an external certification.",
+      "art_key": "cup"
+    },
+    {
+      "id": "time-returned",
+      "label": "Time Returned",
+      "description": "A fictional workshop stamp for making chores smaller. The Green Belt project saved 2,000+ hours.",
+      "art_key": "gear"
+    },
+    {
+      "id": "cloud-scholar",
+      "label": "Cloud Scholar",
+      "description": "An invented campus badge for renewed challenge, cloud systems, and tools that help students learn.",
+      "art_key": "cloud"
+    },
+    {
+      "id": "developer-ally",
+      "label": "Developer Ally",
+      "description": "A story symbol for discovering how much I enjoy helping other developers build.",
+      "art_key": "heart"
+    },
+    {
+      "id": "chat-alchemist",
+      "label": "Chat Alchemist",
+      "description": "An imaginary emblem for shared Chat infrastructure and release work, not a claim of sole credit.",
+      "art_key": "gear"
+    },
+    {
+      "id": "bot-builder",
+      "label": "Bot Builder",
+      "description": "A fictional companion-workshop badge for carrying useful automation into conversational systems.",
+      "art_key": "bot"
+    },
+    {
+      "id": "principal",
+      "label": "Principal",
+      "description": "A story token for my role since February 2025, not a final level or the whole character sheet.",
+      "art_key": "star"
+    }
+  ],
+  "regions": [
+    {
+      "id": "goa",
+      "label": "Goa",
+      "art_key": "goa",
+      "width": 320,
+      "height": 180,
+      "landmarks": {
+        "home": { "x": 65, "y": 143 },
+        "school": { "x": 120, "y": 143 },
+        "detour": { "x": 175, "y": 143 },
+        "campus": { "x": 235, "y": 143 }
+      }
+    },
+    {
+      "id": "pune",
+      "label": "Pune",
+      "art_key": "pune",
+      "width": 320,
+      "height": 180,
+      "landmarks": {
+        "java-forge": { "x": 85, "y": 143 },
+        "automation-mill": { "x": 225, "y": 143 }
+      }
+    },
+    {
+      "id": "san-jose",
+      "label": "San Jose",
+      "art_key": "san-jose",
+      "width": 320,
+      "height": 180,
+      "landmarks": {
+        "campus": { "x": 100, "y": 143 },
+        "hardware-lab": { "x": 215, "y": 143 }
+      }
+    },
+    {
+      "id": "bay-area",
+      "label": "Bay Area",
+      "art_key": "bay-area",
+      "width": 320,
+      "height": 180,
+      "landmarks": {
+        "cloud-workshop": { "x": 65, "y": 143 },
+        "fog": { "x": 120, "y": 143 },
+        "bot-workshop": { "x": 195, "y": 143 },
+        "open-bridge": { "x": 265, "y": 143 }
+      }
+    }
+  ],
+  "chapters": [
+    {
+      "id": "spawn",
+      "region_id": "goa",
+      "period_label": "Childhood / Goa",
+      "heading": "The tutorial was a PC",
+      "cards": [
+        {
+          "id": "first-script",
+          "heading": "A very small beginning",
+          "body": "I grew up in Goa, with PC games at seven and small games of my own at eight: first I wanted to play, then I wanted to know how the thing worked. I was lucky to find that thread so early, long before I knew where it would lead; the inventory was tiny, but curiosity was already taking up most of the space.",
+          "facts": [
+            "I still play on PC, PlayStation, and Switch, and I love Pokemon. The traveler and companion here are original story creatures, not borrowed characters.",
+            "Small games were the beginning, not a business plan."
+          ],
+          "source_refs": ["owner-brief", "profile"],
+          "event": {
+            "stats_after": {
+              "coding": 1,
+              "enthusiasm": 6,
+              "vitality": 8,
+              "charisma": 2,
+              "automancy": 0,
+              "sidequests": 4
+            },
+            "grant_badges": ["first-script"],
+            "landmark_id": "home",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "school",
+      "region_id": "goa",
+      "period_label": "2004-2010 / Navy Children School",
+      "heading": "Small programs, bigger confidence",
+      "cards": [
+        {
+          "id": "school-unlocked",
+          "heading": "Finding my direction early",
+          "body": "At Navy Children School, C and C++ became the languages I reached for, and computer engineering began to feel like an obvious next path rather than a distant possibility. Being house captain also meant learning that people are not programs: taking responsibility, listening, and getting a group moving together belonged on the character sheet too.",
+          "facts": [
+            "I scored in the top 0.01% nationally in Class 12 computer science. A rather encouraging plot twist.",
+            "I credit school with a strong foundation in English as well as the confidence to keep learning."
+          ],
+          "source_refs": ["owner-brief", "profile"],
+          "event": {
+            "stats_after": {
+              "coding": 3,
+              "enthusiasm": 8,
+              "vitality": 8,
+              "charisma": 6,
+              "automancy": 1,
+              "sidequests": 6
+            },
+            "grant_badges": ["cpp-unlocked", "house-captain"],
+            "landmark_id": "school",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "detour",
+      "region_id": "goa",
+      "period_label": "After school exams / 2010",
+      "heading": "The map changed without asking",
+      "cards": [
+        {
+          "id": "unexpected-detour",
+          "heading": "An unwelcome turn",
+          "body": "I became ill after my final school exams, and my university entrance plans did not work out the way I had imagined; knowing what I wanted to study did not make that disappointment smaller. The next route led to Goa University, and although I would eventually value that detour enormously, I would not rewrite the illness as a gift or pretend I was grateful for it at the time.",
+          "facts": [
+            "The route led to a government-run university in Goa, not the university plan I had imagined.",
+            "I was still heading toward computer engineering, just by a path I had not chosen."
+          ],
+          "source_refs": ["owner-brief", "profile"],
+          "event": {
+            "stats_after": {
+              "coding": 3,
+              "enthusiasm": 4,
+              "vitality": 4,
+              "charisma": 4,
+              "automancy": 1,
+              "sidequests": 3
+            },
+            "grant_badges": [],
+            "landmark_id": "detour",
+            "mood": "quiet"
+          }
+        }
+      ]
+    },
+    {
+      "id": "college",
+      "region_id": "goa",
+      "period_label": "2010-2014 / Goa University",
+      "heading": "Learn to code. Learn to live.",
+      "cards": [
+        {
+          "id": "college-unlocked",
+          "heading": "A route wider than the syllabus",
+          "body": "My BE in Computer Engineering taught me independence as much as engineering: living on my own, learning life skills, and finding things to study without waiting for permission. Python became my main language, PyCon widened the conversation, and I finished among the top of my class; the accidental detour had become a place where confidence and curiosity could grow together.",
+          "facts": [
+            "I presented \"A Transmission Control Tunnel for Datagrams\" at the 7th IETE conference and served as department general secretary.",
+            "An IT internship at Zuari Agro Chemicals and an IEEE Xtreme national top-ten finish added their own side routes.",
+            "Ages 18-20 also included CyanogenMod work for the Samsung Galaxy Ace in Southeast Asia."
+          ],
+          "source_refs": [
+            "owner-brief",
+            "resume",
+            "profile",
+            "supplied-documents"
+          ],
+          "event": {
+            "stats_after": {
+              "coding": 6,
+              "enthusiasm": 9,
+              "vitality": 7,
+              "charisma": 8,
+              "automancy": 4,
+              "sidequests": 8
+            },
+            "grant_badges": ["python-passport"],
+            "landmark_id": "campus",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "java-forge",
+      "region_id": "pune",
+      "period_label": "Early HSBC chapter / within Aug 2014-Jan 2017",
+      "heading": "A surprisingly good Java tutorial",
+      "cards": [
+        {
+          "id": "java-unlocked",
+          "heading": "New city, new toolkit",
+          "body": "My first full-time job took me to Pune and HSBC Software Development India, where intensive Java training gave my toolkit a serious expansion after C, C++, and Python. I topped the training batch and became a Java expert, growing into leading five engineers; there was real progress here, even though expertise and excitement would eventually start taking different routes.",
+          "facts": [
+            "The work included Spring, Struts, Hibernate, and banking utilities for Europe, the Middle East, and North Africa.",
+            "A less conventional inventory entry: at 22, I appeared in Coldplay's \"In My Place\" video."
+          ],
+          "source_refs": ["owner-brief", "profile", "supplied-documents"],
+          "event": {
+            "stats_after": {
+              "coding": 7,
+              "enthusiasm": 7,
+              "vitality": 7,
+              "charisma": 7,
+              "automancy": 4,
+              "sidequests": 5
+            },
+            "grant_badges": ["java-topper"],
+            "landmark_id": "java-forge",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "automation",
+      "region_id": "pune",
+      "period_label": "Later HSBC chapter / within 2014-2017",
+      "heading": "Underused, not forgotten",
+      "cards": [
+        {
+          "id": "automation-unlocked",
+          "heading": "Make the repetitive part disappear",
+          "body": "Bank utilities stopped stretching me, so I made my own tools, including TasKing, and started automating department chores: the assigned quest was dull, but there were useful side quests everywhere. Looking back, I was doing DevOps without knowing its name or having the mentorship to recognize a career direction; when my GitHub adoption proposal was rejected, I began looking toward US universities.",
+          "facts": [
+            "One Lean Six Sigma Green Belt side quest saved 2,000+ hours of manual effort.",
+            "Separate CI/CD work reduced time to market by 25%.",
+            "Strong GRE and TOEFL results helped open the next route."
+          ],
+          "source_refs": ["owner-brief", "supplied-documents"],
+          "event": {
+            "stats_after": {
+              "coding": 4,
+              "enthusiasm": 2,
+              "vitality": 6,
+              "charisma": 7,
+              "automancy": 8,
+              "sidequests": 6
+            },
+            "grant_badges": ["time-returned"],
+            "landmark_id": "automation-mill",
+            "mood": "quiet"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sjsu",
+      "region_id": "san-jose",
+      "period_label": "Jan 2017-Dec 2018 / San Jose State University",
+      "heading": "Back on hard mode, happily",
+      "cards": [
+        {
+          "id": "sjsu-unlocked",
+          "heading": "Delighted to be stretched again",
+          "body": "SJSU offered an affordable chance to learn from Silicon Valley professors, and my MS in Software Engineering put enterprise systems and cloud computing back on the main quest. The hardest class I took, with Professor Paul Nguyen, remains a personal high point; as a teaching assistant, I also found myself building better feedback tools for other students, another clue about the work I wanted to do.",
+          "facts": [
+            "I scored 110%, the maximum possible. As I remember it, I was the only student to do so.",
+            "I graduated with a 3.90 GPA, and built a Docker/Python autograder with a live project leaderboard as a TA.",
+            "Alexa projects and a second-place Opportunity Hack finish explored conversational helpers."
+          ],
+          "source_refs": ["owner-brief", "supplied-documents"],
+          "event": {
+            "stats_after": {
+              "coding": 10,
+              "enthusiasm": 9,
+              "vitality": 7,
+              "charisma": 8,
+              "automancy": 9,
+              "sidequests": 7
+            },
+            "grant_badges": ["cloud-scholar"],
+            "landmark_id": "campus",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "developer-ally",
+      "region_id": "san-jose",
+      "period_label": "Jun-Aug 2018 / Google Hardware/Nest, during my MS",
+      "heading": "The best tool helps someone else build",
+      "cards": [
+        {
+          "id": "developer-ally-unlocked",
+          "heading": "Finding the name for my kind of work",
+          "body": "During my master's, a Google Hardware/Nest internship brought engineering productivity into focus: I could choose the language that suited the problem, build tools for developers, and hear directly from the people using them. Infrastructure, deployment, monitoring, and testing were not distractions from the real work; helping someone else have a better working day was the work, and I loved it.",
+          "facts": [
+            "I worked on a Python/Dremel performance dashboard for a Nest web application and automatic Jira issues when tests failed.",
+            "Developers make excellent users. You never have to wonder whether they have feedback."
+          ],
+          "source_refs": ["owner-brief", "supplied-documents"],
+          "event": {
+            "stats_after": {
+              "coding": 10,
+              "enthusiasm": 10,
+              "vitality": 7,
+              "charisma": 8,
+              "automancy": 9,
+              "sidequests": 7
+            },
+            "grant_badges": ["developer-ally"],
+            "landmark_id": "hardware-lab",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cloud-and-fog",
+      "region_id": "bay-area",
+      "period_label": "2019-2021 / Salesforce Chat",
+      "heading": "Useful work, and a quieter season",
+      "cards": [
+        {
+          "id": "cloud-unlocked",
+          "heading": "Months became minutes",
+          "body": "I joined Salesforce in 2019 and worked on making Chat easier to test, maintain, release, and operate, including moving a monolith from data centers to public AWS. The satisfying part was familiar: fewer repetitive steps between the people building something and the people relying on it.",
+          "facts": [
+            "I automated months of manual release-preparation effort down to minutes, alongside monitoring and cloud operations."
+          ],
+          "source_refs": [
+            "owner-brief",
+            "resume",
+            "profile",
+            "supplied-documents"
+          ],
+          "event": {
+            "stats_after": {
+              "coding": 10,
+              "enthusiasm": 8,
+              "vitality": 7,
+              "charisma": 8,
+              "automancy": 10,
+              "sidequests": 6
+            },
+            "grant_badges": ["chat-alchemist"],
+            "landmark_id": "cloud-workshop",
+            "mood": "bright"
+          }
+        },
+        {
+          "id": "fog-arrives",
+          "heading": "Even good engines need rest",
+          "body": "During the COVID years of 2020-2021, I experienced Chat as vital to the US response, and I burnt out. Both things belong here: the work mattered, and being useful did not make me inexhaustible; the skills and earlier contributions did not disappear just because I had less energy to give.",
+          "facts": [
+            "No new badge for this chapter's low point, and no claim that the next project instantly fixed everything."
+          ],
+          "source_refs": ["owner-brief"],
+          "event": {
+            "stats_after": {
+              "coding": 9,
+              "enthusiasm": 3,
+              "vitality": 3,
+              "charisma": 6,
+              "automancy": 9,
+              "sidequests": 2
+            },
+            "grant_badges": [],
+            "landmark_id": "fog",
+            "mood": "fog"
+          }
+        }
+      ]
+    },
+    {
+      "id": "bot-workshop",
+      "region_id": "bay-area",
+      "period_label": "After the burnout chapter / through 2023",
+      "heading": "Build the helpers",
+      "cards": [
+        {
+          "id": "bots-unlocked",
+          "heading": "A familiar instinct, a new workshop",
+          "body": "Moving into Bots felt like carrying the same toolkit into a new workshop, not starting over: my SJSU Alexa experiments had already made conversational helpers interesting. Einstein Bots work included moving from Heroku to AWS microservices, and by 2023 the route led into Copilot; as rule-based bots gave way to LLMs and agentic systems, useful automation kept being the thread I wanted to follow.",
+          "facts": [
+            "Away from the keyboard, I am an amateur guitarist who enjoys drones, golf, cooking, mixology, go-karting, sim racing, and dog whispering.",
+            "I blog, write poetry, and make lists. Side quests do not need to improve my productivity to belong here."
+          ],
+          "source_refs": ["owner-brief", "profile", "supplied-documents"],
+          "event": {
+            "stats_after": {
+              "coding": 10,
+              "enthusiasm": 8,
+              "vitality": 6,
+              "charisma": 8,
+              "automancy": 10,
+              "sidequests": 6
+            },
+            "grant_badges": ["bot-builder"],
+            "landmark_id": "bot-workshop",
+            "mood": "bright"
+          }
+        }
+      ]
+    },
+    {
+      "id": "continuing",
+      "region_id": "bay-area",
+      "period_label": "Agentforce / Present",
+      "heading": "Still building the next useful thing",
+      "cards": [
+        {
+          "id": "continuing-unlocked",
+          "heading": "The route keeps going",
+          "body": "Now I build Agentforce features and agentic tools for my team, helping people move from using agents to building their own; I have been a Principal engineer since February 2025. I love my job, and my enthusiasm, drive, knowledge, and understanding of my team are at an all-time high, without every life meter needing to be full.",
+          "facts": [
+            "My public chatbots API work brought bots into Slack, beyond the Salesforce chat application.",
+            "Most recently, system-prompt versioning gives agent builders a deliberate choice about which prompt version they use.",
+            "I have learned that corporate awards are meaningless. Naturally, I still have a list. Next quest: make the useful thing easier to build."
+          ],
+          "source_refs": ["owner-brief", "supplied-documents"],
+          "event": {
+            "stats_after": {
+              "coding": 10,
+              "enthusiasm": 10,
+              "vitality": 7,
+              "charisma": 9,
+              "automancy": 10,
+              "sidequests": 8
+            },
+            "grant_badges": ["principal"],
+            "landmark_id": "open-bridge",
+            "mood": "bright"
+          }
+        }
+      ]
+    }
+  ]
+}

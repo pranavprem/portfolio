@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block content %}
+{% set region_notes = {
+  'goa': ['01', 'The starter town', 'Salt air. Small programs. Big possibilities.', '15.3 N / 74.1 E'],
+  'pune': ['02', 'The Java forge', 'New language acquired. Main quest reconsidered.', '18.5 N / 73.9 E'],
+  'san-jose': ['03', 'The learning grounds', 'Hard mode, finally. And the right kind of party.', '37.3 N / 121.9 W'],
+  'bay-area': ['04', 'The helper workshop', 'Build the tools. Help the humans. Repeat.', '37.8 N / 122.4 W']
+} %}
+<div class="hud-reserve" aria-hidden="true"></div>
+<header class="masthead page-width">
+  <div class="wordmark">
+    <svg class="brand-spark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 0h4v6h4v4h6v4h-6v4h-4v6h-4v-6H6v-4H0v-4h6V6h4z" fill="currentColor"/><path d="M10 10h4v4h-4z" fill="#f5f1e7"/></svg>
+    <span>PRANAV PREM<span class="wordmark-sub">AN ONGOING ADVENTURE</span></span>
+  </div>
+  <p class="edition">PERSONAL FIELD GUIDE <span class="edition-year">VOL. 01 / STILL EXPLORING</span></p>
+</header>
+<main class="journey page-width" id="journey" data-game="{{ game | tojson | forceescape }}">
+  <div class="story-track">
+    <section class="introduction" aria-labelledby="title">
+      <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> A SCROLL-PLAY AUTOBIOGRAPHY</p>
+      <h1 id="title">A life in<br /><em>side quests.</em></h1>
+      <p class="intro-deck">Engineer by trade.<br />Serial side-quester by nature.</p>
+      <p class="intro-copy">I'm Pranav. This is the scenic route from a kid in Goa making tiny games to a Principal engineer building Agentforce. A few unexpected turns included.</p>
+      <div class="scroll-instruction">
+        <span class="scroll-arrow" aria-hidden="true">&#8595;</span>
+        <div><p class="eyebrow">SCROLL TO BEGIN</p><p>Down to explore. Up to rewind.</p></div>
+      </div>
+      <div class="cartridge-details"><span>1 PLAYER</span><span>4 WORLDS</span><span>PLENTY OF SIDE QUESTS</span></div>
+      <p class="meter-disclaimer">The stats are playful story meters, not a medical chart or a skills assessment. No clicking, winning, or knowing how to play required.</p>
+      <noscript><p class="fallback-note">You're in storybook mode. The whole adventure, including each chapter's stats, is here. Live scenery needs JavaScript; the story doesn't.</p></noscript>
+    </section>
+    {% for chapter in story.chapters %}
+    {% set chapter_number = loop.index %}
+    {% set region = region_notes[chapter.region_id] %}
+    {% set new_region = loop.first or chapter.region_id != story.chapters[loop.index0 - 1].region_id %}
+    <section class="chapter" id="{{ chapter.id }}" data-chapter-number="{{ chapter_number }}" data-region="{{ chapter.region_id }}" aria-labelledby="heading-{{ chapter.id }}">
+      {% if new_region %}
+      <div class="region-heading">
+        <span class="world-number">WORLD {{ region[0] }}</span><span>{{ region[1] }}</span>
+      </div>
+      <figure class="mobile-landscape">
+        <img src="{{ url_for('static', filename='art/' ~ chapter.region_id ~ '.svg') }}" alt="" width="320" height="180" loading="lazy" />
+        <figcaption>{{ region[2] }}</figcaption>
+      </figure>
+      {% endif %}
+      <p class="chapter-period"><span class="chapter-index">{{ '%02d' | format(chapter_number) }}</span>{{ chapter.period_label }}</p>
+      <h2 id="heading-{{ chapter.id }}">{{ chapter.heading }}</h2>
+      {% for card in chapter.cards %}
+      <article class="story-card" data-checkpoint="{{ card.id }}" aria-labelledby="card-{{ card.id }}">
+        <h3 id="card-{{ card.id }}">{{ card.heading }}</h3>
+        <p class="story-prose">{{ card.body }}</p>
+        {% if chapter.id == 'school' %}
+        <div class="milestone"><span class="milestone-number">0.01<span>%</span></span><p>Top percentile, nationally.<br />Class 12 computer science.</p></div>
+        {% elif chapter.id == 'automation' %}
+        <div class="milestone"><span class="milestone-number">2,000<span>+</span></span><p>Hours of manual effort saved.<br />One Green Belt side quest.</p></div>
+        {% elif chapter.id == 'sjsu' %}
+        <div class="milestone"><span class="milestone-number">110<span>%</span></span><p>The maximum possible.<br />A favorite academic side quest.</p></div>
+        {% endif %}
+        <ul class="field-notes">{% for fact in card.facts %}<li>{{ fact }}</li>{% endfor %}</ul>
+        {% if card.earned_badges %}
+        <div class="loot"><p class="eyebrow">ADDED TO THE INVENTORY</p><ul>{% for badge in card.earned_badges %}<li><span class="loot-spark" aria-hidden="true">&#10022;</span>{{ badge.label }}</li>{% endfor %}</ul></div>
+        {% else %}
+        <p class="quiet-note">Progress isn't always a level-up. This part belongs in the story, too.</p>
+        {% endif %}
+        <div class="chapter-snapshot"><p class="eyebrow">CHARACTER SNAPSHOT</p><dl>{% for stat in card.stats %}<div><dt>{{ stat.label }}</dt><dd>{{ stat.value }}<span>/10</span></dd></div>{% endfor %}</dl></div>
+      </article>
+      {% endfor %}
+    </section>
+    {% endfor %}
+    <section class="ending" aria-labelledby="ending-title">
+      <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> MAIN QUEST: ONGOING</p>
+      <h2 id="ending-title">Not the end.<br /><em>The current save.</em></h2>
+      <p class="story-prose">Still curious. Still making things. Still very likely to automate a five-minute task and spend a weekend doing it.</p>
+      <p class="ending-note">Somewhere between the next useful tool, a guitar riff, and a dog that needs saying hello to.</p>
+      <div class="inventory-ledger">
+        <p class="eyebrow">THE INVENTORY SO FAR / {{ story.badges | length }} STORY BADGES</p>
+        <dl>{% for badge in story.badges %}<div><dt><span aria-hidden="true">&#10022;</span> {{ badge.label }}</dt><dd>{{ badge.description }}</dd></div>{% endfor %}</dl>
+      </div>
+      <p class="rewind-note"><span aria-hidden="true">&#8593;</span> Scroll up. Take the scenic route again.</p>
+    </section>
+  </div>
+  <aside class="theater" aria-label="Your traveling character sheet">
+    <div class="character-sheet" id="character-sheet" aria-live="off">
+      <div class="sheet-topline"><span>PLAYER 01</span><span id="player-level">LV. 01</span></div>
+      <div class="player-identity">
+        <svg class="portrait" viewBox="0 0 32 32" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="#dedbbf" d="M0 0h32v32H0z"/><path fill="#214c3d" d="M8 32V22h4v-5h12v5h3v10z"/><path fill="#b87748" d="M12 9h12v12H12z"/><path fill="#243b32" d="M10 6h14v4h2v6h-4v-5H12v5H9V9h1z"/><path fill="#e6b469" d="M15 11h7v8h-7z"/><path fill="#263e32" d="M13 13h5v3h-5zm7 0h5v3h-5zm-2 1h2v1h-2z"/><path fill="#e4b051" d="M9 23h4v9H9z"/></svg>
+        <div><p class="player-name">Pranav Prem</p><p class="player-class" id="player-class">CLASS: CURIOUS HUMAN</p></div>
+        <span class="identity-star" aria-hidden="true">&#10022;</span>
+      </div>
+      <dl class="stats-grid">
+        {% for stat in story.stat_definitions %}
+        <div class="stat" data-stat="{{ stat.key }}">
+          <dt><span class="stat-full">{{ stat.label }}</span><span class="stat-compact" aria-hidden="true">{{ stat.compact_label }}</span></dt>
+          <dd><span class="stat-value">{{ story.initial.stats[stat.key] }}</span><span class="stat-max">/10</span></dd>
+          <dd class="stat-pips" aria-hidden="true">
+            {% for pip in range(10) %}<span{% if pip < story.initial.stats[stat.key] %} class="filled"{% endif %}></span>{% endfor %}
+          </dd>
+        </div>
+        {% endfor %}
+      </dl>
+      <div class="sheet-inventory"><span>BADGES <span id="badge-count">00</span>/11</span><ul class="badge-rack" aria-label="Earned story badges">{% for badge in story.badges %}<li data-badge="{{ badge.id }}" aria-hidden="true"><span aria-hidden="true">&#10022;</span></li>{% endfor %}</ul></div>
+      <p class="sheet-status" id="sheet-status">Opening stats; chapter snapshots follow.</p>
+    </div>
+    <div class="scene-panel" aria-hidden="true">
+      <div class="scene-topline"><span id="world-label">WORLD 01 / GOA</span><span class="scene-live"><span class="status-dot"></span> OVERWORLD</span></div>
+      <svg class="overworld" id="overworld" viewBox="0 0 320 180" focusable="false" shape-rendering="crispEdges">
+        {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-region-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg') }}" width="320" height="180" />{% endfor %}
+        <g id="travelers" transform="translate(65 143)">
+          <ellipse cx="0" cy="0" rx="8" ry="2" fill="#234e3d" opacity=".22" />
+          <g class="traveler" id="traveler" data-frame="0">
+            <path class="leg leg-left" d="M-4-7h3v7h-5v-2h2z" fill="#243b32"/><path class="leg leg-right" d="M1-7h3v5h2v2H1z" fill="#243b32"/>
+            <path d="M-5-17H4v11H-5z" fill="#356850"/><path d="M-8-16h4v10h-4z" fill="#daa548"/><path d="M3-15h3v8H3z" fill="#c48755"/>
+            <path d="M-4-27h9v12h-9z" fill="#ce935e"/><path d="M-6-25v-4H4v2h3v7H4v-4H-2v5h-4z" fill="#263b32"/>
+            <path d="M0-23h4v3H0zm5 0h3v3H5zm-1 1h1v1H4z" fill="#21392f"/><path d="M0-17h4v1H0z" fill="#955e3d"/>
+          </g>
+          <g class="companion" transform="translate(-18 -1)">
+            <ellipse cx="0" cy="1" rx="7" ry="2" fill="#234e3d" opacity=".18"/><path d="M-6-4h12v5H-6z" fill="#bd8a49"/><path d="M-5-8h2v-2H3v2h2v7H-5z" fill="#718c52"/><path d="M-3-7h6v4h-6z" fill="#a9b777"/><path d="M3-5h4v5H3z" fill="#ecd399"/><path d="M5-4h1v1H5z" fill="#253f32"/><path d="M-4 0h2v2h-2zm5 0h2v2H1z" fill="#39523c"/><path d="M-8-4h2v2h-2zm-2-3h2v-3h2v-3h-5v3h1z" fill="#e5ab3e"/>
+          </g>
+        </g>
+        <g class="scene-fog" id="scene-fog"><path d="M0 58h45v7h37v-5h64v9h70v-4h104v19H0zm0 54h85v-7h50v7h71v-7h55v7h59v15H0z" fill="#e4e7d9" opacity=".65"/></g>
+      </svg>
+      <div class="scene-caption"><div><p id="scene-place">The starter town</p><span id="scene-description">Salt air. Small programs. Big possibilities.</span></div><span class="scene-coordinates" id="scene-coordinates">15.3 N<br />74.1 E</span></div>
+    </div>
+    <ol class="route-track" aria-label="Journey regions">{% for region in story.regions %}<li data-route="{{ region.id }}"{% if loop.first %} aria-current="location"{% endif %}><span class="route-node" aria-hidden="true"></span><span>{{ region.label }}</span></li>{% endfor %}</ol>
+    <p class="theater-footnote"><span aria-hidden="true">&#10022;</span> Small human. Original companion. Open-ended adventure.</p>
+  </aside>
+</main>
+<footer class="site-footer page-width"><p>PRANAV PREM<span>Made of Python, pixels &amp; a little curiosity.</span></p><p>pranavprem.com<span>NO FINAL BOSS. JUST THE NEXT GOOD QUESTION.</span></p></footer>
+{% endblock %}

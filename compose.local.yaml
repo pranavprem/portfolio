@@ -1,0 +1,11 @@
+# Local: docker compose -f compose.yaml -f compose.local.yaml up -d --build app
+services:
+  app:
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      PORTFOLIO_ENV: development
+      PORTFOLIO_HSTS: "0"
+
+networks:
+  origin:
+    internal: false

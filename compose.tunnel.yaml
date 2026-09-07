@@ -1,0 +1,42 @@
+# Merge explicitly with compose.yaml for production, never for local development.
+services:
+  cloudflared:
+    # Multi-architecture digest verified through Docker Hub's tag API on 2026-09-06.
+    image: "${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.8.3@sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339}"
+    user: "65532:65532"
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --loglevel
+      - warn
+      - --metrics
+      - 127.0.0.1:2000
+      - run
+      - --token-file
+      - /run/secrets/cloudflared_token
+    depends_on:
+      app:
+        condition: service_healthy
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
+    secrets: [cloudflared_token]
+    networks: [origin, egress]
+    restart: unless-stopped
+    stop_grace_period: 40s
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 64
+    # Retention stays off until a deployed connector passes the privacy canary check.
+    logging:
+      driver: none
+
+networks:
+  egress: {}
+
+secrets:
+  cloudflared_token:
+    file: "${CLOUDFLARED_TOKEN_FILE:?Set the absolute protected token-file path outside the checkout}"

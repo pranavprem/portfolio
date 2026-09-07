@@ -1,0 +1,37 @@
+# Deny by default. Only reviewed runtime inputs enter the build context.
+**
+!Dockerfile
+!requirements.txt
+!app/
+app/**
+!app/__init__.py
+!app/content.py
+!app/content/
+app/content/**
+!app/content/story.json
+!app/templates/
+app/templates/**
+!app/templates/base.html
+!app/templates/index.html
+!app/templates/error.html
+!app/static/
+app/static/**
+!app/static/story.css
+!app/static/story.js
+!app/static/art/
+app/static/art/**
+!app/static/art/goa.svg
+!app/static/art/pune.svg
+!app/static/art/san-jose.svg
+!app/static/art/bay-area.svg
+!app/static/art/favicon.svg
+
+# These exclusions remain last, including inside otherwise approved directories.
+**/.*
+**/*.[pP][dD][fF]
+**/*.[pP][eE][mM]
+**/*.[kK][eE][yY]
+**/*token*
+**/secrets/**
+**/private/**
+**/__pycache__/**
