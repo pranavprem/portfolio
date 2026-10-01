@@ -21,7 +21,7 @@
   <use href="#window" x="48" y="79"/><use href="#window" x="66" y="79"/><use href="#window" x="88" y="79"/>
   <use href="#window" x="48" y="97"/><use href="#window" x="88" y="97"/>
   <path fill="#3d5c4e" d="M65 99h14v23H65z"/><path fill="#cab68a" d="M71 101h2v21h-2z"/>
-  <path fill="#ecdbad" d="M55 53h56v8H55z"/><path fill="#907147" d="M59 55h48v2H59z"/>
+  <path fill="#ecdbad" d="M55 51h56v10H55z"/><text x="83" y="59" fill="#243f35" font-family="monospace" font-size="7" font-weight="bold" text-anchor="middle">HSBC</text>
   <path fill="#798563" d="M137 104h3v26h-3z"/><path fill="#405f4b" d="M135 101h7v5h-7z"/><path fill="#e4c575" d="M136 97h5v5h-5z"/>
   <path fill="#bfaa7b" d="M190 84h88v39h-88z"/><path fill="#a88f65" d="M267 84h11v39h-11z"/>
   <path fill="#56715a" d="M183 82v-5h10v-6h60v6h29v8h-99z"/><path fill="#718463" d="M197 72h51v5h-51zm-6 7h77v3h-77z"/>

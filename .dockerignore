@@ -25,6 +25,7 @@ app/static/art/**
 !app/static/art/san-jose.svg
 !app/static/art/bay-area.svg
 !app/static/art/favicon.svg
+!app/static/art/pla-robot.svg
 
 # These exclusions remain last, including inside otherwise approved directories.
 **/.*

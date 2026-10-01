@@ -25,14 +25,11 @@
   <path fill="#d39162" d="M106 73h34v4h-34zm-4 7h46v3h-46z"/>
   <path fill="#577360" d="M111 92h7v9h-7zm24 0h7v9h-7zm-12 11h8v15h-8z"/>
   <path fill="#d9cc9f" d="M108 102h13v2h-13zm24 0h13v2h-13z"/>
-  <path fill="#f4e7c2" d="M200 80h71v38h-71z"/>
-  <path fill="#cbb77f" d="M258 80h13v38h-13z"/>
-  <path fill="#af694c" d="M195 81v-5h8v-5h58v5h15v8h-81z"/>
-  <path fill="#cd8659" d="M205 72h48v4h-48zm-4 6h59v3h-59z"/>
-  <path fill="#ede0b9" d="M225 69h20v49h-20z"/>
-  <path fill="#36604e" d="M230 100h10v18h-10zm-23-8h7v9h-7zm13 0h5v9h-5zm26 0h7v9h-7z"/>
-  <path fill="#ceaf73" d="M224 69h22v4h-22zm4 10h14v11h-14z"/>
-  <path fill="#f3e6bc" d="M232 80h6v8h-6z"/>
+  <g id="gec-campus">
+    <g id="gec-west"><path fill="#ede0b9" d="M192 88h31v28h-31z"/><path fill="#cbb77f" d="M218 88h5v28h-5z"/><path fill="#af694c" d="M187 88v-5h7v-5h24v5h9v7h-40z"/><path fill="#cd8659" d="M196 79h20v4h-20z"/><path fill="#36604e" d="M198 96h6v8h-6zm11 0h6v8h-6z"/></g>
+    <g id="gec-east"><path fill="#ede0b9" d="M240 85h35v31h-35z"/><path fill="#cbb77f" d="M270 85h5v31h-5z"/><path fill="#af694c" d="M235 85v-5h7v-5h27v5h10v7h-44z"/><path fill="#cd8659" d="M244 76h23v4h-23z"/><path fill="#36604e" d="M246 95h6v8h-6zm12 0h6v8h-6z"/></g>
+    <g id="gec-courtyard"><path fill="#e5d8aa" d="M218 117h25v13h-25z"/><path fill="#f4e7c2" d="M210 105h36v21h-36z"/><path fill="#cbb77f" d="M239 105h7v21h-7z"/><path fill="#af694c" d="M205 105v-5h8v-5h25v5h12v7h-45z"/><path fill="#cd8659" d="M215 96h21v4h-21z"/><path fill="#36604e" d="M214 113h6v7h-6zm12 2h9v11h-9z"/></g>
+  </g>
   <path fill="#406951" d="M173 117h2V82h-2z"/><path fill="#d4a347" d="M175 82h13v8h-13z"/>
   <path fill="#829365" d="M170 117h8v3h-8z"/>
   <use href="#palm" x="81" y="119"/><use href="#palm" x="291" y="115"/><use href="#palm" x="32" y="166"/>
@@ -41,4 +38,7 @@
   <path fill="#faf1cd" d="M148 164h3v3h-3zm44 9h3v3h-3zm99-45h3v3h-3z"/><path fill="#d5a34c" d="M149 165h1v1h-1zm44 9h1v1h-1zm99-45h1v1h-1z"/>
   <path fill="#47664f" d="M34 49h3v2h3v-2h3v2h-3v2h-3v-2h-3zm83-19h2v2h3v-2h2v2h-2v2h-3v-2h-2z"/>
   <path fill="#ece0b3" d="M0 176h23v4H0z"/>
+  <g id="ncs-elephant"><path fill="#8f9780" d="M132 128h23v4h-23z"/><path fill="#a4aca0" d="M135 115h11v2h5v7h-3v-4h-3v9h-3v-5h-4v5h-3z"/><path fill="#c5cbb9" d="M142 117h5v6h-5z"/><path fill="#8b968b" d="M149 119h3v9h-5v-3h2z"/><path fill="#435a4e" d="M147 117h1v1h-1z"/></g>
+  <path fill="#f4e7c2" d="M113 86h28v7h-28zm110 19h18v7h-18z"/>
+  <g fill="#243f35" font-family="monospace" font-size="6" font-weight="bold" text-anchor="middle"><text x="127" y="92">NCS</text><text x="232" y="111">GEC</text></g>
 </svg>

@@ -263,7 +263,7 @@ def test_gunicorn_exception_logger_does_not_expand_request_or_exception(caplog):
     assert all(record.exc_info is None for record in caplog.records)
 
 
-def test_server_html_is_complete_semantic_and_noninteractive(
+def test_server_html_is_complete_semantic_and_links_are_reviewed(
     client, story_document, game, parse_html
 ):
     document = parse_html(client.get("/").get_data(as_text=True))
@@ -271,27 +271,40 @@ def test_server_html_is_complete_semantic_and_noninteractive(
     assert len(document.select("h1")) == len(document.select("main")) == 1
     assert len(document.select("section", class_="chapter")) == 11
     assert len(document.select("article", class_="story-card")) == 12
-    assert len(document.select(class_="chapter-snapshot")) == 12
-    assert len(document.select("h3")) == 12
-    assert len(document.select(class_="loot")) == 10
+    assert len(document.select(class_="chapter-stats")) == 12
+    assert not document.select(class_="chapter-snapshot")
+    assert len(document.select(class_="achievement-note")) == len(story_document["achievements"])
+    assert len(document.select(class_="loot")) == 11
+    assert len(document.select(class_="stat")) == 5
+    assert not document.select(class_="inventory-ledger")
     assert json.loads(document.select(id="journey")[0]["data-game"]) == game
     for chapter in story_document["chapters"]:
         assert chapter["heading"] in document.text
         assert chapter["period_label"] in document.text
         for card in chapter["cards"]:
-            assert card["body"] in document.text
+            assert " ".join(card["body"].split()) in document.text
             assert all(fact in document.text for fact in card["facts"])
     for badge in story_document["badges"]:
         assert badge["description"] in document.text
+    allowed_links = {
+        "https://www.linkedin.com/in/pranavprem/",
+        "mailto:pranavprem93@gmail.com",
+        "https://github.com/pranavprem/mediaserver",
+        "https://github.com/pranavprem/homeassistant",
+    }
+    for achievement in story_document["achievements"]:
+        assert achievement["heading"] in document.text
+        assert achievement["body"] in document.text
+        allowed_links.update(achievement["links"].values())
+    assert {link["href"] for link in document.select("a")} == allowed_links
     slots = [attrs for _, attrs in document.elements if "data-badge" in attrs]
     assert len(slots) == 11
     assert all(attrs.get("aria-hidden") == "true" and "aria-label" not in attrs for attrs in slots)
     assert all("earned" not in attrs.get("class", "").split() for attrs in slots)
     assert document.select(id="character-sheet")[0]["aria-live"] == "off"
-    assert "Opening stats; chapter snapshots follow." in document.text
+    assert "Starting stats. Later stats are beside the story." in document.text
     for tag, attrs in document.elements:
         assert tag not in {
-            "a",
             "button",
             "input",
             "select",
@@ -307,7 +320,7 @@ def test_server_html_is_complete_semantic_and_noninteractive(
         assert "tabindex" not in attrs and "style" not in attrs
         assert attrs.get("role") not in {"button", "link", "application", "slider", "menu"}
         for name in ("src", "href"):
-            if name in attrs and attrs.get("rel") != "canonical":
+            if name in attrs and attrs.get("rel") != "canonical" and tag != "a":
                 assert attrs[name].startswith("/static/")
     assert document.select("script") == [{"type": "module", "src": "/static/story.js"}]
 
@@ -333,9 +346,9 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
 
 def test_rendered_source_claims_keep_authorized_scope(client, parse_html):
     text = parse_html(client.get("/").get_data(as_text=True)).text
-    assert re.search(r"I scored 110%, the maximum possible.*I.*only student", text)
-    assert re.search(r"top 0\.01% nationally in Class 12 computer science", text)
-    assert re.search(r"IEEE Xtreme national top[- ]ten", text)
+    assert re.search(r"I scored 110%, the maximum possible.*only student", text)
+    assert re.search(r"Class 12 in the national top 0\.01% for CS", text)
+    assert re.search(r"national top ten in the 24-hour IEEE Xtreme", text)
     assert "I joined Salesforce in 2019" in text
     assert re.search(r"Jun-Aug 2018.*Google Hardware/Nest, during my MS", text)
     for invention in (
@@ -352,11 +365,130 @@ def test_rendered_source_claims_keep_authorized_scope(client, parse_html):
     for match in re.finditer(r"2,?000\s*\+", document.text):
         context = document.text[max(0, match.start() - 90) : match.end() + 100]
         assert "Green Belt" in context
-        assert "TasKing" not in context
+    assert not re.search(r"TasKing[^.!?]{0,100}(?:saved|returned)\s*2,?000", text)
     for phrase in (
-        "enthusiasm, drive, knowledge",
-        "understanding of my team",
+        "enthusiasm, drive, and passion",
         "all-time high",
-        "not a medical chart or a skills assessment",
     ):
         assert phrase in text
+
+
+def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
+    text = parse_html(client.get("/").get_data(as_text=True)).text
+    for phrase in (
+        "public speaking and debate",
+        "seven wins in four years",
+        "six months of Java training",
+        "promptly made his TA",
+        "placed second at PayPal's Opportunity Hack",
+        "Imposter syndrome",
+        "intoxicating",
+        "moved to San Francisco",
+        "Full-time work had no internship end date",
+        "new cadence of contribution",
+        "Google Drive and iCloud",
+        "40% PLA",
+        "MakerWorld",
+        "Bambu Studio",
+        "Autodesk Fusion",
+        "dengue",
+        "hospital for a month",
+        "few weeks before my Class 12 final exams",
+        "irrespective of how many people wanted to hear my opinions",
+        "minibosses",
+        "on-premise SAP data center",
+        "Banking red tape",
+        "Gotta catch 'em all",
+        "you guessed it",
+        "This was becoming a bit of a trend",
+        "HSDI (HSBC Software Development India)",
+        "This was the work I wanted",
+        "engineers far better than me",
+        "back in San Jose",
+        "Bender voice",
+        "Argo CD",
+        "99.99% availability",
+        "100% of customer traffic",
+        "from Heroku to multisubstrate",
+        "multisubstrate public-cloud instances",
+        "public API",
+        "public Slack connector",
+        "Einstein Copilot",
+        "configurable AI agent",
+        "Atlas Reasoning Engine",
+        "AgentScript",
+        "more deterministic in an LLM world",
+        "voice, MCP, native context, memory",
+        "agentic runtime",
+        "async processing",
+        "long-running turns, actions, and sessions",
+        "Salesforce CRM data",
+        "work assistant and coding harness",
+        "OpenClaw and Hermes agents maintain each other",
+        "human-in-the-loop credential layer",
+    ):
+        assert phrase in text, phrase
+    document = parse_html(client.get("/").get_data(as_text=True))
+    assert document.select("img", src="/static/art/pla-robot.svg")
+    for rejected in (
+        "A SCROLL-PLAY AUTOBIOGRAPHY",
+        "CHARACTER SNAPSHOT",
+        "not a medical chart",
+        "people are not programs",
+        "inventory was tiny",
+        "Even good engines need rest",
+        "Progress isn't always a level-up",
+        "I burnt out",
+        "proposal was rejected",
+        "That was huge",
+        "I love my job",
+        "Right where I want to be",
+        "Naturally, I kept the list",
+        "Dragonstone",
+        "California Ultra Speed Rail",
+        "Karma Mining",
+        "Java Topper",
+        "I like making cool things",
+        "Leadership came early",
+        "understanding of my team",
+        "new people to learn from",
+        "Automancy",
+        "Python Passport",
+        "Cloud Scholar",
+        "Stock firmware was apparently insufficient",
+        "My first sworn enemy was a mosquito",
+        "youngest Rising Star nominee at 21",
+        "Chat Alchemist",
+    ):
+        assert rejected not in text, rejected
+    assert not re.search(r"\bshit\b", text, re.I)
+
+
+def test_achievement_text_and_project_labels_are_autoescaped(app, story_document, parse_html):
+    payload = '"><svg onload=alert(1)>'
+    achievement = story_document["achievements"][0]
+    achievement.update(
+        heading=payload, body=payload, links={payload: "https://github.com/pranavprem/TasKing"}
+    )
+    validate_story(story_document)
+    story, game = prepare_story(story_document)
+    with app.test_request_context("/"):
+        source = render_template("index.html", story=story, game=game)
+    document = parse_html(source)
+    assert payload in document.text and payload not in source
+    assert not any(
+        name.startswith("on") for _, attributes in document.elements for name in attributes
+    )
+
+
+def test_inline_project_links_cannot_execute_prose(app, story_document, parse_html):
+    card = story_document["chapters"][5]["cards"][0]
+    card["body"] = "Before TasKing <img src=x onerror=alert(1)> after.\n\nAnother paragraph."
+    validate_story(story_document)
+    story, game = prepare_story(story_document)
+    with app.test_request_context("/"):
+        source = render_template("index.html", story=story, game=game)
+    document = parse_html(source)
+    assert "<img src=x onerror=alert(1)>" in document.text
+    assert not document.select("img", src="x")
+    assert document.select("a", href="https://github.com/pranavprem/TasKing")

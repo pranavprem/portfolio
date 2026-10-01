@@ -3,36 +3,37 @@ const STAT_KEYS = [
   "enthusiasm",
   "vitality",
   "charisma",
-  "automancy",
-  "sidequests",
+  "experience",
 ];
 const REGIONS = {
-  goa: [
-    "WORLD 01 / GOA",
-    "The starter town",
-    "Salt air. Small programs. Big possibilities.",
-    "15.3 N\n74.1 E",
-  ],
-  pune: [
-    "WORLD 02 / PUNE",
-    "The Java forge",
-    "New language acquired. Main quest reconsidered.",
-    "18.5 N\n73.9 E",
-  ],
-  "san-jose": [
-    "WORLD 03 / SAN JOSE",
-    "The learning grounds",
-    "Hard mode, finally. And the right kind of party.",
-    "37.3 N\n121.9 W",
-  ],
-  "bay-area": [
-    "WORLD 04 / BAY AREA",
-    "The helper workshop",
-    "Build the tools. Help the humans. Repeat.",
-    "37.8 N\n122.4 W",
-  ],
+  goa: "Goa",
+  pune: "Pune",
+  "san-jose": "San Jose",
+  "bay-area": "San Francisco",
 };
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+const SIDE_ARROW_SCROLL_STEP = 80;
+
+function scrollWithSideArrow(event) {
+  if (
+    !["ArrowLeft", "ArrowRight"].includes(event.key) ||
+    event.defaultPrevented ||
+    event.isComposing ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    (typeof event.target?.closest === "function" &&
+      event.target.closest("input, textarea, select, [contenteditable]")) ||
+    document.documentElement.scrollWidth >
+      document.documentElement.clientWidth + 1
+  )
+    return;
+  window.scrollBy({
+    top: (event.key === "ArrowRight" ? 1 : -1) * SIDE_ARROW_SCROLL_STEP,
+    behavior: "auto",
+  });
+}
 
 // Absolute snapshots make a rewind, a scrollbar jump, and normal travel identical.
 export function deriveState(
@@ -78,9 +79,32 @@ export function deriveState(
   };
 }
 
+// The hop is a tiny scroll timeline, not a timed animation that breaks on rewind.
+export function deriveCelebration(
+  anchors,
+  readingPosition,
+  reducedMotion = false,
+) {
+  if (reducedMotion) return { lift: 0, active: false };
+  let index = -1;
+  for (let i = 0; i < anchors.length && anchors[i] <= readingPosition; i += 1)
+    index = i;
+  if (index < 0) return { lift: 0, active: false };
+  const length = Math.min(
+    180,
+    (anchors[index + 1] ?? Infinity) - anchors[index],
+  );
+  const phase = clamp(
+    (readingPosition - anchors[index]) / Math.max(1, length),
+    0,
+    1,
+  );
+  return { lift: Math.round(Math.sin(phase * Math.PI) * 8), active: phase < 1 };
+}
+
 function validGame(game, markers, badgeIds) {
   if (
-    game?.schema_version !== 1 ||
+    game?.schema_version !== 2 ||
     !game.initial ||
     !Array.isArray(game.events) ||
     game.events.length !== markers.length ||
@@ -88,6 +112,7 @@ function validGame(game, markers, badgeIds) {
   )
     return false;
   const snapshots = [game.initial, ...game.events];
+  const orderedBadges = [...badgeIds];
   const validSnapshots = snapshots.every((event, i) => {
     const stats = i === 0 ? event.stats : event.stats_after;
     const badges = i === 0 ? event.badges : event.badges_after;
@@ -98,6 +123,11 @@ function validGame(game, markers, badgeIds) {
         (key) =>
           Number.isInteger(stats[key]) && stats[key] >= 0 && stats[key] <= 10,
       ) &&
+      (i === 0 ||
+        stats.experience >=
+          (i === 1
+            ? game.initial.stats.experience
+            : snapshots[i - 1].stats_after.experience)) &&
       Object.hasOwn(REGIONS, event.region_id) &&
       ["bright", "quiet", "fog"].includes(event.mood) &&
       Number.isFinite(event.position?.x) &&
@@ -108,7 +138,8 @@ function validGame(game, markers, badgeIds) {
       event.position.y <= 180 &&
       Array.isArray(badges) &&
       new Set(badges).size === badges.length &&
-      badges.every((id) => badgeIds.has(id))
+      badges.every((id, index) => id === orderedBadges[index]) &&
+      (i < 2 || badges.length >= snapshots[i - 1].badges_after.length)
     );
   });
   return (
@@ -128,17 +159,17 @@ function startJourney(root) {
   const hud = document.getElementById("character-sheet");
   const status = document.getElementById("sheet-status");
   const markers = [...root.querySelectorAll("[data-checkpoint]")];
+  const achievements = [...root.querySelectorAll("[data-achievement]")];
   const statRows = [...hud.querySelectorAll("[data-stat]")];
   const badgeSlots = [...hud.querySelectorAll("[data-badge]")];
   const routes = [...root.querySelectorAll("[data-route]")];
   const art = [...root.querySelectorAll("[data-region-art]")];
-  const badgeNames = [...root.querySelectorAll(".inventory-ledger dt")].map(
-    (node) => node.textContent.trim(),
-  );
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const mobile = matchMedia("(max-width: 1023px)");
   let game;
+  let gameValid = false;
   let anchors = [];
+  let achievementAnchors = [];
   let readingOffset = 0;
   let maxScroll = 0;
   let geometryDirty = true;
@@ -146,7 +177,11 @@ function startJourney(root) {
   let frameRequest = 0;
   let failed = false;
 
-  function render(state, live = true) {
+  function render(
+    state,
+    live = true,
+    celebration = { lift: 0, active: false },
+  ) {
     if (state.index !== lastIndex) {
       statRows.forEach((row) => {
         const value = state.stats[row.dataset.stat];
@@ -155,12 +190,12 @@ function startJourney(root) {
           .querySelectorAll(".stat-pips > span")
           .forEach((pip, i) => pip.classList.toggle("filled", i < value));
       });
-      badgeSlots.forEach((slot, i) => {
+      badgeSlots.forEach((slot) => {
         const earned = state.badges.includes(slot.dataset.badge);
         slot.classList.toggle("earned", earned);
         if (earned) {
           slot.removeAttribute("aria-hidden");
-          slot.setAttribute("aria-label", badgeNames[i]);
+          slot.setAttribute("aria-label", slot.dataset.badgeLabel);
         } else {
           slot.setAttribute("aria-hidden", "true");
           slot.removeAttribute("aria-label");
@@ -175,11 +210,9 @@ function startJourney(root) {
           : Number(
               markers[state.index].closest(".chapter").dataset.chapterNumber,
             );
-      document.getElementById("player-level").textContent =
-        `LV. ${String(chapter + 1).padStart(2, "0")}`;
       status.textContent = live
-        ? `CHAPTER ${String(chapter).padStart(2, "0")} / 11 / SCROLL TO EXPLORE`
-        : "Opening stats; chapter snapshots follow.";
+        ? `Chapter ${String(chapter).padStart(2, "0")} / 11`
+        : "Starting stats. Later stats are beside the story.";
       markers.forEach((marker, i) =>
         marker.classList.toggle("is-current", live && i === state.index),
       );
@@ -198,14 +231,8 @@ function startJourney(root) {
           route.setAttribute("aria-current", "location");
         else route.removeAttribute("aria-current");
       });
-      [
-        "world-label",
-        "scene-place",
-        "scene-description",
-        "scene-coordinates",
-      ].forEach((id, i) => {
-        document.getElementById(id).textContent = REGIONS[state.region][i];
-      });
+      document.getElementById("world-label").textContent =
+        REGIONS[state.region];
       document.getElementById("overworld").dataset.mood = state.mood;
       root.dataset.checkpointIndex = state.index;
       lastIndex = state.index;
@@ -216,7 +243,24 @@ function startJourney(root) {
         "transform",
         `translate(${state.position.x} ${state.position.y})`,
       );
-    document.getElementById("traveler").dataset.frame = state.frame;
+    const traveler = document.getElementById("traveler");
+    traveler.dataset.frame = state.frame;
+    traveler.dataset.celebrating = String(celebration.active);
+    traveler.setAttribute("transform", `translate(0 ${-celebration.lift})`);
+    document.getElementById("overworld").dataset.frame = state.frame;
+    const companionStep = !celebration.active && state.frame % 2 ? 2 : 0;
+    document
+      .getElementById("companion")
+      .setAttribute(
+        "transform",
+        `translate(-18 ${-1 - companionStep - Math.round(celebration.lift / 2)})`,
+      );
+    document
+      .getElementById("portrait-sprite")
+      .setAttribute(
+        "transform",
+        `translate(0 ${-Math.round(celebration.lift / 3)})`,
+      );
   }
 
   function measure() {
@@ -239,6 +283,9 @@ function startJourney(root) {
     anchors = markers.map(
       (marker) => marker.getBoundingClientRect().top + window.scrollY,
     );
+    achievementAnchors = achievements.map(
+      (marker) => marker.getBoundingClientRect().top + window.scrollY,
+    );
     maxScroll = Math.max(0, document.scrollingElement.scrollHeight - height);
     if (
       anchors.some(
@@ -247,6 +294,15 @@ function startJourney(root) {
       )
     )
       throw new Error("Invalid checkpoint geometry");
+    if (
+      achievementAnchors.some(
+        (position, i) =>
+          !Number.isFinite(position) ||
+          (i > 0 && position <= achievementAnchors[i - 1]),
+      )
+    ) {
+      throw new Error("Invalid achievement geometry");
+    }
     geometryDirty = false;
   }
 
@@ -258,14 +314,16 @@ function startJourney(root) {
     html.removeAttribute("data-theater-flow");
     html.style.removeProperty("--hud-height");
     lastIndex = null;
-    if (game?.initial) {
+    if (gameValid) {
       try {
         render(deriveState(game, [], 0, true), false);
       } catch {
         hud.hidden = true;
       }
+    } else {
+      hud.hidden = true;
     }
-    status.textContent = "Storybook mode; chapter snapshots follow.";
+    status.textContent = "Paper edition. The stats are beside the story.";
   }
 
   function update() {
@@ -277,6 +335,12 @@ function startJourney(root) {
         clamp(window.scrollY, 0, maxScroll) + readingOffset;
       render(
         deriveState(game, anchors, readingPosition, reducedMotion.matches),
+        true,
+        deriveCelebration(
+          achievementAnchors,
+          readingPosition,
+          reducedMotion.matches,
+        ),
       );
     } catch {
       fallback();
@@ -292,6 +356,8 @@ function startJourney(root) {
   try {
     game = JSON.parse(root.dataset.game);
     if (
+      statRows.length !== STAT_KEYS.length ||
+      statRows.some((row, index) => row.dataset.stat !== STAT_KEYS[index]) ||
       !validGame(
         game,
         markers,
@@ -299,10 +365,12 @@ function startJourney(root) {
       )
     )
       throw new Error("Invalid story projection");
+    gameValid = true;
     html.classList.add("enhanced");
     measure();
     update();
     document.addEventListener("scroll", () => schedule(), { passive: true });
+    document.addEventListener("keydown", scrollWithSideArrow);
     window.addEventListener("resize", () => schedule(true), { passive: true });
     window.visualViewport?.addEventListener("resize", () => schedule(true), {
       passive: true,

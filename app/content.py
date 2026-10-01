@@ -10,14 +10,31 @@ APP_ROOT = Path(__file__).resolve().parent
 CONTENT_PATH = APP_ROOT / "content" / "story.json"
 STATIC_ROOT = APP_ROOT / "static"
 MAX_CONTENT_BYTES = 128 * 1024
-STAT_KEYS = ("coding", "enthusiasm", "vitality", "charisma", "automancy", "sidequests")
+STAT_KEYS = ("coding", "enthusiasm", "vitality", "charisma", "experience")
 REGION_IDS = ("goa", "pune", "san-jose", "bay-area")
 MOODS = frozenset({"bright", "quiet", "fog"})
+ACHIEVEMENT_ERAS = (
+    "current",
+    "principal",
+    "agentforce",
+    "bots",
+    "chat",
+    "sjsu",
+    "hsbc",
+    "goa",
+    "school",
+    "undated",
+)
 BADGE_ART_KEYS = frozenset(
     {"spark", "flag", "leaf", "cup", "gear", "cloud", "heart", "bolt", "bot", "star"}
 )
 ASSET_EXTENSIONS = frozenset({".css", ".js", ".svg", ".png", ".webp", ".ico"})
 ID_PATTERN = re.compile(r"[a-z][a-z0-9-]{0,63}\Z")
+PUBLIC_LINK_PATTERN = re.compile(
+    r"https://(?:github\.com/(?:pranavprem/[A-Za-z0-9][A-Za-z0-9_.-]*"
+    r"|forcedotcom/einstein-bot-channel-connector/commits/master/\?author=pranavprem)"
+    r"|youtu\.be/ogItgrO9GSg\?t=221)\Z"
+)
 
 
 class ContentValidationError(ValueError):
@@ -110,20 +127,25 @@ def validate_story(document: object) -> None:
             "badges",
             "regions",
             "chapters",
+            "achievements",
         },
         "story",
     )
     _require(
-        type(document["schema_version"]) is int and document["schema_version"] == 1,
+        type(document["schema_version"]) is int and document["schema_version"] == 2,
         "schema_version",
-        "only version 1 is supported",
+        "only version 2 is supported",
     )
 
     sources = document["sources"]
-    _object(sources, {"owner-brief", "resume", "profile", "supplied-documents"}, "sources")
+    _object(
+        sources, {"owner-brief", "resume", "profile", "supplied-documents", "github"}, "sources"
+    )
     for source_id, source in sources.items():
         _object(source, {"kind"}, f"sources.{source_id}")
         expected = "owner-supplied" if source_id == "owner-brief" else "supplied-document"
+        if source_id == "github":
+            expected = "public-repository"
         _require(
             source["kind"] == expected,
             f"sources.{source_id}",
@@ -131,11 +153,11 @@ def validate_story(document: object) -> None:
         )
 
     definitions = document["stat_definitions"]
-    _list(definitions, 6, 6, "stat_definitions")
+    _list(definitions, 5, 5, "stat_definitions")
     for index, definition in enumerate(definitions):
         field = f"stat_definitions[{index}]"
         _object(definition, {"key", "label", "compact_label", "description"}, field)
-        _require(definition["key"] == STAT_KEYS[index], field, "retain the six-stat display order")
+        _require(definition["key"] == STAT_KEYS[index], field, "retain the five-stat display order")
         _text(definition["label"], 64, field + ".label")
         _text(definition["compact_label"], 64, field + ".compact_label")
         _text(definition["description"], 220, field + ".description")
@@ -197,9 +219,9 @@ def validate_story(document: object) -> None:
     _object(initial, {"stats", "badges", "region_id", "landmark_id", "mood"}, "initial")
     _stats(initial["stats"], "initial.stats")
     _require(
-        tuple(initial["stats"][key] for key in STAT_KEYS) == (0, 1, 1, 1, 0, 1),
+        tuple(initial["stats"][key] for key in STAT_KEYS) == (0, 1, 1, 1, 0),
         "initial.stats",
-        "retain the low opening snapshot: 0, 1, 1, 1, 0, 1",
+        "retain the low opening snapshot: 0, 1, 1, 1, 0",
     )
     _require(initial["badges"] == [], "initial.badges", "the opening has no badges")
     _require(
@@ -216,6 +238,7 @@ def validate_story(document: object) -> None:
     _list(chapters, 11, 11, "chapters")
     chapter_ids, card_ids, granted = set(), set(), set()
     ordered_grants = []
+    experience = initial["stats"]["experience"]
     for index, chapter in enumerate(chapters):
         field = f"chapters[{index}]"
         _object(chapter, {"id", "region_id", "period_label", "heading", "cards"}, field)
@@ -235,14 +258,24 @@ def validate_story(document: object) -> None:
             _require(card["id"] not in card_ids, card_field, "card IDs must be unique")
             card_ids.add(card["id"])
             _text(card["heading"], 100, card_field + ".heading")
-            _text(card["body"], 600, card_field + ".body")
+            _require(type(card["body"]) is str, card_field + ".body", "expected plain text")
+            # Only authored paragraph breaks are permitted, not arbitrary control characters.
+            _text(card["body"].replace("\n\n", "  "), 600, card_field + ".body")
+            paragraphs = card["body"].split("\n\n")
+            _list(paragraphs, 1, 8, card_field + ".paragraphs")
+            for paragraph in paragraphs:
+                _text(paragraph, 600, card_field + ".paragraphs")
             _list(card["facts"], 0, 3, card_field + ".facts")
             for fact in card["facts"]:
                 _text(fact, 220, card_field + ".facts")
             _list(card["source_refs"], 1, 4, card_field + ".source_refs")
             for source_id in card["source_refs"]:
                 _id(source_id, card_field + ".source_refs")
-                _require(source_id in sources, card_field, "reference a documented source")
+                _require(
+                    source_id in sources and source_id != "github",
+                    card_field,
+                    "reference a documented biographical source",
+                )
             _require(
                 len(set(card["source_refs"])) == len(card["source_refs"]),
                 card_field,
@@ -253,6 +286,12 @@ def validate_story(document: object) -> None:
                 event, {"stats_after", "grant_badges", "landmark_id", "mood"}, card_field + ".event"
             )
             _stats(event["stats_after"], card_field + ".stats_after")
+            _require(
+                event["stats_after"]["experience"] >= experience,
+                card_field + ".experience",
+                "experience accumulates; it must not decrease between authored checkpoints",
+            )
+            experience = event["stats_after"]["experience"]
             _id(event["mood"], card_field + ".mood")
             _require(event["mood"] in MOODS, card_field, "choose an approved scene mood")
             _id(event["landmark_id"], card_field + ".landmark_id")
@@ -277,10 +316,55 @@ def validate_story(document: object) -> None:
         "order the ledger by first grant and grant every badge",
     )
 
+    achievements = document["achievements"]
+    _list(achievements, 1, 64, "achievements")
+    achievement_ids = set()
+    for achievement in achievements:
+        field = "achievements"
+        _object(
+            achievement,
+            {"id", "era", "period_label", "heading", "body", "source_refs", "links"},
+            field,
+        )
+        _id(achievement["id"], field + ".id")
+        _require(achievement["id"] not in achievement_ids, field, "achievement IDs must be unique")
+        achievement_ids.add(achievement["id"])
+        _id(achievement["era"], field + ".era")
+        _require(achievement["era"] in ACHIEVEMENT_ERAS, field, "choose a documented narrative era")
+        _text(achievement["period_label"], 64, field + ".period_label")
+        _text(achievement["heading"], 100, field + ".heading")
+        _text(achievement["body"], 600, field + ".body")
+        _list(achievement["source_refs"], 1, 5, field + ".source_refs")
+        for source_id in achievement["source_refs"]:
+            _id(source_id, field + ".source_refs")
+            _require(source_id in sources, field, "reference a documented source")
+        _require(
+            len(set(achievement["source_refs"])) == len(achievement["source_refs"]),
+            field,
+            "source references must be unique",
+        )
+        links = achievement["links"]
+        _require(
+            type(links) is dict and len(links) <= 3, field, "provide at most three project links"
+        )
+        for label, url in links.items():
+            _text(label, 64, field + ".links.label")
+            _text(url, 240, field + ".links.url")
+            _require(
+                PUBLIC_LINK_PATTERN.fullmatch(url) is not None,
+                field + ".links.url",
+                "use a public owner GitHub repository, reviewed Slack URL, "
+                "or the approved cameo link",
+            )
+
 
 def prepare_story(document: dict) -> tuple[dict, dict]:
     """Preserve authored fields; add accessible snapshots and a prose-free game projection."""
     story = deepcopy(document)
+    # Narrative eras avoid inventing dates from repository creation/push timestamps.
+    story["achievements"] = sorted(
+        story["achievements"], key=lambda item: ACHIEVEMENT_ERAS.index(item["era"])
+    )
     regions = {region["id"]: region for region in story["regions"]}
     badges = {badge["id"]: badge for badge in story["badges"]}
     initial = story["initial"]
@@ -298,6 +382,7 @@ def prepare_story(document: dict) -> tuple[dict, dict]:
     earned = []
     for chapter in story["chapters"]:
         for card in chapter["cards"]:
+            card["paragraphs"] = card["body"].split("\n\n")
             event = card["event"]
             earned.extend(event["grant_badges"])
             card["stats"] = [

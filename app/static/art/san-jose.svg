@@ -19,7 +19,6 @@
   <path fill="#997356" d="M70 39h36v6H70z"/><path fill="#b2825b" d="M75 33h25v7H75z"/>
   <path fill="#e5d6b3" d="M83 27h9v7h-9z"/>
   <path fill="#738a76" d="M82 49h12v16H82z"/><path fill="#e9dbb7" d="M87 49h2v16h-2zM82 55h12v2H82z"/>
-  <path fill="#ede1c4" d="M82 73h12v12H82z"/><path fill="#5a6c57" d="M87 75h2v5h4v2h-6z"/>
   <path fill="#4b6959" d="M81 103h14v18H81z"/>
   <use href="#window" x="49" y="90"/><use href="#window" x="62" y="90"/><use href="#window" x="104" y="91"/>
   <path fill="#bda580" d="M77 121h23v4H77z"/><path fill="#cdb996" d="M74 125h29v3H74z"/>
@@ -35,4 +34,6 @@
   <path fill="#6e9568" d="M8 169v-5h3v-4h12v4h5v5zm271 3v-6h5v-5h15v5h7v6z"/>
   <use href="#flower" x="60" y="170"/><use href="#flower" x="67" y="167"/><use href="#flower" x="194" y="170"/><use href="#flower" x="200" y="173"/>
   <path fill="#749464" d="M115 170h2v3h2v-5h2v7h-6zm118-5h2v3h2v-4h2v6h-6z"/>
+  <path fill="#eee0bd" d="M74 91h29v9H74zm123-24h76v8h-76z"/>
+  <g fill="#243f35" font-family="monospace" font-size="6" font-weight="bold" text-anchor="middle"><text x="88" y="98">SJSU</text><text x="235" y="73">GOOGLE / NEST</text></g>
 </svg>

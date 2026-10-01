@@ -123,18 +123,31 @@ def assert_complete_story(page, story_document, snapshots):
     expect(cards).to_have_count(12)
     for card in [card for chapter in story_document["chapters"] for card in chapter["cards"]]:
         node = page.locator(f'[data-checkpoint="{card["id"]}"]')
-        expect(node.locator(".story-prose")).to_have_text(card["body"])
-        expect(node.locator(".story-prose")).to_be_visible()
-        expect(node.locator(".field-notes li")).to_have_text(card["facts"])
+        expect(node.locator(".story-prose")).to_have_text(card["body"].split("\n\n"))
+        for paragraph in node.locator(".story-prose").all():
+            expect(paragraph).to_be_visible()
+        expect(page.locator(f'[data-bonus-for="{card["id"]}"] .field-notes li')).to_have_text(
+            card["facts"]
+        )
     for index, expected in enumerate(snapshots[1:]):
-        expect(cards.nth(index).locator(".chapter-snapshot dd")).to_have_text(
+        expect(cards.nth(index).locator(".chapter-stats dd")).to_have_text(
             [f"{value}/10" for value in expected["stats"].values()]
         )
-        expect(cards.nth(index).locator(".chapter-snapshot")).to_be_visible()
-    expect(page.locator(".inventory-ledger dd")).to_have_text(
-        [badge["description"] for badge in story_document["badges"]]
+    expect(page.locator(".achievement-note")).to_have_count(len(story_document["achievements"]))
+    for achievement in story_document["achievements"]:
+        node = page.locator(f"#achievement-{achievement['id']}")
+        expect(node.locator("h3")).to_have_text(achievement["heading"])
+        expect(node.locator("p:not(.eyebrow)")).to_have_text(achievement["body"])
+        expect(node.locator("a")).to_have_text(list(achievement["links"]))
+    expect(page.locator(".loot .milestone-label")).to_have_text(
+        [badge["label"] for badge in story_document["badges"]]
     )
-    expect(page.locator("a, button, input, form, [tabindex], [role=application]")).to_have_count(0)
+    for badge in story_document["badges"]:
+        expect(page.locator(f'[data-achievement="story-{badge["id"]}"]')).to_contain_text(
+            badge["description"]
+        )
+    expect(page.locator(".inventory-ledger")).to_have_count(0)
+    expect(page.locator("button, input, form, [tabindex], [role=application]")).to_have_count(0)
 
 
 @pytest.fixture
@@ -231,9 +244,11 @@ def test_responsive_clearance_and_endpoint_reachability(page, live_server, snaps
         scroll_to_checkpoint(page, index)
         assert_hud(page, snapshots[index + 1])
         geometry = page.evaluate(GEOMETRY)
-        heading = page.locator(".story-card h3").nth(index).bounding_box()
+        heading = (
+            page.locator(".story-card").nth(index).locator(".story-prose").first.bounding_box()
+        )
         assert heading["y"] >= geometry["top"]
-        assert heading["y"] + heading["height"] < geometry["height"]
+        assert heading["y"] + 32 < geometry["height"]
         if width >= 1024:
             hud = page.locator("#character-sheet").bounding_box()
             scene = page.locator(".scene-panel").bounding_box()
@@ -252,7 +267,8 @@ def test_responsive_clearance_and_endpoint_reachability(page, live_server, snaps
         .filter(node => ['hidden', 'clip'].includes(getComputedStyle(node).overflowX) ||
           ['hidden', 'clip'].includes(getComputedStyle(node).overflowY)).map(node => node.tagName),
       outside: [...document.querySelectorAll(
-        'h1, h2, h3, .story-prose, .field-notes li, .stat-value, .stat-max, .inventory-ledger dd')]
+        'h1, h2, h3:not(.sr-only), .story-prose, .field-notes li, ' +
+        '.stat-value, .stat-max, .achievement-note > p:not(.eyebrow)')]
         .filter(node => { const box = node.getBoundingClientRect();
           return box.left < -1 || box.right > document.documentElement.clientWidth + 1;
         }).map(node => node.className)
@@ -264,6 +280,24 @@ def test_responsive_clearance_and_endpoint_reachability(page, live_server, snaps
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "11")
     scroll_to_checkpoint(page, -1)
     assert_hud(page, snapshots[0])
+
+
+def test_visible_card_subheadings_have_clear_hierarchy(page, live_server):
+    open_journey(page, live_server)
+    card = page.locator('[data-checkpoint="fog-arrives"]')
+    heading = card.locator("h3")
+    prose = card.locator(".story-prose")
+    styles = page.evaluate(
+        """([heading, prose]) => ({
+          headingSize: parseFloat(getComputedStyle(heading).fontSize),
+          proseSize: parseFloat(getComputedStyle(prose).fontSize),
+          headingFamily: getComputedStyle(heading).fontFamily,
+          proseFamily: getComputedStyle(prose).fontFamily,
+        })""",
+        [heading.element_handle(), prose.element_handle()],
+    )
+    assert styles["headingSize"] > styles["proseSize"]
+    assert styles["headingFamily"] != styles["proseFamily"]
 
 
 def test_short_mobile_uses_normal_flow_and_resize_remeasures(page, live_server, snapshots):
@@ -289,16 +323,23 @@ def test_short_mobile_uses_normal_flow_and_resize_remeasures(page, live_server, 
 
 
 def test_short_desktop_does_not_pin_an_unreadable_sheet(page, live_server, snapshots):
-    page.set_viewport_size({"width": 1440, "height": 200})
     open_journey(page, live_server)
-    scroll_to_checkpoint(page, 6)
-    assert_hud(page, snapshots[7])
-    hud = page.locator("#character-sheet").bounding_box()
-    position = page.locator(".theater").evaluate("node => getComputedStyle(node).position")
-    if hud["height"] > 200:
-        assert position not in {"sticky", "fixed"}, {"hud": hud, "theaterPosition": position}
-    else:
-        assert 0 <= hud["y"] < hud["y"] + hud["height"] <= 200
+    for height, flow in ((200, True), (400, False), (200, True)):
+        page.set_viewport_size({"width": 1440, "height": height})
+        expect(page.locator("html")).to_have_attribute("data-theater-flow", str(flow).lower())
+        settle_layout(page)
+        scroll_to_checkpoint(page, 6)
+        assert_hud(page, snapshots[7])
+        theater = page.locator(".theater")
+        position = theater.evaluate("node => getComputedStyle(node).position")
+        # Clearance includes the whole panel's padding and sticky inset, not just its HUD.
+        if flow:
+            assert theater.bounding_box()["height"] + 24 > height
+            assert position == "static"
+        else:
+            assert position == "sticky"
+            hud = page.locator("#character-sheet").bounding_box()
+            assert 0 <= hud["y"] < hud["y"] + hud["height"] <= height
 
 
 def test_no_javascript_has_the_complete_story(new_context, live_server, story_document, snapshots):
@@ -306,7 +347,10 @@ def test_no_javascript_has_the_complete_story(new_context, live_server, story_do
     page.goto(live_server + "/")
     assert_complete_story(page, story_document, snapshots)
     expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator("#sheet-status")).to_have_text("Opening stats; chapter snapshots follow.")
+    expect(page.locator("#sheet-status")).to_have_text(
+        "Starting stats. Later stats are beside the story."
+    )
+    expect(page.locator(".chapter-stats").first).to_be_visible()
     expect(page.locator(".stat-value")).to_have_text(
         [str(value) for value in snapshots[0]["stats"].values()]
     )
@@ -323,7 +367,7 @@ def test_failed_local_resource_never_hides_prose(
     if resource == "story.js":
         expect(page.locator("html")).not_to_have_class("enhanced")
         expect(page.locator("#sheet-status")).to_have_text(
-            "Opening stats; chapter snapshots follow."
+            "Starting stats. Later stats are beside the story."
         )
         expect(page.locator("li[data-badge].earned")).to_have_count(0)
 
@@ -337,6 +381,8 @@ def test_failed_local_resource_never_hides_prose(
         "position",
         "empty-events",
         "duplicate-badge",
+        "future-badge",
+        "lost-experience",
         "marker-id",
         "chapter-id",
     ],
@@ -344,7 +390,7 @@ def test_failed_local_resource_never_hides_prose(
 def test_invalid_projection_falls_back(page, live_server, game, story_document, snapshots, failure):
     projection = deepcopy(game)
     if failure == "version":
-        projection["schema_version"] = 2
+        projection["schema_version"] = 1
     elif failure == "boolean-stat":
         projection["events"][0]["stats_after"]["coding"] = True
     elif failure == "position":
@@ -353,6 +399,10 @@ def test_invalid_projection_falls_back(page, live_server, game, story_document, 
         projection["events"] = []
     elif failure == "duplicate-badge":
         projection["events"][0]["badges_after"] *= 2
+    elif failure == "future-badge":
+        projection["events"][0]["badges_after"] = [projection["events"][-1]["badges_after"][-1]]
+    elif failure == "lost-experience":
+        projection["events"][2]["stats_after"]["experience"] = 0
     elif failure == "marker-id":
         projection["events"][0]["id"] = "wrong-card"
     elif failure == "chapter-id":
@@ -371,8 +421,11 @@ def test_invalid_projection_falls_back(page, live_server, game, story_document, 
 
     page.route(live_server + "/", replace_projection)
     page.goto(live_server + "/")
-    expect(page.locator("#sheet-status")).to_have_text("Storybook mode; chapter snapshots follow.")
+    expect(page.locator("#sheet-status")).to_have_text(
+        "Paper edition. The stats are beside the story."
+    )
     expect(page.locator("html")).not_to_have_class("enhanced")
+    expect(page.locator("#character-sheet")).to_be_hidden()
     expect(page.locator("li[data-badge].earned")).to_have_count(0)
     assert_complete_story(page, story_document, snapshots)
 
@@ -387,7 +440,9 @@ def test_geometry_failure_resets_a_live_hud(page, live_server, story_document, s
       window.dispatchEvent(new Event('resize'));
     }""")
     expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator("#sheet-status")).to_have_text("Storybook mode; chapter snapshots follow.")
+    expect(page.locator("#sheet-status")).to_have_text(
+        "Paper edition. The stats are beside the story."
+    )
     expect(page.locator(".stat-value")).to_have_text(
         [str(value) for value in snapshots[0]["stats"].values()]
     )
@@ -407,8 +462,18 @@ def test_reduced_motion_load_and_mid_story_toggle(page, live_server, game, snaps
     expect(page.locator("#traveler")).not_to_have_attribute("data-frame", "0")
     moving = assert_hud(page, snapshots[1])
     assert moving["transform"] != reduced["transform"]
+    expect(page.locator("#companion")).not_to_have_attribute("transform", "translate(-18 -1)")
+    assert (
+        page.locator(".step-effects").evaluate("node => getComputedStyle(node).visibility")
+        == "visible"
+    )
     page.emulate_media(reduced_motion="reduce")
     expect(page.locator("#traveler")).to_have_attribute("data-frame", "0")
+    expect(page.locator("#companion")).to_have_attribute("transform", "translate(-18 -1)")
+    assert (
+        page.locator(".step-effects").evaluate("node => getComputedStyle(node).visibility")
+        == "hidden"
+    )
     assert assert_hud(page, snapshots[1]) == reduced
     scroll_to_checkpoint(page, 9, 0.4)
     assert assert_hud(page, snapshots[10])["frame"] == 0
@@ -471,6 +536,71 @@ def test_reload_history_fragments_and_native_keyboard(page, live_server, snapsho
     expect(page.locator(".masthead")).not_to_be_in_viewport()
     settle_scroll(page)
     assert_matches_geometry(page, snapshots)
+    assert page.evaluate("window.testScrollWrites") == []
+
+
+def test_side_arrows_move_the_page_and_sprite_without_intercepting_input(page, live_server):
+    page.add_init_script("""window.testScrollWrites = [];
+      const original = window.scrollBy.bind(window);
+      window.scrollBy = (...args) => {
+        window.testScrollWrites.push(args); return original(...args);
+      };
+    """)
+    open_journey(page, live_server)
+    scroll_to_checkpoint(page, 0, 0.1)
+    page.evaluate("window.testScrollWrites = []")
+    before = page.evaluate("""() => ({
+      scrollY: window.scrollY,
+      position: document.getElementById('travelers').getAttribute('transform'),
+    })""")
+    page.keyboard.press("ArrowRight")
+    page.wait_for_function("before => window.scrollY > before", arg=before["scrollY"])
+    page.wait_for_function(
+        "before => document.getElementById('travelers').getAttribute('transform') !== before",
+        arg=before["position"],
+    )
+    after_right = page.evaluate("""() => ({
+      scrollY: window.scrollY,
+      position: document.getElementById('travelers').getAttribute('transform'),
+    })""")
+    assert after_right["position"] != before["position"]
+    assert len(page.evaluate("window.testScrollWrites")) == 1
+
+    page.keyboard.press("ArrowLeft")
+    page.wait_for_function("before => window.scrollY < before", arg=after_right["scrollY"])
+    assert len(page.evaluate("window.testScrollWrites")) == 2
+    assert (
+        page.evaluate("""() => {
+      const event = new KeyboardEvent('keydown', {key: 'ArrowRight', cancelable: true});
+      document.dispatchEvent(event);
+      return event.defaultPrevented;
+    }""")
+        is False
+    )
+
+    page.evaluate("""() => {
+      window.testScrollWrites = [];
+      const overflow = document.createElement('div');
+      overflow.id = 'horizontal-overflow-probe';
+      overflow.style.width = '200vw';
+      overflow.style.height = '1px';
+      document.body.append(overflow);
+    }""")
+    assert page.evaluate(
+        "document.documentElement.scrollWidth > document.documentElement.clientWidth"
+    )
+    page.keyboard.press("ArrowRight")
+    assert page.evaluate("window.testScrollWrites") == []
+    page.evaluate("document.getElementById('horizontal-overflow-probe').remove()")
+
+    page.evaluate("""() => {
+      const editable = document.createElement('div');
+      editable.id = 'editable-probe';
+      editable.contentEditable = 'true';
+      document.body.append(editable);
+      editable.focus();
+    }""")
+    page.keyboard.press("ArrowRight")
     assert page.evaluate("window.testScrollWrites") == []
 
 
@@ -555,7 +685,9 @@ def test_csp_privacy_and_no_idle_animation(page, live_server, observations, snap
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_local_axe_accessibility(page, live_server, project_root, width):
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_local_axe_accessibility(page, live_server, project_root, width, scheme):
+    page.emulate_media(color_scheme=scheme)
     page.set_viewport_size({"width": width, "height": 1000})
     open_journey(page, live_server)
     axe_path = project_root / "node_modules/axe-core/axe.min.js"
@@ -597,7 +729,8 @@ def test_text_enlargement_and_narrow_reflow(page, live_server, snapshots, tmp_pa
       overlappingStats: [...document.querySelectorAll('[data-stat]')].filter(row => {
         const label = row.querySelector('.stat-compact').getBoundingClientRect();
         const value = row.querySelector('.stat-value').getBoundingClientRect();
-        return label.width && label.right > value.left;
+        return label.width && label.right > value.left && label.left < value.right
+          && label.bottom > value.top && label.top < value.bottom;
       }).map(row => row.dataset.stat)
     })""")
     if layout["scrollWidth"] > layout["width"] + 1:
@@ -626,7 +759,7 @@ def test_forced_colors_and_native_text_selection(page, live_server, snapshots):
     open_journey(page, live_server)
     scroll_to_checkpoint(page, 9)
     assert_hud(page, snapshots[10])
-    assert page.locator(".chapter-snapshot").nth(9).is_visible()
+    expect(page.locator(".chapter-stats").nth(9)).to_contain_text("Health")
     selected = page.evaluate("""() => {
       const range = document.createRange();
       const paragraph = document.querySelector('[data-checkpoint="fog-arrives"] .story-prose');
@@ -635,4 +768,146 @@ def test_forced_colors_and_native_text_selection(page, live_server, snapshots):
       selection.removeAllRanges(); selection.addRange(range);
       return selection.toString();
     }""")
-    assert "I burnt out" in selected
+    assert "new cadence of contribution" in selected
+
+
+def test_main_story_reading_budget_and_optional_inventory(page, live_server, story_document):
+    open_journey(page, live_server)
+    words = page.locator("#main-story").evaluate(r"""node => {
+      const copy = node.cloneNode(true);
+      copy.querySelectorAll('.sr-only, .chapter-stats, noscript, [aria-hidden=true]')
+        .forEach(element => element.remove());
+      return copy.textContent.trim().split(/\s+/).length;
+    }""")
+    assert words <= 900, f"Main story is {words} words; keep it under five minutes at 180 wpm"
+    assert page.locator("#main-story .achievement-note").count() == 0
+    assert page.locator("#bonus .achievement-note").count() == len(story_document["achievements"])
+    assert page.locator(".chapter-snapshot, .meter-disclaimer").count() == 0
+    expect(page.locator("[data-stat]")).to_have_count(5)
+    expect(page.locator('[data-stat="experience"] .stat-full')).to_have_text("Experience")
+    expect(
+        page.locator(".inventory-ledger, .milestone, [data-stat=automancy], [data-stat=sidequests]")
+    ).to_have_count(0)
+    assert page.locator("#bonus .achievement-catalog").evaluate("node => node.tagName") == "UL"
+    assert page.locator("#bonus .achievement-note").evaluate_all(
+        "nodes => nodes.every(n => n.tagName === 'LI')"
+    )
+    stats = page.locator(".chapter-stats").first
+    assert stats.evaluate("node => getComputedStyle(node).position") == "absolute"
+    assert stats.get_attribute("aria-hidden") is None
+    assert "Coding" in stats.aria_snapshot()
+    assert page.locator('a[href="mailto:pranavprem93@gmail.com"]').count() == 1
+    assert page.locator('#main-story a[href*="einstein-bot-channel-connector"]').count() == 1
+    assert page.locator('#bot-workshop a[href*="einstein-bot-channel-connector"]').count() == 1
+    expect(page.locator("#automation .story-prose a")).to_have_text("TasKing")
+    expect(page.locator("#sjsu .story-prose a")).to_have_text("SpartanBot")
+    expect(page.locator(".ending > .story-prose")).to_have_count(3)
+    expect(page.locator(".ending > .story-prose").nth(2)).to_have_text(
+        "I've also got into 3D printing."
+    )
+    expect(page.locator(".route-track li").last).to_have_text("San Francisco")
+    expect(page.locator("#achievement-tmp-all-star h3")).to_have_text(
+        "Corporate awards are meaningless"
+    )
+    expect(page.locator(".pla-meme")).to_have_text("Bender voice: I'm 40% PLA.")
+    expect(page.locator('.pla-meme img[src="/static/art/pla-robot.svg"]')).to_be_visible()
+    assert page.locator("iframe, video").count() == 0
+
+
+def test_every_achievement_has_a_reversible_sprite_reaction(page, live_server):
+    open_journey(page, live_server)
+    geometry = page.evaluate(GEOMETRY)
+    anchors = page.locator("[data-achievement]").evaluate_all(
+        "nodes => nodes.map(node => node.getBoundingClientRect().top + scrollY)"
+    )
+    assert len(anchors) == 32  # Eleven story badges plus 21 grouped highlights.
+    positions = [
+        anchor + min(180, anchors[i + 1] - anchor if i + 1 < len(anchors) else 180) / 2
+        for i, anchor in enumerate(anchors)
+    ]
+    for anchor, cursor in zip(anchors, positions, strict=True):
+        page.evaluate("y => window.scrollTo(0, y)", anchor - geometry["offset"])
+        settle_layout(page)
+        assert page.locator("#traveler").get_attribute("transform") in {
+            "translate(0 0)",
+            "translate(0 -1)",
+        }
+        page.evaluate("y => window.scrollTo(0, y)", cursor - geometry["offset"])
+        settle_layout(page)
+        expect(page.locator("#traveler")).to_have_attribute("transform", "translate(0 -8)")
+        expect(page.locator("#traveler")).to_have_attribute("data-celebrating", "true")
+        expect(page.locator("#portrait-sprite")).to_have_attribute("transform", "translate(0 -3)")
+        companion = page.locator("#companion").get_attribute("transform")
+        match = re.fullmatch(r"translate\(-18 (-?\d+)\)", companion)
+        assert match and int(match.group(1)) <= -5
+    for cursor in (positions[8], positions[0], positions[-1], positions[0]):
+        page.evaluate("y => window.scrollTo(0, y)", cursor - geometry["offset"])
+        settle_layout(page)
+        expect(page.locator("#traveler")).to_have_attribute("transform", "translate(0 -8)")
+    before = page.evaluate(HUD)
+    page.emulate_media(reduced_motion="reduce")
+    expect(page.locator("#traveler")).to_have_attribute("transform", "translate(0 0)")
+    expect(page.locator("#traveler")).to_have_attribute("data-celebrating", "false")
+    expect(page.locator("#companion")).to_have_attribute("transform", "translate(-18 -1)")
+    after = page.evaluate(HUD)
+    assert after["stats"] == before["stats"] and after["badges"] == before["badges"]
+    pure = page.evaluate("""async () => {
+      const {deriveCelebration} = await import('/static/story.js');
+      return [-1, 0, 45, 90, 1000, 45, 90].map(y => deriveCelebration([0, 90], y));
+    }""")
+    assert pure[0] == pure[4] == {"lift": 0, "active": False}
+    assert pure[1] == pure[3] == pure[6] == {"lift": 0, "active": True}
+    assert pure[2] == pure[5] == {"lift": 8, "active": True}
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_dark_mode_follows_device_without_resetting_story(page, live_server, snapshots, width):
+    page.set_viewport_size({"width": width, "height": 1000})
+    page.emulate_media(color_scheme="light")
+    open_journey(page, live_server)
+    scroll_to_checkpoint(page, 8)
+    before = page.evaluate(HUD)
+    page.emulate_media(color_scheme="dark")
+    settle_layout(page)
+    assert (
+        page.locator("html").evaluate("node => getComputedStyle(node).backgroundColor")
+        == "rgb(20, 35, 31)"
+    )
+    assert page.evaluate(HUD) == before
+    assert_hud(page, snapshots[9])
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    page.emulate_media(color_scheme="light")
+    settle_layout(page)
+    assert (
+        page.locator("html").evaluate("node => getComputedStyle(node).backgroundColor")
+        == "rgb(245, 241, 231)"
+    )
+
+
+def test_quiet_reading_hierarchy_preserves_story_and_city_context(page, live_server, snapshots):
+    open_journey(page, live_server)
+    expect(
+        page.locator(
+            ".edition, .wordmark-sub, .intro-deck, .cartridge-details, .region-heading, "
+            ".chapter-index, .sheet-topline, .player-class, .identity-star, .scene-topline, "
+            ".scene-coordinates, .theater-footnote"
+        )
+    ).to_have_count(0)
+    expect(page.locator("#college .story-beats > li")).to_have_count(6)
+    assert "first time living on my own" in page.locator("#college .story-prose").first.inner_text()
+    track = page.locator(".story-track").bounding_box()
+    theater = page.locator(".theater").bounding_box()
+    assert track["width"] <= 512
+    assert theater["x"] - (track["x"] + track["width"]) >= 80
+    assert (
+        page.locator(".story-prose").first.evaluate(
+            "node => parseFloat(getComputedStyle(node).fontSize)"
+        )
+        >= 18
+    )
+    for index, city in ((0, "Goa"), (5, "Pune"), (7, "San Jose"), (11, "San Francisco")):
+        scroll_to_checkpoint(page, index)
+        assert_hud(page, snapshots[index + 1])
+        expect(page.locator("#world-label")).to_have_text(city)
+        expect(page.locator("#sheet-status")).to_contain_text("Chapter")
+        assert "SCROLL TO EXPLORE" not in page.locator("#sheet-status").inner_text()

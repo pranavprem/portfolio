@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180" shape-rendering="crispEdges">
   <defs>
-    <g id="window"><path fill="#a9c6b4" d="M0 0h3v5H0z"/></g>
     <g id="bot"><path fill="#657d60" d="M-5 0h10v-8H-5z"/><path fill="#d9d5a2" d="M-7-8v-9H7v9z"/><path fill="#314f43" d="M-4-14h2v2h-2zm6 0h2v2H2z"/><path fill="#8b9b6c" d="M-3-10h6v1h-6z"/><path fill="#b68f47" d="M-1-21h2v4h-2z"/><path fill="#e2b459" d="M-2-23h4v3h-4z"/><path fill="#365646" d="M-5 0h3v3h-3zm7 0h3v3H2z"/></g>
   </defs>
   <path fill="#dfe6d7" d="M0 0h320v180H0z"/>
@@ -20,13 +19,14 @@
   <path fill="#b7ab83" d="M224 154h96v5h-96z"/><path fill="#987e54" d="M235 159h4v16h-4zm40 0h4v14h-4zm35 0h4v17h-4z"/>
   <path fill="#c4b58d" d="M12 148h10v2H12zm46-8h12v2H58zm68 12h11v2h-11zm67-13h14v2h-14zm45 2h2v8h-2zm20 0h2v8h-2zm20 0h2v8h-2zm20 0h2v8h-2z"/>
   <path fill="#678565" d="M28 120h91v7H28zm104 1h62v7h-62z"/>
-  <path fill="#d4d5b0" d="M31 79h76v43H31z"/><path fill="#b7c09a" d="M97 79h10v43H97z"/>
-  <path fill="#466e58" d="M26 74h86v8H26z"/><path fill="#64866a" d="M34 68h69v6H34z"/>
-  <path fill="#759988" d="M39 89h26v17H39zm34 0h24v17H73z"/>
-  <path fill="#b7d0b4" d="M41 91h9v12h-9zm34 0h8v12h-8z"/>
-  <path fill="#496c56" d="M62 107h13v15H62z"/>
-  <path fill="#d6c997" d="M47 59h5v-4h8v-4h10v4h9v5h5v5H47z"/>
-  <path fill="#ede3be" d="M54 57h8v-3h5v4h9v4H54z"/>
+  <g id="salesforce-tower">
+    <path fill="#718f84" d="M44 123V61h2V42h4V30h5v-8h7v-5h15v5h7v8h5v12h4v19h2v62z"/>
+    <path fill="#a1bcb0" d="M53 123V45h2V33h4v-9h7v-4h8v4h5v9h4v12h2v78z"/>
+    <path fill="#c2d0bc" d="M65 24h9v99h-9z"/>
+    <path fill="#dce1ca" d="M61 27h17v2H61zm-5 8h27v2H56zm-3 9h32v2H53zm-4 10h40v2H49zm-3 11h47v2H46zm0 11h47v2H46zm0 11h47v2H46zm0 11h47v2H46zm0 11h47v2H46z"/>
+    <path fill="#55776a" d="M51 48h2v74h-2zm35 0h2v74h-2zm-25 65h16v10H61z"/>
+    <path fill="#c3c6a4" d="M36 122h67v5H36z"/>
+  </g>
   <path fill="#d0bd8c" d="M138 90h48v32h-48z"/><path fill="#b8a57b" d="M178 90h8v32h-8z"/>
   <path fill="#af8056" d="M132 86h59v7h-59z"/><path fill="#cda16c" d="M142 80h35v6h-35z"/>
   <path fill="#48684f" d="M145 99h26v15h-26z"/><path fill="#acc192" d="M148 102h8v9h-8zm11 0h9v9h-9z"/>
@@ -37,4 +37,5 @@
   <path fill="#658553" d="M22 168h2v3h2v-5h2v7h-6zm133 2h2v3h2v-4h2v6h-6z"/>
   <path fill="#f0e8c8" d="M65 171h3v3h-3zm111-8h3v3h-3z"/>
   <path fill="#466956" d="M184 46h3v2h3v-2h3v2h-3v2h-3v-2h-3zm34 15h2v2h3v-2h2v2h-2v2h-3v-2h-2z"/>
+  <path fill="#eee0bd" d="M35 123h69v9H35z"/><text x="69" y="130" fill="#243f35" font-family="monospace" font-size="6" font-weight="bold" text-anchor="middle">SALESFORCE</text>
 </svg>

@@ -38,7 +38,7 @@ jobs:
           assert os.getuid()==10001 and os.getgid()==10001;
           assert not os.access(root/'app/content/story.json', os.W_OK);
           assert os.access('/tmp', os.W_OK);
-          assert len(paths)==14 and all(p=='requirements.txt' or p.startswith('app/') for p in paths);
+          assert len(paths)==15 and all(p=='requirements.txt' or p.startswith('app/') for p in paths);
           assert not any(p.lower().endswith('.pdf') or 'secret' in p or '.env' in p or '__pycache__' in p for p in paths)"
 
   browsers:

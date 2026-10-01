@@ -11,35 +11,35 @@ from app import create_app
 from app.content import load_story, prepare_story
 
 ROOT = Path(__file__).resolve().parents[1]
-STAT_KEYS = ("coding", "enthusiasm", "vitality", "charisma", "automancy", "sidequests")
+STAT_KEYS = ("coding", "enthusiasm", "vitality", "charisma", "experience")
 BADGE_IDS = (
-    "first-script",
-    "cpp-unlocked",
+    "first-game",
     "house-captain",
-    "python-passport",
-    "java-topper",
-    "time-returned",
-    "cloud-scholar",
-    "developer-ally",
-    "chat-alchemist",
-    "bot-builder",
+    "cs-percentile",
+    "hackathon-wins",
+    "java-training",
+    "green-belt",
+    "teaching-assistant",
+    "google-internship",
+    "release-automation",
+    "bots-reliability",
     "principal",
 )
 # Independent oracle from the approved state table, not computed from runtime JSON.
 CHECKPOINTS = (
-    (None, (0, 1, 1, 1, 0, 1), 0, "goa", "bright"),
-    ("first-script", (1, 6, 8, 2, 0, 4), 1, "goa", "bright"),
-    ("school-unlocked", (3, 8, 8, 6, 1, 6), 3, "goa", "bright"),
-    ("unexpected-detour", (3, 4, 4, 4, 1, 3), 3, "goa", "quiet"),
-    ("college-unlocked", (6, 9, 7, 8, 4, 8), 4, "goa", "bright"),
-    ("java-unlocked", (7, 7, 7, 7, 4, 5), 5, "pune", "bright"),
-    ("automation-unlocked", (4, 2, 6, 7, 8, 6), 6, "pune", "quiet"),
-    ("sjsu-unlocked", (10, 9, 7, 8, 9, 7), 7, "san-jose", "bright"),
-    ("developer-ally-unlocked", (10, 10, 7, 8, 9, 7), 8, "san-jose", "bright"),
-    ("cloud-unlocked", (10, 8, 7, 8, 10, 6), 9, "bay-area", "bright"),
-    ("fog-arrives", (9, 3, 3, 6, 9, 2), 9, "bay-area", "fog"),
-    ("bots-unlocked", (10, 8, 6, 8, 10, 6), 10, "bay-area", "bright"),
-    ("continuing-unlocked", (10, 10, 7, 9, 10, 8), 11, "bay-area", "bright"),
+    (None, (0, 1, 1, 1, 0), 0, "goa", "bright"),
+    ("first-script", (1, 6, 8, 2, 1), 1, "goa", "bright"),
+    ("school-unlocked", (3, 8, 8, 5, 2), 2, "goa", "bright"),
+    ("unexpected-detour", (3, 5, 3, 5, 2), 3, "goa", "quiet"),
+    ("college-unlocked", (6, 9, 7, 6, 3), 4, "goa", "bright"),
+    ("java-unlocked", (7, 8, 7, 6, 4), 5, "pune", "bright"),
+    ("automation-unlocked", (6, 3, 7, 6, 4), 6, "pune", "quiet"),
+    ("sjsu-unlocked", (10, 9, 8, 7, 5), 7, "san-jose", "bright"),
+    ("developer-ally-unlocked", (8, 10, 8, 7, 5), 8, "san-jose", "bright"),
+    ("cloud-unlocked", (8, 9, 8, 7, 6), 9, "bay-area", "bright"),
+    ("fog-arrives", (8, 7, 6, 7, 6), 9, "bay-area", "quiet"),
+    ("bots-unlocked", (8, 9, 7, 7, 6), 10, "bay-area", "bright"),
+    ("continuing-unlocked", (8, 10, 8, 7, 7), 11, "bay-area", "bright"),
 )
 
 
@@ -54,13 +54,19 @@ class HTMLDocument(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         self.elements.append((tag, dict(attrs)))
+        if tag == "br":
+            self.chunks.append(" ")
+
+    def handle_endtag(self, tag):
+        if tag in {"p", "div", "li", "dt", "dd", "h1", "h2", "h3", "section", "article"}:
+            self.chunks.append(" ")
 
     def handle_data(self, data):
         self.chunks.append(data)
 
     @property
     def text(self):
-        return " ".join(" ".join(self.chunks).split())
+        return " ".join("".join(self.chunks).split())
 
     def select(self, tag=None, **attributes):
         return [
