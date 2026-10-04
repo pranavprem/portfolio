@@ -61,7 +61,7 @@ Public browser -- HTTPS --> Cloudflare edge
                              |
                       cloudflared connector
                              |
-                    HTTP http://app:8000
+                 HTTP http://portfolio:8000
                     private Docker origin bridge
                              |
                     Gunicorn -> Flask -> Jinja
@@ -135,7 +135,7 @@ Use Docker Engine or Docker Desktop with a current Compose v2 supporting `--wait
 
 ```sh
 docker compose -f compose.yaml -f compose.local.yaml config --quiet
-docker compose -f compose.yaml -f compose.local.yaml up -d --build --wait app
+docker compose -f compose.yaml -f compose.local.yaml up -d --build --wait portfolio
 docker compose -f compose.yaml -f compose.local.yaml ps
 ```
 
@@ -186,8 +186,8 @@ Prerequisites are owner-controlled Cloudflare zone/DNS access for `pranavprem.co
 
 1. In the Cloudflare dashboard's tunnel/connectors area, create a remotely managed Cloudflare Tunnel for this portfolio. Dashboard labels can change; use the Cloudflared connector type, not a private-network route. Do not execute a wizard command containing a token literal.
 2. Obtain the token for this specific tunnel through the protected dashboard workflow. Enter it only into the authenticated Portainer stack variable or protected external production env file described below. Do not provision an account-wide certificate, API key, or local ingress `config.yml`.
-3. Add a published application/public hostname route for exactly `pranavprem.com`, covering the whole path without prefix rewriting. Service type is HTTP and service URL is `http://app:8000`, not the NAS address, `localhost`, or HTTPS.
-4. Under origin HTTP settings, set **HTTP Host Header** to `pranavprem.com`. Leave HTTP/2-to-origin off. Do not add `noTLSVerify`; this private origin hop is intentionally HTTP. The connector resolves `app` on the shared Compose network.
+3. Add a published application/public hostname route for exactly `pranavprem.com`, covering the whole path without prefix rewriting. Service type is HTTP and service URL is `http://portfolio:8000`, not the NAS address, `localhost`, or HTTPS.
+4. Under origin HTTP settings, set **HTTP Host Header** to `pranavprem.com`. Leave HTTP/2-to-origin off. Do not add `noTLSVerify`; this private origin hop is intentionally HTTP. The connector resolves `portfolio` on the shared Compose network.
 5. Let the dashboard create the proxied tunnel DNS route for the apex. Resolve conflicting apex A/AAAA/CNAME records as appropriate; DNS must route through the tunnel, not reveal a public NAS IP. Do not add wildcard hostnames or NAS-management routes. `www` behavior is not chosen and must not be guessed.
 6. Enable public edge HTTPS and an edge HTTP-to-HTTPS redirect for the hostname. Do not add a Flask `request.is_secure` redirect: the HTTP bridge hop would risk a redirect loop. There is no need for another Nginx/ACME service.
 7. Disable optional HTML/JavaScript injection for this hostname: Rocket Loader, Web Analytics, Browser Insights/beacons, email obfuscation, and similar transformations. Review challenge and JavaScript-detection rules so ordinary visits do not require injected code, a login, or a click-through challenge. Keep infrastructure DDoS protection; do not weaken CSP to accommodate optional edge features.
@@ -210,7 +210,7 @@ For Docker Standalone, deploy from the public repository rather than pasting a m
 3. Under **Additional paths**, add `compose.tunnel.yaml`. This is equivalent to the reviewed `-f compose.yaml -f compose.tunnel.yaml` order. Never add `compose.local.yaml`.
 4. Add `CLOUDFLARED_TOKEN` and enter the raw token for this dedicated tunnel. Leave `CLOUDFLARED_IMAGE` unset to use the pinned default, or set it to the exact tag-plus-digest from `.env.example`. Set `PORTFOLIO_HSTS=0` for the first deployment. Compose performs the `TUNNEL_TOKEN` mapping; do not add another token variable manually or paste the token into Compose YAML.
 5. Leave relative-path volumes off; the stack has no application volume. Leave GitOps updates and forced redeployment off for the first release so the reviewed commit can be verified before automation is enabled.
-6. Deploy the stack. Require both `portfolio-app-1` and `portfolio-cloudflared-1` to remain running, the app to become healthy, and the Cloudflare dashboard to report the connector connected. The connector intentionally retains no logs.
+6. Deploy the stack. Require both `portfolio-portfolio-1` and `portfolio-cloudflared-1` to remain running, the application to become healthy, and the Cloudflare dashboard to report the connector connected. The connector intentionally retains no logs.
 
 Portainer supplies `CLOUDFLARED_TOKEN` to Compose, which maps it only to cloudflared's `TUNNEL_TOKEN`. The app receives only its fixed production mode and HSTS setting.
 
@@ -219,7 +219,7 @@ From the reviewed release checkout, use a stable Compose project name, the exter
 
 ```sh
 docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml config --quiet
-docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml up -d --build --wait app cloudflared
+docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml up -d --build --wait portfolio cloudflared
 docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml ps
 ```
 
@@ -257,20 +257,20 @@ The base Compose file uses `build: .` and has no release-tagged `image:` setting
 
 ```sh
 docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml pull cloudflared
-docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml build --pull app
-docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml up -d --wait app cloudflared
+docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml build --pull portfolio
+docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml up -d --wait portfolio cloudflared
 ```
 
 4. Recheck app health, tunnel status, public root/health/assets, TLS redirect, CSP, and a down/up browser journey. Record actual outcomes in the handoff. Brief downtime is possible; one NAS and one connector are not high availability.
 
-To roll back, prepare another separate checkout at the recorded **known-good full commit**, or use the retained untouched release checkout. Do not rewrite the active worktree with `git reset --hard`, overwrite unrelated work, or cherry-pick a guessed inverse of changes. Review that release's Compose files against the current protected env/token, then run the full production `up -d --build --wait app cloudflared` command from that checkout with the same `--project-name portfolio`. Re-verify public behavior. If rebuilding is unavailable, use the retained app image with an explicitly reviewed image-selection override; merely tagging an image does not make the existing `build: .` Compose file select it. Test that emergency path before relying on it.
+To roll back, prepare another separate checkout at the recorded **known-good full commit**, or use the retained untouched release checkout. Do not rewrite the active worktree with `git reset --hard`, overwrite unrelated work, or cherry-pick a guessed inverse of changes. Review that release's Compose files against the current protected env/token, then run the full production `up -d --build --wait portfolio cloudflared` command from that checkout with the same `--project-name portfolio`. Re-verify public behavior. If rebuilding is unavailable, use the retained app image with an explicitly reviewed image-selection override; merely tagging an image does not make the existing `build: .` Compose file select it. Test that emergency path before relying on it.
 
 There is no database, migration, uploaded media, or persistent app volume to restore. Back up reviewed public source/content/art, lockfiles, release/image identifiers, and protected operational configuration. Do not archive the whole local workspace into the public backup: it contains private originals and development artifacts. Token recovery is a separate restricted/encrypted backup or Cloudflare re-provisioning workflow. Preserve dashboard routing/security settings in protected operator records, not secret-bearing screenshots in Git.
 
 After token rotation, force recreation rather than only restart:
 
 ```sh
-docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml up -d --force-recreate --wait app cloudflared
+docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml up -d --force-recreate --wait portfolio cloudflared
 ```
 
 Docker's restart policy restarts exited processes, not merely unhealthy containers. A wedged live app needs diagnosis/operator action; do not introduce an auto-heal service with Docker socket access.
@@ -278,28 +278,28 @@ Docker's restart policy restarts exited processes, not merely unhealthy containe
 **Troubleshooting**
 Use synthetic requests, container state, the exact safe health response, filesystem metadata, and dashboard tunnel status. Do not collect token contents, visitor query/header canaries containing real PII, raw environment dumps, private documents, or debug logs.
 
-| Symptom                                             | Check And Safe Correction                                                                                                                                                                                                                                                        |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ContentValidationError` or build/startup fails     | Fix the named public JSON field or missing/unsafe asset. Full snapshots, exact release counts, plain text limits, and safe inventory rules are deliberate. Do not bypass validation to get a green container; restore the previous release if needed.                            |
-| Invalid environment value                           | Use `development`/`production` and HSTS `0`/`1`. `PORTFOLIO_ENV=local` is invalid. Check shell overrides and remember Compose modes are hardcoded.                                                                                                                               |
-| Local port unavailable                              | Stop another loopback server using port 8000; use either Flask or local Docker, not both. Production intentionally has no localhost-published port. Do not add the local override to troubleshoot a public deployment.                                                           |
-| App unhealthy                                       | Inspect `ps` health state and safe application error categories; check startup validation, memory/PID limits, and read-only/tmpfs configuration. A healthy process does not guarantee rendered art or a working tunnel.                                                          |
-| HTTP 400 with healthy loopback probe                | Check Host routing. Production accepts only `pranavprem.com` and `127.0.0.1`; `app`, a NAS IP, and `www` are not trusted hosts. Set the tunnel's origin HTTP Host Header to `pranavprem.com`, not a wildcard in Flask. Do not add ProxyFix or trust arbitrary forwarded headers. |
-| Tunnel config cannot find `CLOUDFLARED_TOKEN`       | Add the raw dedicated-tunnel token to the authenticated Portainer stack environment or protected external production env file. Local work needs only base + local Compose and no dummy credential.                                                                               |
-| Token missing, empty, or revoked                    | Check that the protected Portainer stack variable exists without displaying it and that Compose mapped it to cloudflared's `TUNNEL_TOKEN`. Correct the stack value or rotate/redeploy through Cloudflare; never add the token to the app.                                        |
-| Disconnected tunnel / Cloudflare 1033               | Check the connector process, credential lifecycle, NAS connectivity, and dashboard connector status. If not connected, origin health cannot make the public route available.                                                                                                     |
-| Tunnel connected but origin error / 502             | Verify both services share the origin network and the route is exactly HTTP `http://app:8000`, with the fixed Host header and no path rewriting. `localhost` inside the connector is not the app.                                                                                |
-| DNS error or wrong site                             | Check the active Cloudflare zone, proxied apex tunnel record, conflicting records, hostname route, and propagation. Do not point DNS at a public NAS IP or invent `www` behavior.                                                                                                |
-| QUIC timeouts or reconnect loops                    | Check DNS and current Cloudflare destination rules for outbound UDP 7844 and TCP 7844 fallback. The connector needs the egress network; the app does not. ICMP-proxy warnings do not justify NET_RAW, NET_ADMIN, root, or privileged mode for this HTTP tunnel.                  |
-| CSP failures, challenge page, or unexpected scripts | Inspect public HTML/network behavior against the local origin. Disable optional edge injection/challenges for normal visits; do not add `unsafe-inline`, `unsafe-eval`, remote script domains, or click-through UI.                                                              |
-| No connector logs retained                          | Intentional: `logging: driver: none` remains until a synthetic privacy canary verifies the pinned connector. Use state and dashboard diagnostics. Never enable debug logging or retain request-bearing output just to get more information.                                      |
-| Scene/HUD falls back or shows old assets            | Confirm JS/CSS/SVG responses and CSP, revalidate HTML, and account for the one-hour unversioned asset cache. Purge affected edge assets if needed. Preserve readable fallback; do not force a stale live HUD, storage reset, or scroll-to-top behavior.                          |
-| Browser tests missing/fail to collect               | Confirm `tests/`, the `browser` marker, dev dependencies, and installed Playwright engines. The fixtures start their own loopback server. Zero collected tests, missing executables, or an unrun suite are not passes.                                                           |
+| Symptom                                             | Check And Safe Correction                                                                                                                                                                                                                                                              |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ContentValidationError` or build/startup fails     | Fix the named public JSON field or missing/unsafe asset. Full snapshots, exact release counts, plain text limits, and safe inventory rules are deliberate. Do not bypass validation to get a green container; restore the previous release if needed.                                  |
+| Invalid environment value                           | Use `development`/`production` and HSTS `0`/`1`. `PORTFOLIO_ENV=local` is invalid. Check shell overrides and remember Compose modes are hardcoded.                                                                                                                                     |
+| Local port unavailable                              | Stop another loopback server using port 8000; use either Flask or local Docker, not both. Production intentionally has no localhost-published port. Do not add the local override to troubleshoot a public deployment.                                                                 |
+| App unhealthy                                       | Inspect `ps` health state and safe application error categories; check startup validation, memory/PID limits, and read-only/tmpfs configuration. A healthy process does not guarantee rendered art or a working tunnel.                                                                |
+| HTTP 400 with healthy loopback probe                | Check Host routing. Production accepts only `pranavprem.com` and `127.0.0.1`; `portfolio`, a NAS IP, and `www` are not trusted hosts. Set the tunnel's origin HTTP Host Header to `pranavprem.com`, not a wildcard in Flask. Do not add ProxyFix or trust arbitrary forwarded headers. |
+| Tunnel config cannot find `CLOUDFLARED_TOKEN`       | Add the raw dedicated-tunnel token to the authenticated Portainer stack environment or protected external production env file. Local work needs only base + local Compose and no dummy credential.                                                                                     |
+| Token missing, empty, or revoked                    | Check that the protected Portainer stack variable exists without displaying it and that Compose mapped it to cloudflared's `TUNNEL_TOKEN`. Correct the stack value or rotate/redeploy through Cloudflare; never add the token to the app.                                              |
+| Disconnected tunnel / Cloudflare 1033               | Check the connector process, credential lifecycle, NAS connectivity, and dashboard connector status. If not connected, origin health cannot make the public route available.                                                                                                           |
+| Tunnel connected but origin error / 502             | Verify both services share the origin network and the route is exactly HTTP `http://portfolio:8000`, with the fixed Host header and no path rewriting. `localhost` inside the connector is not the application.                                                                        |
+| DNS error or wrong site                             | Check the active Cloudflare zone, proxied apex tunnel record, conflicting records, hostname route, and propagation. Do not point DNS at a public NAS IP or invent `www` behavior.                                                                                                      |
+| QUIC timeouts or reconnect loops                    | Check DNS and current Cloudflare destination rules for outbound UDP 7844 and TCP 7844 fallback. The connector needs the egress network; the app does not. ICMP-proxy warnings do not justify NET_RAW, NET_ADMIN, root, or privileged mode for this HTTP tunnel.                        |
+| CSP failures, challenge page, or unexpected scripts | Inspect public HTML/network behavior against the local origin. Disable optional edge injection/challenges for normal visits; do not add `unsafe-inline`, `unsafe-eval`, remote script domains, or click-through UI.                                                                    |
+| No connector logs retained                          | Intentional: `logging: driver: none` remains until a synthetic privacy canary verifies the pinned connector. Use state and dashboard diagnostics. Never enable debug logging or retain request-bearing output just to get more information.                                            |
+| Scene/HUD falls back or shows old assets            | Confirm JS/CSS/SVG responses and CSP, revalidate HTML, and account for the one-hour unversioned asset cache. Purge affected edge assets if needed. Preserve readable fallback; do not force a stale live HUD, storage reset, or scroll-to-top behavior.                                |
+| Browser tests missing/fail to collect               | Confirm `tests/`, the `browser` marker, dev dependencies, and installed Playwright engines. The fixtures start their own loopback server. Zero collected tests, missing executables, or an unrun suite are not passes.                                                                 |
 
 If the origin must be probed without publishing a port, the app container has Python:
 
 ```sh
-docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml exec -T app python -c "import urllib.request; r = urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2); print(r.status, r.read().decode().strip())"
+docker compose --project-name portfolio --env-file "/absolute/protected/portfolio.env" -f compose.yaml -f compose.tunnel.yaml exec -T portfolio python -c "import urllib.request; r = urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2); print(r.status, r.read().decode().strip())"
 ```
 
 This prints only a synthetic status and the intentionally minimal health body, not a credential or diagnostic dump. Retained app logs are bounded to 5 MB x 2 files; custom exception loggers emit safe categories/correlation IDs. Logging privacy still requires a synthetic canary check. Do not assume all possible server/connector failures are proven private merely because the normal code is restrictive.

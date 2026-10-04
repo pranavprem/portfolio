@@ -95,7 +95,7 @@ Browser
 Cloudflare edge: DNS, TLS, HTTPS redirect, ordinary asset caching
   | encrypted outbound-established tunnel
 cloudflared container [origin network + egress network]
-  | HTTP http://app:8000 on the private origin bridge
+  | HTTP http://portfolio:8000 on the private origin bridge
 Gunicorn -> Flask -> validated local story JSON -> Jinja HTML
 
 Browser HTML -> CSS presentation
@@ -420,7 +420,7 @@ Suggested base `compose.yaml` contract:
 
 ```yaml
 services:
-  app:
+  portfolio:
     build: .
     user: "10001:10001"
     init: true
@@ -477,7 +477,7 @@ services:
     environment:
       TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:?Set the dedicated tunnel token in Portainer}"
     depends_on:
-      app:
+      portfolio:
         condition: service_healthy
     read_only: true
     cap_drop: [ALL]
@@ -513,7 +513,7 @@ Token lifecycle and ownership:
 6. Verify the connector using container state and the Cloudflare dashboard without printing the token or dumping stack/container environments. Missing, empty, or revoked values must fail startup or authentication.
 7. Rotate a potentially exposed token in Cloudflare, update the protected Portainer variable or external env file, and redeploy the connector. Keep backups encrypted and restricted, separate from source backups.
 
-Remote routing is configured in Cloudflare, not in a local `config.yml`: publish only `pranavprem.com` to `http://app:8000`, set the origin HTTP Host Header to `pranavprem.com`, and leave HTTP/2-to-origin off. The hostname route covers `/`, `/healthz`, and approved static paths without rewriting prefixes. Unmatched hostnames/routes should end in the tunnel's 404 behavior, not a wildcard NAS route. Do not create private-network routes or a Cloudflare Access login gate for this public portfolio. Optional `www` behavior is deferred until explicitly chosen.
+Remote routing is configured in Cloudflare, not in a local `config.yml`: publish only `pranavprem.com` to `http://portfolio:8000`, set the origin HTTP Host Header to `pranavprem.com`, and leave HTTP/2-to-origin off. The hostname route covers `/`, `/healthz`, and approved static paths without rewriting prefixes. Unmatched hostnames/routes should end in the tunnel's 404 behavior, not a wildcard NAS route. Do not create private-network routes or a Cloudflare Access login gate for this public portfolio. Optional `www` behavior is deferred until explicitly chosen.
 
 DNS for the apex points through the Cloudflare-managed tunnel route, not to a public NAS IP. Enable public edge TLS and an edge HTTP-to-HTTPS redirect. Plain HTTP is acceptable only for the final private Docker bridge hop. Do not add `noTLSVerify` or deploy a separate Nginx/ACME stack for this topology.
 
@@ -521,7 +521,7 @@ Suggested `compose.local.yaml` contract:
 
 ```yaml
 services:
-  app:
+  portfolio:
     ports: ["127.0.0.1:8000:8000"]
     environment:
       PORTFOLIO_ENV: development
@@ -536,11 +536,11 @@ Local mode retains Gunicorn, nonroot operation, read-only files, capabilities re
 
 ```sh
 # Local: no connector service or Cloudflare variable/secret is evaluated.
-docker compose -f compose.yaml -f compose.local.yaml up -d --build app
+docker compose -f compose.yaml -f compose.local.yaml up -d --build portfolio
 
 # Production: env file is outside the checkout and contains paths/image metadata.
 docker compose --project-name portfolio --env-file /absolute/protected/portfolio.env -f compose.yaml -f compose.tunnel.yaml config --quiet
-docker compose --project-name portfolio --env-file /absolute/protected/portfolio.env -f compose.yaml -f compose.tunnel.yaml up -d --build --wait app cloudflared
+docker compose --project-name portfolio --env-file /absolute/protected/portfolio.env -f compose.yaml -f compose.tunnel.yaml up -d --build --wait portfolio cloudflared
 ```
 
 The split is intentional: profiles on a single production file can still cause interpolation of required token variables during local configuration parsing. Two small explicit overrides avoid that ambiguity without adding runtime services. Do not name the local file `compose.override.yaml`, which could be loaded accidentally on the NAS.
@@ -551,18 +551,18 @@ For releases, run tests, build a release-tagged app image, inspect the image con
 
 **Failure Modes**
 
-| Failure                                              | Visitor Behavior                                                       | Operator Action                                                                                                                                 |
-| ---------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Invalid story/schema/reference                       | New app instance fails startup; no half-valid story                    | Error identifies a safe field/card ID and required correction. Fix content, run validation, rebuild; keep or restore the previous image.        |
-| Missing required static asset                        | Startup/build validation fails                                         | Restore the original approved asset; do not hotlink a replacement.                                                                              |
-| Individual browser image failure                     | Text, stats, reserved scene space, and remaining art stay usable       | Inspect asset status and MIME/cache behavior; browser failure is not a reason to hide the story.                                                |
-| Missing/blocked/broken JavaScript                    | Complete readable story and static chapter stats                       | A small fallback note is sufficient. No retry modal or infinite loading state.                                                                  |
-| Invalid client geometry / unexpected rendering error | Disable enhancement, preserve semantic content                         | Reproduce viewport/zoom/layout condition; do not log visitor data.                                                                              |
-| Flask exception                                      | Generic 500 page with safe headers                                     | Use safe error category/correlation ID; fix and redeploy.                                                                                       |
-| Missing or revoked token                             | Tunnel does not connect; origin may still be healthy                   | Check protected Portainer input, connector-only `TUNNEL_TOKEN`, and dashboard status; rotate/redeploy if required, never print credentials.     |
-| Connector cannot resolve `app` or wrong origin Host  | Public origin error or 400 while app health passes                     | Check shared origin network, `http://app:8000`, and fixed HTTP Host Header.                                                                     |
-| NAS/tunnel/DNS/edge outage                           | Cloudflare error or connection failure, not an app-controlled fallback | Check NAS power/network, container state, egress/DNS, public hostname configuration, and Cloudflare status. No offline/service-worker promise.  |
-| Version/cache mismatch                               | Browser should fall back safely if the projection version is unknown   | Revalidate HTML, replace assets together, purge affected edge assets if needed, or roll back. Avoid immutable caching of unversioned resources. |
+| Failure                                                   | Visitor Behavior                                                       | Operator Action                                                                                                                                 |
+| --------------------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Invalid story/schema/reference                            | New app instance fails startup; no half-valid story                    | Error identifies a safe field/card ID and required correction. Fix content, run validation, rebuild; keep or restore the previous image.        |
+| Missing required static asset                             | Startup/build validation fails                                         | Restore the original approved asset; do not hotlink a replacement.                                                                              |
+| Individual browser image failure                          | Text, stats, reserved scene space, and remaining art stay usable       | Inspect asset status and MIME/cache behavior; browser failure is not a reason to hide the story.                                                |
+| Missing/blocked/broken JavaScript                         | Complete readable story and static chapter stats                       | A small fallback note is sufficient. No retry modal or infinite loading state.                                                                  |
+| Invalid client geometry / unexpected rendering error      | Disable enhancement, preserve semantic content                         | Reproduce viewport/zoom/layout condition; do not log visitor data.                                                                              |
+| Flask exception                                           | Generic 500 page with safe headers                                     | Use safe error category/correlation ID; fix and redeploy.                                                                                       |
+| Missing or revoked token                                  | Tunnel does not connect; origin may still be healthy                   | Check protected Portainer input, connector-only `TUNNEL_TOKEN`, and dashboard status; rotate/redeploy if required, never print credentials.     |
+| Connector cannot resolve `portfolio` or wrong origin Host | Public origin error or 400 while app health passes                     | Check shared origin network, `http://portfolio:8000`, and fixed HTTP Host Header.                                                               |
+| NAS/tunnel/DNS/edge outage                                | Cloudflare error or connection failure, not an app-controlled fallback | Check NAS power/network, container state, egress/DNS, public hostname configuration, and Cloudflare status. No offline/service-worker promise.  |
+| Version/cache mismatch                                    | Browser should fall back safely if the projection version is unknown   | Revalidate HTML, replace assets together, purge affected edge assets if needed, or roll back. Avoid immutable caching of unversioned resources. |
 
 **Test Plan**
 Use pytest with Flask's test client for Python/HTTP tests and Python Playwright for browser tests. Playwright and its browsers are development/CI tools only; no Node/npm service or browser binaries ship in the app image. The implemented tools are Ruff for Python and pinned ESLint/Prettier plus local axe-core for browser checks; there is no frontend build pipeline. Keep malformed/private-boundary fixtures synthetic, not extracted from the private PDFs.

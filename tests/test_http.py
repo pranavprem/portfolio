@@ -132,7 +132,8 @@ def test_private_sources_and_traversal_are_not_served(client, path):
 
 
 @pytest.mark.parametrize(
-    "host", ["evil.invalid", "pranavprem.com.evil.invalid", "www.pranavprem.com", "app", "[::1]"]
+    "host",
+    ["evil.invalid", "pranavprem.com.evil.invalid", "www.pranavprem.com", "portfolio", "[::1]"],
 )
 def test_invalid_hosts_are_rejected_without_reflection(client, host):
     response = client.get("/", headers={"Host": host})

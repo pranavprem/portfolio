@@ -64,7 +64,7 @@ Validation intentionally fixes this release's counts, keys, order, source kinds,
 - Do not print/log tokens, environment dumps, visitor IPs/URLs/queries/headers, or arbitrary exception messages. Keep app error records bounded and sanitized. Connector log retention stays off until synthetic canary checks prove the pinned version safe; never enable debug as a shortcut. Cloudflare processes transport metadata even though the application has no analytics or tracking storage.
 - Production uses only `compose.yaml` + `compose.tunnel.yaml`, app and connector together, no published ports. Local uses only base + `compose.local.yaml` with `127.0.0.1:8000`. Never expose Flask development/debug mode publicly.
 - For this owner-operated Docker Standalone/Portainer deployment, the owner explicitly accepts authenticated Portainer stack metadata as the tunnel-token boundary and the resulting Docker environment-metadata exposure. Portainer supplies raw `CLOUDFLARED_TOKEN`; Compose maps it only to cloudflared's supported `TUNNEL_TOKEN` environment variable. The app has no secret access. Never commit, print, log, screenshot, or expose the value in support output. Restrict Portainer/Docker administration and redeploy after rotation.
-- Cloudflare routes `pranavprem.com` to `http://app:8000` with origin HTTP Host Header `pranavprem.com`; it owns the HTTPS redirect. Enable `PORTFOLIO_HSTS=1` only after public TLS/redirect verification, without includeSubDomains/preload. No optional edge JS injection or click-through requirement. Restrict connector egress, including DNS and Cloudflare UDP/TCP 7844, from unrelated NAS administration.
+- Cloudflare routes `pranavprem.com` to `http://portfolio:8000` with origin HTTP Host Header `pranavprem.com`; it owns the HTTPS redirect. Enable `PORTFOLIO_HSTS=1` only after public TLS/redirect verification, without includeSubDomains/preload. No optional edge JS injection or click-through requirement. Restrict connector egress, including DNS and Cloudflare UDP/TCP 7844, from unrelated NAS administration.
 - Review practical OWASP risks, dependency/image pins, privacy, and least privilege for every material change. NAS hardening, verified image manifests, and Docker restrictions are not substitutes for actual runtime checks.
 
 **Checks And Commands**
@@ -97,7 +97,7 @@ Local container check:
 
 ```sh
 docker compose -f compose.yaml -f compose.local.yaml config --quiet
-docker compose -f compose.yaml -f compose.local.yaml up -d --build --wait app
+docker compose -f compose.yaml -f compose.local.yaml up -d --build --wait portfolio
 ```
 
 Cover happy paths, malformed data/requests, source integrity, exact absolute snapshots and badge prefixes, threshold equality/random-order rewinds, no-JS/failure/reduced-motion behavior, CSP/privacy/static boundaries, three browser engines, responsive HUD clearance, zoom/text/forced-colors/print, and safe container configuration. Record commands, actual outcomes, environment/browser versions, failures, skips, and unrun checks in the handoff. Never label a design target, manifest inspection, localhost health, or running connector as a tested NAS/public deployment.

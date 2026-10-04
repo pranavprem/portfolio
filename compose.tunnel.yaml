@@ -15,7 +15,7 @@ services:
     environment:
       TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:?Set the dedicated tunnel token in protected Portainer stack metadata}"
     depends_on:
-      app:
+      portfolio:
         condition: service_healthy
     init: true
     read_only: true
