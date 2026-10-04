@@ -3,6 +3,7 @@
 import os
 import sys
 from collections.abc import Mapping
+from hashlib import sha256
 from uuid import uuid4
 
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
@@ -104,10 +105,19 @@ def create_app(test_config: Mapping[str, object] | None = None) -> Flask:
         raise ContentValidationError(
             "static: restore required assets: " + ", ".join(sorted(missing))
         )
+    asset_versions = {
+        name: sha256((STATIC_ROOT / name).read_bytes()).hexdigest()[:12] for name in assets
+    }
     story, game = prepare_story(document)
+    app.jinja_env.globals["asset_versions"] = asset_versions
     for template in ("base.html", "index.html", "error.html"):
         app.jinja_env.get_template(template)
-    app.extensions["portfolio"] = {"story": story, "game": game, "assets": assets}
+    app.extensions["portfolio"] = {
+        "story": story,
+        "game": game,
+        "assets": assets,
+        "asset_versions": asset_versions,
+    }
 
     @app.before_request
     def check_request_size():

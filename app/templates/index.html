@@ -5,13 +5,6 @@
   'college': ['Zuari', 'https://github.com/pranavprem/ZuariSAPDetail'],
   'sjsu': ['SpartanBot', 'https://github.com/pranavprem/Spartanbot']
 } %}
-<div class="hud-reserve" aria-hidden="true"></div>
-<header class="masthead page-width">
-  <div class="wordmark">
-    <svg class="brand-spark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 0h4v6h4v4h6v4h-6v4h-4v6h-4v-6H6v-4H0v-4h6V6h4z" fill="currentColor"/><path d="M10 10h4v4h-4z" fill="#f5f1e7"/></svg>
-    <span>PRANAV PREM</span>
-  </div>
-</header>
 <main class="journey page-width" id="journey" data-game="{{ game | tojson | forceescape }}">
   <div class="story-track">
     <div id="main-story">
@@ -32,7 +25,7 @@
     <section class="chapter" id="{{ chapter.id }}" data-chapter-number="{{ chapter_number }}" data-region="{{ chapter.region_id }}" aria-labelledby="heading-{{ chapter.id }}">
       {% if new_region %}
       <figure class="mobile-landscape">
-        <img src="{{ url_for('static', filename='art/' ~ chapter.region_id ~ '.svg') }}" alt="" width="320" height="180" loading="lazy" />
+        <img src="{{ url_for('static', filename='art/' ~ chapter.region_id ~ '.svg', v=asset_versions['art/' ~ chapter.region_id ~ '.svg']) }}" alt="" width="320" height="180" loading="lazy" />
         <figcaption>{{ region.label }}</figcaption>
       </figure>
       {% endif %}
@@ -66,7 +59,7 @@
       <p class="story-prose">My OpenClaw and Hermes agents maintain each other. <a href="https://github.com/pranavprem/morpheus">Morpheus</a> is their human-in-the-loop credential layer. This site is the next resident, via Docker and Cloudflare.</p>
       <p class="story-prose">I've also got into 3D printing.</p>
       <p class="ending-note">Retail therapy? Nah, I'll make my own stuff.</p>
-      <blockquote class="pla-meme"><img src="{{ url_for('static', filename='art/pla-robot.svg') }}" alt="" width="32" height="36" aria-hidden="true" /><span>Bender voice:</span> I'm 40% PLA.</blockquote>
+      <blockquote class="pla-meme"><img src="{{ url_for('static', filename='art/pla-robot.svg', v=asset_versions['art/pla-robot.svg']) }}" alt="" width="32" height="36" aria-hidden="true" /><span>Bender voice:</span> I'm 40% PLA.</blockquote>
       <ul class="project-links"><li><a href="https://github.com/pranavprem/morpheus">Morpheus</a></li><li><a href="https://github.com/pranavprem/mediaserver">Media server</a></li><li><a href="https://github.com/pranavprem/homeassistant">Home Assistant</a></li></ul>
       <div class="contact-links"><a href="https://www.linkedin.com/in/pranavprem/">LinkedIn</a><a href="mailto:pranavprem93@gmail.com">pranavprem93@gmail.com</a></div>
       <p class="rewind-note">That's me. Bonus content below.</p>
@@ -151,7 +144,7 @@
     </div>
     <div class="scene-panel" aria-hidden="true">
       <svg class="overworld" id="overworld" viewBox="0 0 320 180" focusable="false" shape-rendering="crispEdges">
-        {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-region-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg') }}" width="320" height="180" />{% endfor %}
+        {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-region-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg', v=asset_versions['art/' ~ region.art_key ~ '.svg']) }}" width="320" height="180" />{% endfor %}
         <g id="journey-object-track" transform="translate(65 143)">
           <ellipse cx="0" cy="0" rx="10" ry="2" fill="#234e3d" opacity=".22" />
           <g class="journey-marker" id="journey-marker" data-frame="0" data-celebrating="false">

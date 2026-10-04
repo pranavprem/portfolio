@@ -3,12 +3,14 @@
 import json
 import logging
 import re
+from hashlib import sha256
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from flask import render_template
 
 from app import SafeGunicornLogger, create_app
-from app.content import prepare_story, validate_story
+from app.content import STATIC_ROOT, prepare_story, validate_story
 
 
 def assert_security_headers(response):
@@ -81,6 +83,27 @@ def test_health_is_minimal_and_assets_have_conditional_caching(client, app):
         assert cached.data == b""
         assert_security_headers(cached)
     assert client.get("/static/story.js").mimetype in {"text/javascript", "application/javascript"}
+
+
+def test_rendered_static_urls_use_content_versions(client, app, parse_html):
+    versions = app.extensions["portfolio"]["asset_versions"]
+    assert versions == {
+        name: sha256((STATIC_ROOT / name).read_bytes()).hexdigest()[:12]
+        for name in app.extensions["portfolio"]["assets"]
+    }
+    for path in ("/", "/missing"):
+        document = parse_html(client.get(path).get_data(as_text=True))
+        rendered_assets = []
+        for _, attrs in document.elements:
+            for attribute in ("href", "src"):
+                value = attrs.get(attribute, "")
+                if value.startswith("/static/"):
+                    rendered_assets.append(value)
+        assert rendered_assets
+        for value in rendered_assets:
+            parsed = urlsplit(value)
+            name = parsed.path.removeprefix("/static/")
+            assert parse_qs(parsed.query) == {"v": [versions[name]]}
 
 
 @pytest.mark.parametrize(
@@ -265,7 +288,7 @@ def test_gunicorn_exception_logger_does_not_expand_request_or_exception(caplog):
 
 
 def test_server_html_is_complete_semantic_and_links_are_reviewed(
-    client, story_document, game, parse_html
+    client, app, story_document, game, parse_html
 ):
     document = parse_html(client.get("/").get_data(as_text=True))
     assert document.select("html")[0]["lang"] == "en"
@@ -341,7 +364,8 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
                     }
                 else:
                     assert attrs[name].startswith("/static/")
-    assert document.select("script") == [{"type": "module", "src": "/static/story.js"}]
+    script_url = f"/static/story.js?v={app.extensions['portfolio']['asset_versions']['story.js']}"
+    assert document.select("script") == [{"type": "module", "src": script_url}]
 
 
 def test_hostile_text_and_projection_remain_inert(app, story_document, parse_html):
@@ -358,7 +382,8 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
     assert payload in document.text
     assert payload not in source
     assert json.loads(document.select(id="journey")[0]["data-game"]) == game
-    assert document.select("script") == [{"type": "module", "src": "/static/story.js"}]
+    script_url = f"/static/story.js?v={app.extensions['portfolio']['asset_versions']['story.js']}"
+    assert document.select("script") == [{"type": "module", "src": script_url}]
     assert not document.select("img", src="x")
     assert not any(name.startswith("on") for _, attrs in document.elements for name in attrs)
 
@@ -448,7 +473,10 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
     ):
         assert phrase in text, phrase
     document = parse_html(client.get("/").get_data(as_text=True))
-    assert document.select("img", src="/static/art/pla-robot.svg")
+    assert any(
+        tag == "img" and attrs.get("src", "").startswith("/static/art/pla-robot.svg?v=")
+        for tag, attrs in document.elements
+    )
     for rejected in (
         "A SCROLL-PLAY AUTOBIOGRAPHY",
         "CHARACTER SNAPSHOT",

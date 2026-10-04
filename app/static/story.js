@@ -185,7 +185,6 @@ function startJourney(root) {
   const art = [...root.querySelectorAll("[data-region-art]")];
   const objectSprites = [...root.querySelectorAll("[data-object-sprite]")];
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const mobile = matchMedia("(max-width: 1023px)");
   let game;
   let gameValid = false;
   let anchors = [];
@@ -287,24 +286,26 @@ function startJourney(root) {
 
   function measure() {
     const height = html.clientHeight;
-    html.dataset.theaterFlow = String(
-      !mobile.matches &&
-        hud.closest(".theater").getBoundingClientRect().height + 24 > height,
-    );
-    html.dataset.hudDocked = String(mobile.matches);
-    let hudBottom = 0;
-    if (mobile.matches) {
-      const box = hud.getBoundingClientRect();
-      // Readability takes priority over a fixed sheet on short or heavily zoomed screens.
-      if (box.bottom > height * 0.25) html.dataset.hudDocked = "false";
-      else hudBottom = box.bottom;
-    }
-    html.style.setProperty("--hud-height", `${Math.ceil(hudBottom)}px`);
-    const top = hudBottom ? hudBottom + 12 : 16;
-    readingOffset = top + 0.35 * (height - top);
-    anchors = markers.map(
-      (marker) => marker.getBoundingClientRect().top + window.scrollY,
-    );
+    const theater = hud.closest(".theater");
+    const theaterHeight = theater.getBoundingClientRect().height;
+    // Keep enough unobscured space for enlarged text and very short viewports.
+    const theaterFlow =
+      theaterHeight > height * 0.62 || height - theaterHeight < 240;
+    html.dataset.theaterFlow = String(theaterFlow);
+    const stageBottom = theaterFlow
+      ? 0
+      : Math.max(0, theater.getBoundingClientRect().bottom);
+    html.style.setProperty("--stage-height", `${Math.ceil(stageBottom)}px`);
+    const top = stageBottom ? stageBottom + 12 : 16;
+    readingOffset = top + 0.15 * (height - top);
+    anchors = markers.map((marker) => {
+      const chapter = marker.closest(".chapter");
+      const target =
+        chapter.querySelector("[data-checkpoint]") === marker
+          ? chapter
+          : marker;
+      return target.getBoundingClientRect().top + window.scrollY;
+    });
     achievementAnchors = achievements.map(
       (marker) => marker.getBoundingClientRect().top + window.scrollY,
     );
@@ -332,9 +333,8 @@ function startJourney(root) {
     failed = true;
     cancelAnimationFrame(frameRequest);
     html.classList.remove("enhanced");
-    html.removeAttribute("data-hud-docked");
     html.removeAttribute("data-theater-flow");
-    html.style.removeProperty("--hud-height");
+    html.style.removeProperty("--stage-height");
     lastIndex = null;
     if (gameValid) {
       try {

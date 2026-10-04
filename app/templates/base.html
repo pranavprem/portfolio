@@ -11,9 +11,9 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{ config.CANONICAL_URL }}" />
     <link rel="canonical" href="{{ config.CANONICAL_URL }}" />
-    <link rel="icon" href="{{ url_for('static', filename='art/favicon.svg') }}" type="image/svg+xml" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='story.css') }}" />
-    <script type="module" src="{{ url_for('static', filename='story.js') }}"></script>
+    <link rel="icon" href="{{ url_for('static', filename='art/favicon.svg', v=asset_versions['art/favicon.svg']) }}" type="image/svg+xml" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='story.css', v=asset_versions['story.css']) }}" />
+    <script type="module" src="{{ url_for('static', filename='story.js', v=asset_versions['story.js']) }}"></script>
     <title>Pranav Prem | A Life in Side Quests</title>
   </head>
   <body>

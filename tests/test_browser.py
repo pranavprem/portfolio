@@ -32,15 +32,21 @@ OBJECTS_BY_SNAPSHOT = [
 GEOMETRY = """() => {
   const html = document.documentElement;
   const hud = document.getElementById('character-sheet').getBoundingClientRect();
+  const theater = document.querySelector('.theater').getBoundingClientRect();
   const height = html.clientHeight;
-  const docked = html.dataset.hudDocked === 'true';
-  const top = docked ? hud.bottom + 12 : 16;
+  const flow = html.dataset.theaterFlow === 'true';
+  const top = flow ? 16 : theater.bottom + 12;
   return {
-    height, docked, top, offset: top + .35 * (height - top),
+    height, flow, top, offset: top + .15 * (height - top),
     maxScroll: Math.max(0, document.scrollingElement.scrollHeight - height),
-    scroll: window.scrollY, hudHeight: hud.height, hudBottom: hud.bottom,
+    scroll: window.scrollY, hudHeight: hud.height, stageHeight: theater.height,
+    stageTop: theater.top, stageBottom: theater.bottom,
     anchors: [...document.querySelectorAll('.story-card[data-checkpoint]')]
-      .map(node => node.getBoundingClientRect().top + window.scrollY)
+      .map(node => {
+        const chapter = node.closest('.chapter');
+        const target = chapter.querySelector('[data-checkpoint]') === node ? chapter : node;
+        return target.getBoundingClientRect().top + window.scrollY;
+      })
   };
 }"""
 
@@ -258,7 +264,7 @@ def test_responsive_clearance_and_endpoint_reachability(page, live_server, snaps
     initial = page.evaluate(GEOMETRY)
     assert initial["anchors"][0] > initial["offset"]
     assert initial["anchors"][-1] <= initial["maxScroll"] + initial["offset"]
-    assert initial["docked"] == (width < 1024)
+    assert not initial["flow"]
     for index in (0, 8, 9, 11):
         scroll_to_checkpoint(page, index)
         assert_hud(page, snapshots[index + 1])
@@ -268,17 +274,14 @@ def test_responsive_clearance_and_endpoint_reachability(page, live_server, snaps
         )
         assert heading["y"] >= geometry["top"]
         assert heading["y"] + 32 < geometry["height"]
-        if width >= 1024:
-            hud = page.locator("#character-sheet").bounding_box()
-            scene = page.locator(".scene-panel").bounding_box()
-            track = page.locator(".story-track").bounding_box()
-            assert track["x"] + track["width"] <= hud["x"]
-            assert scene["y"] >= hud["y"] + hud["height"]
-            assert 0 <= hud["y"] < hud["y"] + hud["height"] <= 1000
-        else:
-            assert geometry["hudBottom"] <= 250
-            expect(page.locator(".scene-panel")).to_be_hidden()
-            expect(page.locator(".mobile-landscape")).to_have_count(4)
+        hud = page.locator("#character-sheet").bounding_box()
+        scene = page.locator(".scene-panel").bounding_box()
+        theater = page.locator(".theater").bounding_box()
+        assert theater["y"] == pytest.approx(0, abs=1)
+        assert scene["y"] >= hud["y"] + hud["height"]
+        assert 0 <= theater["y"] < theater["y"] + theater["height"] < 1000 - 240
+        expect(page.locator(".scene-panel")).to_be_visible()
+        expect(page.locator(".mobile-landscape").first).to_be_hidden()
     layout = page.evaluate("""() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -322,17 +325,15 @@ def test_visible_card_subheadings_have_clear_hierarchy(page, live_server):
 def test_short_mobile_uses_normal_flow_and_resize_remeasures(page, live_server, snapshots):
     page.set_viewport_size({"width": 390, "height": 300})
     open_journey(page, live_server)
-    expect(page.locator("html")).to_have_attribute("data-hud-docked", "false")
-    assert (
-        page.locator("#character-sheet").evaluate("node => getComputedStyle(node).position")
-        == "static"
-    )
+    expect(page.locator("html")).to_have_attribute("data-theater-flow", "true")
+    assert page.locator(".theater").evaluate("node => getComputedStyle(node).position") == "static"
     for index in (7, 11, -1):
         scroll_to_checkpoint(page, index)
         assert_hud(page, snapshots[index + 1])
     page.set_viewport_size({"width": 390, "height": 1000})
-    expect(page.locator("html")).to_have_attribute("data-hud-docked", "true")
+    expect(page.locator("html")).to_have_attribute("data-theater-flow", "false")
     settle_layout(page)
+    assert page.locator(".theater").evaluate("node => getComputedStyle(node).position") == "sticky"
     assert_matches_geometry(page, snapshots)
     scroll_to_checkpoint(page, 6)
     for width in (1440, 320, 1024, 768):
@@ -343,7 +344,7 @@ def test_short_mobile_uses_normal_flow_and_resize_remeasures(page, live_server, 
 
 def test_short_desktop_does_not_pin_an_unreadable_sheet(page, live_server, snapshots):
     open_journey(page, live_server)
-    for height, flow in ((200, True), (400, False), (200, True)):
+    for height, flow in ((300, True), (900, False), (300, True)):
         page.set_viewport_size({"width": 1440, "height": height})
         expect(page.locator("html")).to_have_attribute("data-theater-flow", str(flow).lower())
         settle_layout(page)
@@ -353,12 +354,12 @@ def test_short_desktop_does_not_pin_an_unreadable_sheet(page, live_server, snaps
         position = theater.evaluate("node => getComputedStyle(node).position")
         # Clearance includes the whole panel's padding and sticky inset, not just its HUD.
         if flow:
-            assert theater.bounding_box()["height"] + 24 > height
+            assert theater.bounding_box()["height"] > height * 0.62
             assert position == "static"
         else:
             assert position == "sticky"
-            hud = page.locator("#character-sheet").bounding_box()
-            assert 0 <= hud["y"] < hud["y"] + hud["height"] <= height
+            box = theater.bounding_box()
+            assert 0 <= box["y"] < box["y"] + box["height"] <= height - 240
 
 
 def test_no_javascript_has_the_complete_story(new_context, live_server, story_document, snapshots):
@@ -380,7 +381,7 @@ def test_no_javascript_has_the_complete_story(new_context, live_server, story_do
 def test_failed_local_resource_never_hides_prose(
     page, live_server, story_document, snapshots, resource
 ):
-    page.route(f"**/static/{resource}", lambda route: route.abort())
+    page.route(f"**/static/{resource}*", lambda route: route.abort())
     page.goto(live_server + "/")
     assert_complete_story(page, story_document, snapshots)
     if resource == "story.js":
@@ -454,8 +455,8 @@ def test_geometry_failure_resets_a_live_hud(page, live_server, story_document, s
     scroll_to_checkpoint(page, 9)
     assert_hud(page, snapshots[10])
     page.evaluate("""() => {
-      const markers = document.querySelectorAll('[data-checkpoint]');
-      markers[1].getBoundingClientRect = () => markers[0].getBoundingClientRect();
+      const chapters = document.querySelectorAll('.chapter');
+      chapters[1].getBoundingClientRect = () => chapters[0].getBoundingClientRect();
       window.dispatchEvent(new Event('resize'));
     }""")
     expect(page.locator("html")).not_to_have_class("enhanced")
@@ -536,14 +537,16 @@ def test_reload_history_fragments_and_native_keyboard(page, live_server, snapsho
     settle_scroll(page, "top")
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "-1")
     page.keyboard.press("PageDown")
-    expect(page.locator(".masthead")).not_to_be_in_viewport()
+    expect(page.locator(".theater")).to_be_in_viewport()
+    assert page.locator(".theater").bounding_box()["y"] == pytest.approx(0, abs=1)
     settle_scroll(page)
     page.keyboard.press("Home")
     settle_scroll(page, "top")
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "-1")
     page.mouse.move(200, 300)
     page.mouse.wheel(0, 500)
-    expect(page.locator(".masthead")).not_to_be_in_viewport()
+    expect(page.locator(".theater")).to_be_in_viewport()
+    assert page.locator(".theater").bounding_box()["y"] == pytest.approx(0, abs=1)
     settle_scroll(page)
     assert_matches_geometry(page, snapshots)
     assert page.evaluate("window.testScrollWrites") == []
@@ -630,11 +633,11 @@ def test_side_arrows_move_the_page_and_object_without_intercepting_input(page, l
     assert page.evaluate("window.testScrollWrites[0][0]") == {"top": 40, "behavior": "auto"}
 
 
-def test_resize_observer_remeasures_text_reflow(page, live_server, snapshots):
+def test_resize_observer_remeasures_layout_expansion(page, live_server, snapshots):
     open_journey(page, live_server)
     scroll_to_checkpoint(page, 6)
     before = page.evaluate(GEOMETRY)
-    page.locator(".story-prose").first.evaluate("node => { node.style.fontSize = '40px'; }")
+    page.locator(".story-card").first.evaluate("node => { node.style.paddingBottom = '900px'; }")
     settle_layout(page)
     after = page.evaluate(GEOMETRY)
     assert after["anchors"][2] > before["anchors"][2]
@@ -750,7 +753,7 @@ def test_text_enlargement_and_narrow_reflow(page, live_server, snapshots, tmp_pa
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
       overflowing: [...document.querySelectorAll(
-        '.wordmark, h1, h2, h3, .milestone, .character-sheet, .stat, .field-notes li')]
+        'h1, h2, h3, .milestone, .character-sheet, .stat, .field-notes li')]
         .filter(node => node.scrollWidth > node.clientWidth + 1)
         .map(node => ({tag: node.tagName, class: node.className,
           width: node.clientWidth, scrollWidth: node.scrollWidth})),
@@ -767,8 +770,9 @@ def test_text_enlargement_and_narrow_reflow(page, live_server, snapshots, tmp_pa
         layout["screenshot"] = str(screenshot)
     assert layout["scrollWidth"] <= layout["width"] + 1, json.dumps(layout, indent=2)
     assert layout["overlappingStats"] == [], layout
-    if page.evaluate(GEOMETRY)["docked"]:
-        assert page.evaluate(GEOMETRY)["hudBottom"] <= 250
+    geometry = page.evaluate(GEOMETRY)
+    if not geometry["flow"]:
+        assert geometry["stageBottom"] <= geometry["height"] - 240
     scroll_to_checkpoint(page, 11)
     assert_hud(page, snapshots[12])
 
@@ -838,7 +842,7 @@ def test_main_story_reading_budget_and_optional_inventory(page, live_server, sto
         "Corporate awards are meaningless"
     )
     expect(page.locator(".pla-meme")).to_have_text("Bender voice: I'm 40% PLA.")
-    expect(page.locator('.pla-meme img[src="/static/art/pla-robot.svg"]')).to_be_visible()
+    expect(page.locator('.pla-meme img[src^="/static/art/pla-robot.svg?v="]')).to_be_visible()
     assert page.locator("iframe, video").count() == 0
 
 
@@ -925,8 +929,9 @@ def test_quiet_reading_hierarchy_preserves_story_and_city_context(page, live_ser
     assert "first time living on my own" in page.locator("#college .story-prose").first.inner_text()
     track = page.locator(".story-track").bounding_box()
     theater = page.locator(".theater").bounding_box()
-    assert track["width"] <= 512
-    assert theater["x"] - (track["x"] + track["width"]) >= 80
+    assert track["width"] <= 640
+    assert abs((track["x"] + track["width"] / 2) - (theater["x"] + theater["width"] / 2)) <= 1
+    assert theater["y"] + theater["height"] <= track["y"]
     assert (
         page.locator(".story-prose").first.evaluate(
             "node => parseFloat(getComputedStyle(node).fontSize)"
