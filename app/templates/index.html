@@ -93,10 +93,47 @@
       <p class="rewind-note"><span aria-hidden="true">&#8593;</span> Scroll up to rewind. No save file required.</p>
     </section>
   </div>
-  <aside class="theater" aria-label="Your traveling character sheet">
+  <aside class="theater" aria-label="Journey stats and landscape">
+    <svg class="sprite-definitions" aria-hidden="true" focusable="false" width="0" height="0">
+      <defs>
+        <g id="object-controller">
+          <path d="M-11-16h4v-3H7v3h4v10H7v-3H-7v3h-4z" fill="#356850"/><path d="M-7-14h2v-3h2v3h3v2h-3v3h-2v-3h-2z" fill="#f1d38c"/><path d="M4-14h2v2H4zm3 3h2v2H7z" fill="#d8a54b"/>
+        </g>
+        <g id="object-backpack">
+          <path d="M-8-19h3v-4H5v4h3v17H-8z" fill="#356850"/><path d="M-5-21h10v3H-5zm-6 5h3v11h-3zm19 0h3v11H8z" fill="#243f35"/><path d="M-5-14h10v7H-5z" fill="#d8a54b"/><path d="M-2-12h4v2h-4z" fill="#f1d38c"/>
+        </g>
+        <g id="object-compass">
+          <path d="M-8-20h5v-3h6v3h5v5h3v7H8v5H3v3h-6v-3h-5v-5h-3v-7h3z" fill="#356850"/><path d="M-6-17h12v12H-6z" fill="#f1d38c"/><path d="M-1-16h3v6h3v2H1v3h-3v-6h-3v-2h4z" fill="#a55535"/>
+        </g>
+        <g id="object-laptop">
+          <path d="M-10-22h20v15h-20z" fill="#243f35"/><path d="M-7-19H7v9H-7z" fill="#8ba895"/><path d="M-13-6h26v4H9v2H-9v-2h-4z" fill="#d8a54b"/><path d="M-4-16h3v3h-3zm5 0h3v3H1z" fill="#f1d38c"/>
+        </g>
+        <g id="object-java-mug">
+          <path d="M-9-19H7v17H-9z" fill="#f1d38c"/><path d="M7-16h6v10H7v-3h3v-4H7z" fill="#a55535"/><path d="M-4-16h6v3H0v7h-5v-3h2v-4h-1z" fill="#356850"/><path d="M-5-25h3v4h-3zm6-3h3v7H1z" fill="#8ba895"/>
+        </g>
+        <g id="object-automation-gear">
+          <path d="M-4-25h8v4h5l3 3v5h4v8h-4v5H4v-4h-8v4h-8v-5h-4v-8h4v-5l3-3h5z" fill="#356850"/><path d="M-6-17H6v12H-6z" fill="#d8a54b"/><path d="M-2-13h4v4h-4z" fill="#f1d38c"/><path d="M7-24h4v9h-4zm4 6h5v4h-5z" fill="#a55535"/>
+        </g>
+        <g id="object-books">
+          <path d="M-12-8h24v7h-24z" fill="#356850"/><path d="M-9-15h19v7H-9z" fill="#d8a54b"/><path d="M-12-22H7v7h-19z" fill="#a55535"/><path d="M-8-20H4v2H-8zm2 7H7v2H-6zm-3 7H8v2H-9z" fill="#f1d38c"/>
+        </g>
+        <g id="object-toolkit">
+          <path d="M-13-17h26v15h-26z" fill="#356850"/><path d="M-6-23H6v6H3v-3h-6v3h-3z" fill="#243f35"/><path d="M-13-13h26v4H2v3h-4v-3h-11z" fill="#d8a54b"/><path d="M-2-12h4v4h-4z" fill="#f1d38c"/>
+        </g>
+        <g id="object-cloud-terminal">
+          <path d="M-13-22h26v19h-26z" fill="#243f35"/><path d="M-10-19h20v12h-20z" fill="#8ba895"/><path d="M-7-15h3v-3h6v2h4v5H4v2H-6v-2h-3v-3h2z" fill="#f1d38c"/><path d="M-5-1H5v3H-5z" fill="#d8a54b"/>
+        </g>
+        <g id="object-bot-console">
+          <path d="M-12-22h24v19h-24z" fill="#356850"/><path d="M-9-19H9v11H-9z" fill="#f1d38c"/><path d="M-6-16h4v3h-4zm8 0h4v3H2z" fill="#a55535"/><path d="M-6-10H6v2H-6z" fill="#d8a54b"/><path d="M-4-3H4v4H-4z" fill="#243f35"/>
+        </g>
+        <g id="object-agent-nodes">
+          <path d="M-2-25h4v8h-4zm0 14h4v9h-4zm-12-6h9v4h-9zm19 0h9v4H5z" fill="#8ba895"/><path d="M-7-22H7v14H-7z" fill="#356850"/><path d="M-4-19H4v8H-4z" fill="#f1d38c"/><path d="M-14-20h7v7h-7zm21 0h7v7H7zM-4-8h8v8h-8z" fill="#d8a54b"/>
+        </g>
+      </defs>
+    </svg>
     <div class="character-sheet" id="character-sheet" aria-live="off">
       <div class="player-identity">
-        <svg class="portrait" viewBox="0 0 32 32" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="#dedbbf" d="M0 0h32v32H0z"/><g id="portrait-sprite"><path fill="#214c3d" d="M8 32V22h4v-5h12v5h3v10z"/><path fill="#b87748" d="M12 9h12v12H12z"/><path fill="#243b32" d="M10 6h14v4h2v6h-4v-5H12v5H9V9h1z"/><path fill="#e6b469" d="M15 11h7v8h-7z"/><path fill="#263e32" d="M13 13h5v3h-5zm7 0h5v3h-5zm-2 1h2v1h-2z"/><path fill="#e4b051" d="M9 23h4v9H9z"/></g></svg>
+        <svg class="portrait" viewBox="0 0 32 32" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="#dedbbf" d="M0 0h32v32H0z"/><g id="hud-object-marker" transform="translate(16 30) scale(.8)">{% for object_id in ['controller', 'backpack', 'compass', 'laptop', 'java-mug', 'automation-gear', 'books', 'toolkit', 'cloud-terminal', 'bot-console', 'agent-nodes'] %}<use class="object-sprite{% if loop.first %} current{% endif %}" data-object-sprite="{{ object_id }}" href="#object-{{ object_id }}"/>{% endfor %}</g></svg>
         <p class="sheet-status" id="sheet-status">Starting stats. Later stats are beside the story.</p>
       </div>
       <dl class="stats-grid">
@@ -115,18 +152,11 @@
     <div class="scene-panel" aria-hidden="true">
       <svg class="overworld" id="overworld" viewBox="0 0 320 180" focusable="false" shape-rendering="crispEdges">
         {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-region-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg') }}" width="320" height="180" />{% endfor %}
-        <g id="travelers" transform="translate(65 143)">
-          <ellipse cx="0" cy="0" rx="8" ry="2" fill="#234e3d" opacity=".22" />
-          <g class="step-effects" fill="#d8a54b"><path d="M-13-3h3v2h-3zm-5-4h2v2h-2zm30 2h2v2h-2z"/></g>
-          <g class="traveler" id="traveler" data-frame="0">
-            <path class="leg leg-left" d="M-4-7h3v7h-5v-2h2z" fill="#243b32"/><path class="leg leg-right" d="M1-7h3v5h2v2H1z" fill="#243b32"/>
-            <path d="M-5-17H4v11H-5z" fill="#356850"/><path d="M-8-16h4v10h-4z" fill="#daa548"/><path class="traveler-arm" d="M3-15h3v8H3z" fill="#c48755"/>
-            <path d="M-4-27h9v12h-9z" fill="#ce935e"/><path d="M-6-25v-4H4v2h3v7H4v-4H-2v5h-4z" fill="#263b32"/>
-            <path d="M0-23h4v3H0zm5 0h3v3H5zm-1 1h1v1H4z" fill="#21392f"/><path d="M0-17h4v1H0z" fill="#955e3d"/>
+        <g id="journey-object-track" transform="translate(65 143)">
+          <ellipse cx="0" cy="0" rx="10" ry="2" fill="#234e3d" opacity=".22" />
+          <g class="journey-marker" id="journey-marker" data-frame="0" data-celebrating="false">
+            {% for object_id in ['controller', 'backpack', 'compass', 'laptop', 'java-mug', 'automation-gear', 'books', 'toolkit', 'cloud-terminal', 'bot-console', 'agent-nodes'] %}<use class="object-sprite{% if loop.first %} current{% endif %}" data-object-sprite="{{ object_id }}" href="#object-{{ object_id }}"/>{% endfor %}
             <g class="achievement-sparks" fill="#d7a444"><path d="M-12-30h2v-2h2v2h2v2h-2v2h-2v-2h-2zm20-4h2v-2h2v2h2v2h-2v2h-2v-2H8z"/></g>
-          </g>
-          <g class="companion" id="companion" transform="translate(-18 -1)">
-            <ellipse cx="0" cy="1" rx="7" ry="2" fill="#234e3d" opacity=".18"/><path d="M-6-4h12v5H-6z" fill="#bd8a49"/><path d="M-5-8h2v-2H3v2h2v7H-5z" fill="#718c52"/><path d="M-3-7h6v4h-6z" fill="#a9b777"/><path d="M3-5h4v5H3z" fill="#ecd399"/><path d="M5-4h1v1H5z" fill="#253f32"/><path d="M-4 0h2v2h-2zm5 0h2v2H1z" fill="#39523c"/><path class="companion-tail" d="M-8-4h2v2h-2zm-2-3h2v-3h2v-3h-5v3h1z" fill="#e5ab3e"/>
           </g>
         </g>
         <g class="scene-fog" id="scene-fog"><path d="M0 58h45v7h37v-5h64v9h70v-4h104v19H0zm0 54h85v-7h50v7h71v-7h55v7h59v15H0z" fill="#e4e7d9" opacity=".65"/></g>

@@ -13,6 +13,22 @@ from playwright.sync_api import expect
 
 pytestmark = pytest.mark.browser
 
+OBJECTS_BY_SNAPSHOT = [
+    "controller",
+    "controller",
+    "backpack",
+    "compass",
+    "laptop",
+    "java-mug",
+    "automation-gear",
+    "books",
+    "toolkit",
+    "cloud-terminal",
+    "cloud-terminal",
+    "bot-console",
+    "agent-nodes",
+]
+
 GEOMETRY = """() => {
   const html = document.documentElement;
   const hud = document.getElementById('character-sheet').getBoundingClientRect();
@@ -37,8 +53,9 @@ HUD = """() => ({
   badges: [...document.querySelectorAll('li[data-badge].earned')].map(node => node.dataset.badge),
   region: document.querySelector('[data-region-art].current').dataset.regionArt,
   mood: document.getElementById('overworld').dataset.mood,
-  frame: Number(document.getElementById('traveler').dataset.frame),
-  transform: document.getElementById('travelers').getAttribute('transform')
+  object: document.querySelector('#journey-marker .object-sprite.current').dataset.objectSprite,
+  frame: Number(document.getElementById('journey-marker').dataset.frame),
+  transform: document.getElementById('journey-object-track').getAttribute('transform')
 })"""
 
 
@@ -94,6 +111,7 @@ def assert_hud(page, expected):
     actual = page.evaluate(HUD)
     for key in ("index", "stats", "badges", "region", "mood"):
         assert actual[key] == expected[key], (key, actual, expected)
+    assert actual["object"] == OBJECTS_BY_SNAPSHOT[expected["index"] + 1]
     assert actual["pips"] == expected["stats"]
     expect(page.locator("#badge-count")).to_have_text(f"{len(expected['badges']):02d}")
     slots = page.locator("li[data-badge]")
@@ -206,6 +224,7 @@ def test_pure_selector_thresholds_equality_and_random_rewinds(page, live_server,
             frame = math.floor(fraction * 12) % 4
         assert state["position"] == position
         assert state["frame"] == frame
+        assert state["object"] == OBJECTS_BY_SNAPSHOT[index + 1]
         assert reduced["position"] == event["position"] and reduced["frame"] == 0
         assert 20 <= state["position"]["x"] <= 300 and 0 <= state["position"]["y"] <= 180
         if cursor in seen:
@@ -459,25 +478,16 @@ def test_reduced_motion_load_and_mid_story_toggle(page, live_server, game, snaps
     position = game["events"][0]["position"]
     assert reduced["transform"] == f"translate({position['x']} {position['y']})"
     page.emulate_media(reduced_motion="no-preference")
-    expect(page.locator("#traveler")).not_to_have_attribute("data-frame", "0")
+    expect(page.locator("#journey-marker")).not_to_have_attribute("data-frame", "0")
     moving = assert_hud(page, snapshots[1])
     assert moving["transform"] != reduced["transform"]
-    expect(page.locator("#companion")).not_to_have_attribute("transform", "translate(-18 -1)")
-    assert (
-        page.locator(".step-effects").evaluate("node => getComputedStyle(node).visibility")
-        == "visible"
-    )
+    expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 -1)")
     page.emulate_media(reduced_motion="reduce")
-    expect(page.locator("#traveler")).to_have_attribute("data-frame", "0")
-    expect(page.locator("#companion")).to_have_attribute("transform", "translate(-18 -1)")
-    assert (
-        page.locator(".step-effects").evaluate("node => getComputedStyle(node).visibility")
-        == "hidden"
-    )
+    expect(page.locator("#journey-marker")).to_have_attribute("data-frame", "0")
+    expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 0)")
     assert assert_hud(page, snapshots[1]) == reduced
     scroll_to_checkpoint(page, 9, 0.4)
     assert assert_hud(page, snapshots[10])["frame"] == 0
-    assert page.locator(".leg").first.evaluate("node => getComputedStyle(node).transform") == "none"
 
 
 def test_reload_history_fragments_and_native_keyboard(page, live_server, snapshots):
@@ -539,7 +549,7 @@ def test_reload_history_fragments_and_native_keyboard(page, live_server, snapsho
     assert page.evaluate("window.testScrollWrites") == []
 
 
-def test_side_arrows_move_the_page_and_sprite_without_intercepting_input(page, live_server):
+def test_side_arrows_move_the_page_and_object_without_intercepting_input(page, live_server):
     page.add_init_script("""window.testScrollWrites = [];
       const original = window.scrollBy.bind(window);
       window.scrollBy = (...args) => {
@@ -551,19 +561,20 @@ def test_side_arrows_move_the_page_and_sprite_without_intercepting_input(page, l
     page.evaluate("window.testScrollWrites = []")
     before = page.evaluate("""() => ({
       scrollY: window.scrollY,
-      position: document.getElementById('travelers').getAttribute('transform'),
+      position: document.getElementById('journey-object-track').getAttribute('transform'),
     })""")
     page.keyboard.press("ArrowRight")
     page.wait_for_function("before => window.scrollY > before", arg=before["scrollY"])
     page.wait_for_timeout(500)
     settle_layout(page)
     page.wait_for_function(
-        "before => document.getElementById('travelers').getAttribute('transform') !== before",
+        "before => document.getElementById('journey-object-track')"
+        ".getAttribute('transform') !== before",
         arg=before["position"],
     )
     after_right = page.evaluate("""() => ({
       scrollY: window.scrollY,
-      position: document.getElementById('travelers').getAttribute('transform'),
+      position: document.getElementById('journey-object-track').getAttribute('transform'),
     })""")
     assert page.evaluate("window.testScrollWrites[0][0]") == {
         "top": 40,
@@ -672,10 +683,12 @@ def test_csp_privacy_and_no_idle_animation(page, live_server, observations, snap
       });
       await frames(5);
       const calls = window.testRafCalls;
-      const transform = document.getElementById('travelers').getAttribute('transform');
+      const transform = document.getElementById('journey-object-track').getAttribute('transform');
       await frames(12);
+      const currentTransform = document.getElementById('journey-object-track')
+        .getAttribute('transform');
       return {extraCalls: window.testRafCalls - calls,
-        unchanged: transform === document.getElementById('travelers').getAttribute('transform'),
+        unchanged: transform === currentTransform,
         animations: document.getAnimations().length,
         local: localStorage.length, session: sessionStorage.length, cookies: document.cookie};
     }""")
@@ -829,7 +842,7 @@ def test_main_story_reading_budget_and_optional_inventory(page, live_server, sto
     assert page.locator("iframe, video").count() == 0
 
 
-def test_every_achievement_has_a_reversible_sprite_reaction(page, live_server):
+def test_every_achievement_has_a_reversible_object_reaction(page, live_server):
     open_journey(page, live_server)
     geometry = page.evaluate(GEOMETRY)
     anchors = page.locator("[data-achievement]").evaluate_all(
@@ -843,27 +856,27 @@ def test_every_achievement_has_a_reversible_sprite_reaction(page, live_server):
     for anchor, cursor in zip(anchors, positions, strict=True):
         page.evaluate("y => window.scrollTo(0, y)", anchor - geometry["offset"])
         settle_layout(page)
-        assert page.locator("#traveler").get_attribute("transform") in {
+        assert page.locator("#journey-marker").get_attribute("transform") in {
             "translate(0 0)",
             "translate(0 -1)",
         }
         page.evaluate("y => window.scrollTo(0, y)", cursor - geometry["offset"])
         settle_layout(page)
-        expect(page.locator("#traveler")).to_have_attribute("transform", "translate(0 -8)")
-        expect(page.locator("#traveler")).to_have_attribute("data-celebrating", "true")
-        expect(page.locator("#portrait-sprite")).to_have_attribute("transform", "translate(0 -3)")
-        companion = page.locator("#companion").get_attribute("transform")
-        match = re.fullmatch(r"translate\(-18 (-?\d+)\)", companion)
-        assert match and int(match.group(1)) <= -5
+        expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 -8)")
+        expect(page.locator("#journey-marker")).to_have_attribute("data-celebrating", "true")
+        expect(page.locator("#hud-object-marker")).to_have_attribute(
+            "transform", "translate(16 27) scale(.8)"
+        )
+        expect(page.locator("#journey-marker .object-sprite.current")).to_have_count(1)
+        expect(page.locator("#hud-object-marker .object-sprite.current")).to_have_count(1)
     for cursor in (positions[8], positions[0], positions[-1], positions[0]):
         page.evaluate("y => window.scrollTo(0, y)", cursor - geometry["offset"])
         settle_layout(page)
-        expect(page.locator("#traveler")).to_have_attribute("transform", "translate(0 -8)")
+        expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 -8)")
     before = page.evaluate(HUD)
     page.emulate_media(reduced_motion="reduce")
-    expect(page.locator("#traveler")).to_have_attribute("transform", "translate(0 0)")
-    expect(page.locator("#traveler")).to_have_attribute("data-celebrating", "false")
-    expect(page.locator("#companion")).to_have_attribute("transform", "translate(-18 -1)")
+    expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 0)")
+    expect(page.locator("#journey-marker")).to_have_attribute("data-celebrating", "false")
     after = page.evaluate(HUD)
     assert after["stats"] == before["stats"] and after["badges"] == before["badges"]
     pure = page.evaluate("""async () => {

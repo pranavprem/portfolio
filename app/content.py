@@ -211,7 +211,7 @@ def validate_story(document: object) -> None:
             _require(
                 20 <= position["x"] <= 300,
                 field,
-                "leave room for the traveler and companion at both edges",
+                "leave room for the journey object at both edges",
             )
         region_map[region["id"]] = region
 

@@ -11,6 +11,19 @@ const REGIONS = {
   "san-jose": "San Jose",
   "bay-area": "San Francisco",
 };
+const OBJECT_BY_CHAPTER = {
+  spawn: "controller",
+  school: "backpack",
+  detour: "compass",
+  college: "laptop",
+  "java-forge": "java-mug",
+  automation: "automation-gear",
+  sjsu: "books",
+  "developer-ally": "toolkit",
+  "cloud-and-fog": "cloud-terminal",
+  "bot-workshop": "bot-console",
+  continuing: "agent-nodes",
+};
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
 const SIDE_ARROW_SCROLL_STEP = 40;
 
@@ -76,6 +89,7 @@ export function deriveState(
     badges: index < 0 ? event.badges : event.badges_after,
     region: event.region_id,
     mood: event.mood,
+    object: OBJECT_BY_CHAPTER[event.chapter_id] ?? "controller",
     position,
     frame,
   };
@@ -147,6 +161,9 @@ function validGame(game, markers, badgeIds) {
   return (
     validSnapshots &&
     game.initial.badges.length === 0 &&
+    game.events.every((event) =>
+      Object.hasOwn(OBJECT_BY_CHAPTER, event.chapter_id),
+    ) &&
     new Set(game.events.map((event) => event.id)).size === markers.length &&
     game.events.every(
       (event, i) =>
@@ -166,6 +183,7 @@ function startJourney(root) {
   const badgeSlots = [...hud.querySelectorAll("[data-badge]")];
   const routes = [...root.querySelectorAll("[data-route]")];
   const art = [...root.querySelectorAll("[data-region-art]")];
+  const objectSprites = [...root.querySelectorAll("[data-object-sprite]")];
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const mobile = matchMedia("(max-width: 1023px)");
   let game;
@@ -236,32 +254,34 @@ function startJourney(root) {
       document.getElementById("world-label").textContent =
         REGIONS[state.region];
       document.getElementById("overworld").dataset.mood = state.mood;
+      objectSprites.forEach((object) =>
+        object.classList.toggle(
+          "current",
+          object.dataset.objectSprite === state.object,
+        ),
+      );
       root.dataset.checkpointIndex = state.index;
       lastIndex = state.index;
     }
     document
-      .getElementById("travelers")
+      .getElementById("journey-object-track")
       .setAttribute(
         "transform",
         `translate(${state.position.x} ${state.position.y})`,
       );
-    const traveler = document.getElementById("traveler");
-    traveler.dataset.frame = state.frame;
-    traveler.dataset.celebrating = String(celebration.active);
-    traveler.setAttribute("transform", `translate(0 ${-celebration.lift})`);
-    document.getElementById("overworld").dataset.frame = state.frame;
-    const companionStep = !celebration.active && state.frame % 2 ? 2 : 0;
+    const marker = document.getElementById("journey-marker");
+    const objectStep = !celebration.active && state.frame % 2 ? 1 : 0;
+    marker.dataset.frame = state.frame;
+    marker.dataset.celebrating = String(celebration.active);
+    marker.setAttribute(
+      "transform",
+      `translate(0 ${-celebration.lift - objectStep})`,
+    );
     document
-      .getElementById("companion")
+      .getElementById("hud-object-marker")
       .setAttribute(
         "transform",
-        `translate(-18 ${-1 - companionStep - Math.round(celebration.lift / 2)})`,
-      );
-    document
-      .getElementById("portrait-sprite")
-      .setAttribute(
-        "transform",
-        `translate(0 ${-Math.round(celebration.lift / 3)})`,
+        `translate(16 ${30 - Math.round(celebration.lift / 3)}) scale(.8)`,
       );
   }
 

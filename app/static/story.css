@@ -178,6 +178,10 @@ html[data-theater-flow="true"] .theater {
   height: 32px;
   image-rendering: pixelated;
 }
+.sprite-definitions {
+  position: absolute;
+  overflow: hidden;
+}
 .stats-grid {
   display: grid;
   gap: 8px;
@@ -298,28 +302,11 @@ html[data-theater-flow="true"] .theater {
 .overworld[data-mood="quiet"] .region-art.current {
   filter: saturate(0.7);
 }
-.traveler[data-frame="1"] .leg-left,
-.traveler[data-frame="3"] .leg-right {
-  transform: translateY(-2px);
-}
-.traveler[data-frame="1"] .traveler-arm {
-  transform: translateY(-2px);
-}
-.traveler[data-frame="3"] .traveler-arm {
-  transform: translateY(1px);
-}
-.step-effects {
+.object-sprite {
   visibility: hidden;
 }
-.overworld[data-frame="1"] .step-effects,
-.overworld[data-frame="3"] .step-effects {
+.object-sprite.current {
   visibility: visible;
-}
-.overworld[data-frame="1"] .companion-tail {
-  transform: translate(-1px, -1px);
-}
-.overworld[data-frame="3"] .companion-tail {
-  transform: translate(1px, 1px);
 }
 .scene-caption {
   padding: 13px 16px;
@@ -594,11 +581,8 @@ h2 {
 .achievement-sparks {
   visibility: hidden;
 }
-.traveler[data-celebrating="true"] .achievement-sparks {
+.journey-marker[data-celebrating="true"] .achievement-sparks {
   visibility: visible;
-}
-.traveler[data-celebrating="true"] .traveler-arm {
-  transform: translateY(-6px);
 }
 .project-links,
 .contact-links {
@@ -1028,16 +1012,6 @@ a:focus-visible {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
-  }
-  .traveler .leg {
-    transform: none !important;
-  }
-  .step-effects {
-    visibility: hidden !important;
-  }
-  .companion-tail,
-  .traveler-arm {
-    transform: none !important;
   }
 }
 

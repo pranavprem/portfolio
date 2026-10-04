@@ -304,6 +304,9 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
     assert all("earned" not in attrs.get("class", "").split() for attrs in slots)
     assert document.select(id="character-sheet")[0]["aria-live"] == "off"
     assert "Starting stats. Later stats are beside the story." in document.text
+    assert not document.select(id="traveler")
+    assert not document.select(id="companion")
+    assert len(document.select(class_="object-sprite")) == 22
     for tag, attrs in document.elements:
         assert tag not in {
             "button",
@@ -322,7 +325,22 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         assert attrs.get("role") not in {"button", "link", "application", "slider", "menu"}
         for name in ("src", "href"):
             if name in attrs and attrs.get("rel") != "canonical" and tag != "a":
-                assert attrs[name].startswith("/static/")
+                if tag == "use" and name == "href":
+                    assert attrs[name] in {
+                        "#object-controller",
+                        "#object-backpack",
+                        "#object-compass",
+                        "#object-laptop",
+                        "#object-java-mug",
+                        "#object-automation-gear",
+                        "#object-books",
+                        "#object-toolkit",
+                        "#object-cloud-terminal",
+                        "#object-bot-console",
+                        "#object-agent-nodes",
+                    }
+                else:
+                    assert attrs[name].startswith("/static/")
     assert document.select("script") == [{"type": "module", "src": "/static/story.js"}]
 
 
