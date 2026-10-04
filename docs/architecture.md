@@ -14,7 +14,7 @@ The design was reviewed before implementation and reconciled against the finishe
 - Treat game state as a pure function of the current reading position. Absolute stat snapshots and cumulative badge prefixes make upward scrolling an exact rewind, including after large jumps and reload restoration.
 - Use a sticky desktop theater with a top-right character sheet. On narrow screens keep the HUD compact and persistent, but put landscapes in the story flow rather than pinning a second large panel above the prose.
 - Ship only local original SVG/pixel artwork and system fonts. No runtime npm, database, CMS, frontend framework, game engine, canvas/WebGL dependency, analytics, remote fonts, embeds, or runtime API calls.
-- Deploy two services on the NAS: the application and `cloudflare/cloudflared`. Use a remotely managed tunnel and a token file mounted only into the connector as a Compose secret. Publish no production host ports.
+- Deploy two services on the NAS: the application and `cloudflare/cloudflared`. Use a remotely managed tunnel. Docker Standalone/Portainer supplies authenticated stack variable `CLOUDFLARED_TOKEN`, which Compose maps only to cloudflared's supported `TUNNEL_TOKEN`; the app receives no credential. Publish no production host ports.
 
 **Experience Contract**
 The site should feel like opening a well-loved game cartridge containing someone's life: cream paper, forest-green ink, amber highlights, editorial typography, tiny inventory details, and landscapes with a sense of place. It is an autobiographical scroll essay with a game theater, not a resume inside a generic dashboard and not a game requiring instructions or skill.
@@ -128,7 +128,7 @@ requirements-dev.txt      test/lint tools, not copied to the runtime image
 pyproject.toml            small test/lint configuration, no packaging ceremony
 Dockerfile
 compose.yaml              hardened app and origin network
-compose.tunnel.yaml       production connector, egress network, file secret
+compose.tunnel.yaml       production connector, egress network, protected token mapping
 compose.local.yaml        explicit loopback-only local override
 .gitignore
 .dockerignore
@@ -315,7 +315,7 @@ Browser controller lifecycle:
 7. A reduced-motion preference change updates the rendering mode immediately without resetting the current state. Resize/reflow derives state from the new reading geometry, not from an old chapter percentage.
 8. On an initialization or controller failure, remove live/enhanced state, cancel pending work, and leave the complete readable story and per-card snapshots. Reset the sheet to the opening snapshot with its static caption, or hide the live sheet if resetting fails; never label stale mid-story values as opening or current stats. Show only a short static fallback note, not a modal, spinner, or mandatory retry control.
 
-Do not call `preventDefault()` on wheel, touch, or keyboard events. The owner-approved side-arrow alias may call `scrollBy` for an unmodified Right/Left key, using a small fixed down/up step so existing reading-position-derived walking responds; it must ignore editable controls and disable itself when the document has real horizontal overflow. Apart from that narrow alias, do not set scroll positions, change `history.scrollRestoration`, add mandatory scroll snap, enable smooth scrolling, move the document with transforms, or create an internally scrolling game container. IntersectionObserver may be used for an optional cosmetic optimization, but its callbacks are not the source of truth for state.
+Do not call `preventDefault()` on wheel, touch, or keyboard events. The owner-approved side-arrow alias may call `scrollBy` for an unmodified Right/Left key, using a smooth fixed 40px down/up step so existing reading-position-derived walking responds with the same feel as native arrow scrolling. Reduced motion makes this step immediate. The alias must ignore editable controls and disable itself when the document has real horizontal overflow. Apart from that narrow alias, do not set scroll positions, change `history.scrollRestoration`, add mandatory scroll snap, enable smooth scrolling, move the document with transforms, or create an internally scrolling game container. IntersectionObserver may be used for an optional cosmetic optimization, but its callbacks are not the source of truth for state.
 
 **Responsive Layout**
 Use one document scroller. Base HTML/CSS is a complete story with a static character-sheet caption and in-flow illustrations. Determine column widths before JS runs. The owner's snapshot-removal revision makes stat equivalents assistive-only with enhancement; measure the final enhanced geometry, and remeasure if fallback restores their footprint. Do not change a card's height when it becomes current.
@@ -410,7 +410,7 @@ Cloudflare necessarily processes network metadata as the hosting transport. This
 Supply-chain and isolation controls address the remaining practical OWASP risks: pinned dependencies/images, small request limits, bounded logs/resources, no public admin surface, least-privilege secrets, strict static serving, and reviewed public content. Container isolation is defense in depth, not a substitute for a patched NAS and restricted Docker administration.
 
 **Deployment Contract**
-Use Docker Compose v2 on a Linux NAS. Determine whether the NAS is `linux/amd64` or `linux/arm64` before choosing image manifests. No architecture is assumed here. Pin the Python base and `cloudflare/cloudflared` to tested releases and verified digests; do not fabricate a digest or deploy floating `latest`. Cloudflare documents `--token-file` as requiring `cloudflared` 2025.4.0 or later; that is a minimum capability, not a recommendation to deploy an old release.
+Use Docker Compose v2 on a Linux NAS. Determine whether the NAS is `linux/amd64` or `linux/arm64` before choosing image manifests. No architecture is assumed here. Pin the Python base and `cloudflare/cloudflared` to tested releases and verified digests; do not fabricate a digest or deploy floating `latest`. Use cloudflared's documented `TUNNEL_TOKEN` environment input only in the connector.
 
 The app image installs only exact runtime requirements, preferably with hashes, during build. Use explicit `COPY` instructions for requirements and `app/`, never `COPY . .`. A deny-by-default `.dockerignore` allows only those build inputs and the Dockerfile. Do not send PDFs, docs, tests, Git history, `.env`, NAS configuration, or secrets to the build context. Run as a fixed unprivileged UID/GID such as `10001:10001`, own application files by root and make them readable but not writable by that UID, and set `PYTHONDONTWRITEBYTECODE=1` and `PYTHONUNBUFFERED=1`.
 
@@ -474,8 +474,8 @@ services:
       - --metrics
       - 127.0.0.1:2000
       - run
-      - --token-file
-      - /run/secrets/cloudflared_token
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:?Set the dedicated tunnel token in Portainer}"
     depends_on:
       app:
         condition: service_healthy
@@ -484,7 +484,6 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
-    secrets: [cloudflared_token]
     networks: [origin, egress]
     restart: unless-stopped
     stop_grace_period: 40s
@@ -496,10 +495,6 @@ services:
 
 networks:
   egress: {}
-
-secrets:
-  cloudflared_token:
-    file: "${CLOUDFLARED_TOKEN_FILE:?Set the absolute NAS token-file path}"
 ```
 
 The numeric connector identity is an intended nonroot identity, not a claim that every image tag has been tested with it. Verify the pinned image supports this UID, can read its CA bundle and token, and runs with a read-only root and no capabilities on the actual NAS. Do not add `NET_RAW`, `NET_ADMIN`, privileged mode, host networking, Docker socket mounts, or root as a workaround for optional ICMP-proxy warnings. This tunnel needs only HTTP origin access.
@@ -511,12 +506,12 @@ Permit connector egress to the current documented Cloudflare tunnel destinations
 Token lifecycle and ownership:
 
 1. Create a remotely managed tunnel in the Cloudflare dashboard for the owner-controlled domain. The connector token is scoped to that tunnel; do not provision an account-wide certificate or API key to either container.
-2. Store only the raw tunnel token in a dedicated host file outside the checkout and Docker build context. `CLOUDFLARED_TOKEN_FILE` contains the absolute file path, never the token value. `CLOUDFLARED_IMAGE` is nonsecret image metadata. A production env file containing these paths may also live outside the checkout.
-3. Restrict the host directory to the deployment administrator. On ordinary rootful Linux without user-namespace remapping, a possible file arrangement is owner root, group 65532, mode 0440, so the connector can read but not write it. Confirm the actual NAS ACL and UID mapping; rootless/remapped Docker may need different host ownership or a specific ACL.
-4. Compose file-backed secrets are read-only bind mounts, not an encrypted secret store. Docker documents that secret `uid`, `gid`, and `mode` options are ignored for file sources. Do not claim those YAML options repair a root-owned 0600 file unreadable by the connector, and do not make the token world-readable to fix startup.
-5. Mount the file only at `/run/secrets/cloudflared_token` in `cloudflared`. The app has no secret mount or token environment variable. Do not put a token literal in a command, Compose file, image layer, shell history, screenshot, log, or public issue.
-6. Verify readability by starting the connector with the intended image/user and checking tunnel status; do not print the token. Missing, empty, or unreadable files must fail rather than falling back to an environment token.
-7. Rotate a potentially exposed token in Cloudflare, replace the protected host file, and recreate the connector. Recreating is important when an atomic host-file replacement leaves an existing bind mount pointing at the old inode. Keep backups encrypted and restricted, separate from source backups.
+2. The owner accepts authenticated Portainer stack metadata as the operational boundary for this single-administrator Docker Standalone deployment. Set raw `CLOUDFLARED_TOKEN` only in the protected stack environment. Restrict Portainer accounts, sessions, API keys, backups, and Docker administration accordingly.
+3. Compose maps `CLOUDFLARED_TOKEN` only to cloudflared's officially supported `TUNNEL_TOKEN` environment variable. The owner explicitly accepts the resulting connector environment-metadata exposure within the restricted Portainer/Docker administration boundary. The app receives no token.
+4. For command-line recovery, store the variable only in an administrator-controlled external env file with restrictive permissions and pass it through `--env-file`. Do not export it interactively, use the checkout's automatic `.env`, or enable shell tracing.
+5. Do not put a token literal in Compose YAML, Git, an image layer, command arguments, screenshots, logs, public issues, or support output. A Docker/Portainer administrator can retrieve connector environment metadata; restrict that administrator boundary accordingly.
+6. Verify the connector using container state and the Cloudflare dashboard without printing the token or dumping stack/container environments. Missing, empty, or revoked values must fail startup or authentication.
+7. Rotate a potentially exposed token in Cloudflare, update the protected Portainer variable or external env file, and redeploy the connector. Keep backups encrypted and restricted, separate from source backups.
 
 Remote routing is configured in Cloudflare, not in a local `config.yml`: publish only `pranavprem.com` to `http://app:8000`, set the origin HTTP Host Header to `pranavprem.com`, and leave HTTP/2-to-origin off. The hostname route covers `/`, `/healthz`, and approved static paths without rewriting prefixes. Unmatched hostnames/routes should end in the tunnel's 404 behavior, not a wildcard NAS route. Do not create private-network routes or a Cloudflare Access login gate for this public portfolio. Optional `www` behavior is deferred until explicitly chosen.
 
@@ -564,7 +559,7 @@ For releases, run tests, build a release-tagged app image, inspect the image con
 | Missing/blocked/broken JavaScript                    | Complete readable story and static chapter stats                       | A small fallback note is sufficient. No retry modal or infinite loading state.                                                                  |
 | Invalid client geometry / unexpected rendering error | Disable enhancement, preserve semantic content                         | Reproduce viewport/zoom/layout condition; do not log visitor data.                                                                              |
 | Flask exception                                      | Generic 500 page with safe headers                                     | Use safe error category/correlation ID; fix and redeploy.                                                                                       |
-| Unreadable or revoked token                          | Tunnel does not connect; origin may still be healthy                   | Check secret mount permissions/image UID and dashboard status; rotate/recreate if required, never print credentials.                            |
+| Missing or revoked token                             | Tunnel does not connect; origin may still be healthy                   | Check protected Portainer input, connector-only `TUNNEL_TOKEN`, and dashboard status; rotate/redeploy if required, never print credentials.     |
 | Connector cannot resolve `app` or wrong origin Host  | Public origin error or 400 while app health passes                     | Check shared origin network, `http://app:8000`, and fixed HTTP Host Header.                                                                     |
 | NAS/tunnel/DNS/edge outage                           | Cloudflare error or connection failure, not an app-controlled fallback | Check NAS power/network, container state, egress/DNS, public hostname configuration, and Cloudflare status. No offline/service-worker promise.  |
 | Version/cache mismatch                               | Browser should fall back safely if the projection version is unknown   | Revalidate HTML, replace assets together, purge affected edge assets if needed, or roll back. Avoid immutable caching of unversioned resources. |
@@ -598,7 +593,7 @@ Performance targets are release budgets to measure, not results already achieved
 2. Implement content loading/validation, Flask routes/headers, and the complete semantic Jinja story. Prove no-JS readability, static safety, and the content snapshots first.
 3. Author the four landscapes, traveler, companion, and badge art; implement the warm editorial CSS and responsive base layout without scroll interception.
 4. Add the pure state selector, document markers, passive/rAF controller, fixed-size HUD/badge rack, and deterministic SVG rendering. Prove reversibility and fallback behavior before embellishing motion.
-5. Implement and test the hardened image and explicit local/tunnel Compose overrides. Verify the NAS architecture and token-file permissions before enabling the public hostname.
+5. Implement and test the hardened image and explicit local/tunnel Compose overrides. Verify the NAS architecture, Portainer stack-secret behavior, and restricted administration before enabling the public hostname.
 6. Run lint/format checks and unit, HTTP, browser, accessibility, privacy, and deployment checks. Review final implementation against this contract, record actual outcomes/deviations in `docs/handoff.md`, and complete the documentation gate and brief retrospective.
 7. Publish only reviewed public artifacts to the owner-approved public repository after the checks. Deploy, smoke-test the public origin, and update the README and handoff with pinned images, rollback instructions, and actual deployment status. This architecture-only revision performs none of these publication/deployment actions.
 
@@ -609,12 +604,12 @@ Performance targets are release budgets to measure, not results already achieved
 | Documentation maintenance          | All seven docs exist. Keep operational results and the complete story current so another session can continue without chat or PDFs.                                                                                                                                                               |
 | Public autobiographical wording    | The story and numeric claims are authorized. Preserve first-person recollections, supplied-document attribution, and compassionate wording; avoid invented precision or expansion into confidential details, not the requested claims themselves.                                                 |
 | Source confidence                  | The lead read both PDFs with explicit permission. Resume/Profile are supplied-document evidence, not external verification; disagreements remain in `docs/story.md`. No repeat permission request or PDF read is required to use the sanitized handoff.                                           |
-| NAS compatibility                  | NAS CPU, Docker/Compose version, rootless/user-namespace settings, available memory, firewall policy, and secret-file ACLs are unknown. Validate before selecting final image digests or declaring the deployment tested.                                                                         |
-| Cloudflare ownership/configuration | Zone ownership, DNS/TLS, remote tunnel, token file, edge injection settings, and permitted egress are not provisioned by this draft. `www` is out of scope until chosen.                                                                                                                          |
+| NAS compatibility                  | NAS CPU, Docker/Compose version, available memory, firewall policy, and Portainer/Docker administration model are unknown. Validate before selecting final image digests or declaring the deployment tested.                                                                                      |
+| Cloudflare ownership/configuration | Zone ownership, DNS/TLS, remote tunnel, protected Portainer token variable, edge injection settings, and permitted egress are not provisioned by this draft. `www` is out of scope until chosen.                                                                                                  |
 | Mobile persistence tradeoff        | A large sticky theater plus a full HUD would consume the reading area. This design intentionally uses in-flow mobile landscapes and permits a nonfixed HUD at extreme zoom/short heights. Validate with the owner in a visual prototype rather than hiding text to preserve the desktop metaphor. |
 | Original art quality/IP            | The original landscapes and inline sprites were authored and visually reviewed locally. Physical-device legibility and any future commercial/license/trademark decisions remain separate checks. The companion name is provisional.                                                               |
 | Small-site availability            | One NAS and connector can be unavailable during power/network failure or release replacement. No database simplifies recovery but does not provide high availability.                                                                                                                             |
-| Dependency/edge drift              | Pin and periodically update tested releases. Recheck Cloudflare token-file behavior, injected features, logs, and Compose secret semantics against the deployed versions.                                                                                                                         |
+| Dependency/edge drift              | Pin and periodically update tested releases. Recheck Cloudflare token-environment behavior, injected features, logs, and Portainer interpolation semantics against the deployed versions.                                                                                                         |
 | Repository state                   | Public visibility is owner-approved. Local Git is initialized on `main` and `github.com/pranavprem/portfolio` exists. The handoff records commit/push and hosted CI outcomes. Never stage the workspace wholesale.                                                                                |
 
 None of these risks requires implementing a CMS, database, event bus, frontend framework, analytics system, or larger deployment platform. They are documentation completion, faithful source treatment, targeted browser/NAS validation, and operational configuration checks.
@@ -625,11 +620,11 @@ Official guidance consulted on 2026-09-06. These links document technology behav
 - Flask, Gunicorn deployment: https://flask.palletsprojects.com/en/stable/deploying/gunicorn/ . Supports the production WSGI server choice and nonroot/nonpublic-origin binding approach.
 - Flask, security considerations: https://flask.palletsprojects.com/en/stable/web-security/ . Autoescaping, resource limits, security headers, and `TRUSTED_HOSTS` inform the HTTP boundary.
 - Cloudflare, remote tunnel creation: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/ . Published hostname routes are managed remotely and point to an explicit origin service.
-- Cloudflare, tunnel run parameters: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/run-parameters/ . Documents `--token-file` from 2025.4.0, no-autoupdate, logging risks, and protocol behavior.
+- Cloudflare, tunnel run parameters: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/run-parameters/ . Documents `TUNNEL_TOKEN`, no-autoupdate, logging risks, and protocol behavior.
 - Cloudflare, origin parameters: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/origin-parameters/ . Documents HTTP Host Header and the distinction between HTTP and HTTPS origins.
 - Cloudflare, tunnel firewall requirements: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/tunnel-with-firewall/ . Documents outbound TCP/UDP 7844 and maintained destination lists.
 - Docker, networks: https://docs.docker.com/reference/compose-file/networks/ . Documents internal network isolation and explicit multi-network membership.
-- Docker, secrets: https://docs.docker.com/reference/compose-file/secrets/ and https://docs.docker.com/reference/compose-file/services/#secrets . File-backed Compose secrets use bind mounts; UID/GID/mode remapping is not implemented for those sources.
+- Docker, service environments: https://docs.docker.com/reference/compose-file/services/#environment . Portainer's protected stack input is mapped only to cloudflared's supported `TUNNEL_TOKEN`; it is not a Docker secret store.
 - Docker, service lifecycle/security: https://docs.docker.com/reference/compose-file/services/ . Documents health-dependent startup, nonroot users, read-only filesystems, capabilities, resource limits, and log rotation configuration.
 - MDN, document scroll event: https://developer.mozilla.org/en-US/docs/Web/API/Document/scroll_event . Scroll handlers must stay cheap; rAF alignment is not a frequency throttle.
 - MDN, reduced motion: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion . OS preference must remove nonessential motion rather than merely slow it down.

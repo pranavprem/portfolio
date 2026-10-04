@@ -29,6 +29,7 @@ jobs:
       - run: .venv/bin/ruff format --check .
       - run: .venv/bin/pytest -m 'not browser'
       - run: docker compose -f compose.yaml -f compose.local.yaml config --quiet
+      - run: CLOUDFLARED_TOKEN=synthetic-ci-token docker compose -f compose.yaml -f compose.tunnel.yaml config --quiet
       - run: docker compose -f compose.yaml -f compose.local.yaml up -d --build --wait app
       - name: Verify runtime image boundary
         run: >-

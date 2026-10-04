@@ -555,6 +555,8 @@ def test_side_arrows_move_the_page_and_sprite_without_intercepting_input(page, l
     })""")
     page.keyboard.press("ArrowRight")
     page.wait_for_function("before => window.scrollY > before", arg=before["scrollY"])
+    page.wait_for_timeout(500)
+    settle_layout(page)
     page.wait_for_function(
         "before => document.getElementById('travelers').getAttribute('transform') !== before",
         arg=before["position"],
@@ -563,11 +565,18 @@ def test_side_arrows_move_the_page_and_sprite_without_intercepting_input(page, l
       scrollY: window.scrollY,
       position: document.getElementById('travelers').getAttribute('transform'),
     })""")
+    assert page.evaluate("window.testScrollWrites[0][0]") == {
+        "top": 40,
+        "behavior": "smooth",
+    }
     assert after_right["position"] != before["position"]
     assert len(page.evaluate("window.testScrollWrites")) == 1
 
     page.keyboard.press("ArrowLeft")
     page.wait_for_function("before => window.scrollY < before", arg=after_right["scrollY"])
+    page.wait_for_timeout(500)
+    settle_layout(page)
+    assert page.evaluate("window.scrollY") == pytest.approx(before["scrollY"], abs=2)
     assert len(page.evaluate("window.testScrollWrites")) == 2
     assert (
         page.evaluate("""() => {
@@ -602,6 +611,12 @@ def test_side_arrows_move_the_page_and_sprite_without_intercepting_input(page, l
     }""")
     page.keyboard.press("ArrowRight")
     assert page.evaluate("window.testScrollWrites") == []
+
+    page.locator("#editable-probe").evaluate("node => node.remove()")
+    page.emulate_media(reduced_motion="reduce")
+    page.evaluate("window.testScrollWrites = []")
+    page.keyboard.press("ArrowRight")
+    assert page.evaluate("window.testScrollWrites[0][0]") == {"top": 40, "behavior": "auto"}
 
 
 def test_resize_observer_remeasures_text_reflow(page, live_server, snapshots):

@@ -12,7 +12,7 @@ const REGIONS = {
   "bay-area": "San Francisco",
 };
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
-const SIDE_ARROW_SCROLL_STEP = 80;
+const SIDE_ARROW_SCROLL_STEP = 40;
 
 function scrollWithSideArrow(event) {
   if (
@@ -31,7 +31,9 @@ function scrollWithSideArrow(event) {
     return;
   window.scrollBy({
     top: (event.key === "ArrowRight" ? 1 : -1) * SIDE_ARROW_SCROLL_STEP,
-    behavior: "auto",
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth",
   });
 }
 

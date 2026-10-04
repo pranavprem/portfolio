@@ -12,8 +12,8 @@ services:
       - --metrics
       - 127.0.0.1:2000
       - run
-      - --token-file
-      - /run/secrets/cloudflared_token
+    environment:
+      TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:?Set the dedicated tunnel token in protected Portainer stack metadata}"
     depends_on:
       app:
         condition: service_healthy
@@ -23,7 +23,6 @@ services:
     security_opt: ["no-new-privileges:true"]
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m,mode=1777
-    secrets: [cloudflared_token]
     networks: [origin, egress]
     restart: unless-stopped
     stop_grace_period: 40s
@@ -36,7 +35,3 @@ services:
 
 networks:
   egress: {}
-
-secrets:
-  cloudflared_token:
-    file: "${CLOUDFLARED_TOKEN_FILE:?Set the absolute protected token-file path outside the checkout}"
