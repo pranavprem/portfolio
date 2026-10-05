@@ -5,12 +5,14 @@ const STAT_KEYS = [
   "charisma",
   "experience",
 ];
+
 const REGIONS = {
   goa: "Goa",
   pune: "Pune",
   "san-jose": "San Jose",
   "bay-area": "San Francisco",
 };
+
 const OBJECT_BY_CHAPTER = {
   spawn: "controller",
   school: "backpack",
@@ -24,65 +26,27 @@ const OBJECT_BY_CHAPTER = {
   "bot-workshop": "bot-console",
   continuing: "agent-nodes",
 };
+
+const OBJECT_LABELS = {
+  controller: "Controller",
+  backpack: "Backpack",
+  compass: "Compass",
+  laptop: "Laptop",
+  "java-mug": "Java mug",
+  "automation-gear": "Automation gear",
+  books: "Books",
+  toolkit: "Toolkit",
+  "cloud-terminal": "Cloud terminal",
+  "bot-console": "Bot console",
+  "agent-nodes": "Agent nodes",
+};
+
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
-const SIDE_ARROW_SCROLL_STEP = 40;
 
-function scrollWithSideArrow(event) {
-  if (
-    !["ArrowLeft", "ArrowRight"].includes(event.key) ||
-    event.defaultPrevented ||
-    event.isComposing ||
-    event.altKey ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.shiftKey ||
-    (typeof event.target?.closest === "function" &&
-      event.target.closest("input, textarea, select, [contenteditable]")) ||
-    document.documentElement.scrollWidth >
-      document.documentElement.clientWidth + 1
-  )
-    return;
-  window.scrollBy({
-    top: (event.key === "ArrowRight" ? 1 : -1) * SIDE_ARROW_SCROLL_STEP,
-    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? "auto"
-      : "smooth",
-  });
-}
-
-// Absolute snapshots make a rewind, a scrollbar jump, and normal travel identical.
-export function deriveState(
-  game,
-  anchors,
-  readingPosition,
-  reducedMotion = false,
-) {
-  let index = -1;
-  for (let i = 0; i < anchors.length; i += 1) {
-    if (anchors[i] > readingPosition) break;
-    index = i;
-  }
+// The selected chapter is the save state. Absolute snapshots keep backtracking exact.
+export function deriveState(game, eventIndex) {
+  const index = clamp(eventIndex, -1, game.events.length - 1);
   const event = index < 0 ? game.initial : game.events[index];
-  const next = game.events[index + 1];
-  let position = { ...event.position };
-  let frame = 0;
-  if (!reducedMotion && index >= 0 && next?.region_id === event.region_id) {
-    const fraction = clamp(
-      (readingPosition - anchors[index]) /
-        (anchors[index + 1] - anchors[index]),
-      0,
-      1,
-    );
-    position = {
-      x: Math.round(
-        event.position.x + (next.position.x - event.position.x) * fraction,
-      ),
-      y: Math.round(
-        event.position.y + (next.position.y - event.position.y) * fraction,
-      ),
-    };
-    frame = Math.floor(fraction * 12) % 4;
-  }
   return {
     index,
     stats: index < 0 ? event.stats : event.stats_after,
@@ -90,32 +54,8 @@ export function deriveState(
     region: event.region_id,
     mood: event.mood,
     object: OBJECT_BY_CHAPTER[event.chapter_id] ?? "controller",
-    position,
-    frame,
+    position: { ...event.position },
   };
-}
-
-// The hop is a tiny scroll timeline, not a timed animation that breaks on rewind.
-export function deriveCelebration(
-  anchors,
-  readingPosition,
-  reducedMotion = false,
-) {
-  if (reducedMotion) return { lift: 0, active: false };
-  let index = -1;
-  for (let i = 0; i < anchors.length && anchors[i] <= readingPosition; i += 1)
-    index = i;
-  if (index < 0) return { lift: 0, active: false };
-  const length = Math.min(
-    180,
-    (anchors[index + 1] ?? Infinity) - anchors[index],
-  );
-  const phase = clamp(
-    (readingPosition - anchors[index]) / Math.max(1, length),
-    0,
-    1,
-  );
-  return { lift: Math.round(Math.sin(phase * Math.PI) * 8), active: phase < 1 };
 }
 
 function validGame(game, markers, badgeIds) {
@@ -127,11 +67,16 @@ function validGame(game, markers, badgeIds) {
     !markers.length
   )
     return false;
+
   const snapshots = [game.initial, ...game.events];
   const orderedBadges = [...badgeIds];
-  const validSnapshots = snapshots.every((event, i) => {
-    const stats = i === 0 ? event.stats : event.stats_after;
-    const badges = i === 0 ? event.badges : event.badges_after;
+  const validSnapshots = snapshots.every((event, index) => {
+    const stats = index === 0 ? event.stats : event.stats_after;
+    const badges = index === 0 ? event.badges : event.badges_after;
+    const previousExperience =
+      index < 2
+        ? game.initial.stats.experience
+        : snapshots[index - 1].stats_after.experience;
     return (
       stats &&
       Object.keys(stats).length === STAT_KEYS.length &&
@@ -139,11 +84,7 @@ function validGame(game, markers, badgeIds) {
         (key) =>
           Number.isInteger(stats[key]) && stats[key] >= 0 && stats[key] <= 10,
       ) &&
-      (i === 0 ||
-        stats.experience >=
-          (i === 1
-            ? game.initial.stats.experience
-            : snapshots[i - 1].stats_after.experience)) &&
+      (index === 0 || stats.experience >= previousExperience) &&
       Object.hasOwn(REGIONS, event.region_id) &&
       ["bright", "quiet", "fog"].includes(event.mood) &&
       Number.isFinite(event.position?.x) &&
@@ -154,10 +95,11 @@ function validGame(game, markers, badgeIds) {
       event.position.y <= 180 &&
       Array.isArray(badges) &&
       new Set(badges).size === badges.length &&
-      badges.every((id, index) => id === orderedBadges[index]) &&
-      (i < 2 || badges.length >= snapshots[i - 1].badges_after.length)
+      badges.every((id, badgeIndex) => id === orderedBadges[badgeIndex]) &&
+      (index < 2 || badges.length >= snapshots[index - 1].badges_after.length)
     );
   });
+
   return (
     validSnapshots &&
     game.initial.badges.length === 0 &&
@@ -166,48 +108,97 @@ function validGame(game, markers, badgeIds) {
     ) &&
     new Set(game.events.map((event) => event.id)).size === markers.length &&
     game.events.every(
-      (event, i) =>
-        event.id === markers[i].dataset.checkpoint &&
-        event.chapter_id === markers[i].closest(".chapter").id,
+      (event, index) =>
+        event.id === markers[index].dataset.checkpoint &&
+        event.chapter_id === markers[index].closest(".chapter").id,
     )
   );
 }
 
 function startJourney(root) {
   const html = document.documentElement;
-  const hud = document.getElementById("character-sheet");
-  const status = document.getElementById("sheet-status");
+  const gameShell = root.querySelector(".game-shell");
+  const screens = [...root.querySelectorAll(".game-screen")];
+  const chapters = [...root.querySelectorAll(".chapter")];
+  const fallbackOnly = [
+    ...root.querySelectorAll(
+      ".chapter-header, .fallback-landscape, .chapter-stats",
+    ),
+  ];
   const markers = [...root.querySelectorAll("[data-checkpoint]")];
-  const achievements = [...root.querySelectorAll("[data-achievement]")];
-  const statRows = [...hud.querySelectorAll("[data-stat]")];
-  const badgeSlots = [...hud.querySelectorAll("[data-badge]")];
-  const routes = [...root.querySelectorAll("[data-route]")];
+  const statRows = [...root.querySelectorAll("[data-stat]")];
+  const badgeSlots = [...root.querySelectorAll("[data-badge]")];
   const art = [...root.querySelectorAll("[data-region-art]")];
   const objectSprites = [...root.querySelectorAll("[data-object-sprite]")];
+  const status = document.getElementById("sheet-status");
+  const statsPanel = document.getElementById("character-sheet");
+  const questLog = document.getElementById("bonus");
+  const statsButton = root.querySelector('[data-action="toggle-stats"]');
+  const questsButton = root.querySelector('[data-action="toggle-quests"]');
+  const inspectButton = root.querySelector('[data-action="inspect"]');
+  const backButton = root.querySelector('[data-action="back"]');
+  const advanceLabel = document.getElementById("advance-label");
+  const beatProgress = document.getElementById("beat-progress");
+  const chapterProgress = document.getElementById("chapter-progress-fill");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const beatIndexes = screens.map(() => 0);
   let game;
-  let gameValid = false;
-  let anchors = [];
-  let achievementAnchors = [];
-  let readingOffset = 0;
-  let maxScroll = 0;
-  let geometryDirty = true;
-  let lastIndex = null;
-  let frameRequest = 0;
-  let failed = false;
+  let screenIndex = 0;
+  let lastEventIndex = null;
+  let touchStart = null;
+  let focusedHeading = null;
 
-  function render(
-    state,
-    live = true,
-    celebration = { lift: 0, active: false },
-  ) {
-    if (state.index !== lastIndex) {
+  function eventIndexForScreen() {
+    if (screenIndex === 0) return -1;
+    return Math.min(screenIndex - 1, game.events.length - 1);
+  }
+
+  function currentScreen() {
+    return screens[screenIndex];
+  }
+
+  function currentBeats() {
+    return [...currentScreen().querySelectorAll(".dialogue-beat")];
+  }
+
+  function closePanels(returnFocus = false) {
+    const activeToggle = questLog.classList.contains("is-open")
+      ? questsButton
+      : statsPanel.classList.contains("is-open")
+        ? statsButton
+        : null;
+    statsPanel.classList.remove("is-open");
+    questLog.classList.remove("is-open");
+    statsPanel.setAttribute("aria-hidden", "true");
+    questLog.setAttribute("aria-hidden", "true");
+    statsPanel.inert = true;
+    questLog.inert = true;
+    statsButton.setAttribute("aria-expanded", "false");
+    questsButton.setAttribute("aria-expanded", "false");
+    gameShell.inert = false;
+    if (returnFocus) activeToggle?.focus();
+  }
+
+  function openPanel(panel, button) {
+    closePanels();
+    panel.classList.add("is-open");
+    panel.removeAttribute("aria-hidden");
+    panel.inert = false;
+    button.setAttribute("aria-expanded", "true");
+    if (panel === questLog) gameShell.inert = true;
+    panel.querySelector(".panel-close")?.focus();
+  }
+
+  function renderState(state) {
+    if (state.index !== lastEventIndex) {
       statRows.forEach((row) => {
         const value = state.stats[row.dataset.stat];
         row.querySelector(".stat-value").textContent = value;
         row
           .querySelectorAll(".stat-pips > span")
-          .forEach((pip, i) => pip.classList.toggle("filled", i < value));
+          .forEach((pip, index) =>
+            pip.classList.toggle("filled", index < value),
+          );
       });
       badgeSlots.forEach((slot) => {
         const earned = state.badges.includes(slot.dataset.badge);
@@ -223,44 +214,25 @@ function startJourney(root) {
       document.getElementById("badge-count").textContent = String(
         state.badges.length,
       ).padStart(2, "0");
-      const chapter =
-        state.index < 0
-          ? 0
-          : Number(
-              markers[state.index].closest(".chapter").dataset.chapterNumber,
-            );
-      status.textContent = live
-        ? `Chapter ${String(chapter).padStart(2, "0")} / 11`
-        : "Starting stats. Later stats are beside the story.";
-      markers.forEach((marker, i) =>
-        marker.classList.toggle("is-current", live && i === state.index),
-      );
       art.forEach((image) =>
         image.classList.toggle(
           "current",
           image.dataset.regionArt === state.region,
         ),
       );
-      routes.forEach((route, i) => {
-        route.classList.toggle(
-          "visited",
-          i < Object.keys(REGIONS).indexOf(state.region),
-        );
-        if (route.dataset.route === state.region)
-          route.setAttribute("aria-current", "location");
-        else route.removeAttribute("aria-current");
-      });
-      document.getElementById("world-label").textContent =
-        REGIONS[state.region];
-      document.getElementById("overworld").dataset.mood = state.mood;
       objectSprites.forEach((object) =>
         object.classList.toggle(
           "current",
           object.dataset.objectSprite === state.object,
         ),
       );
+      document.getElementById("world-label").textContent =
+        REGIONS[state.region];
+      document.getElementById("scene-object-label").textContent =
+        OBJECT_LABELS[state.object];
+      document.getElementById("overworld").dataset.mood = state.mood;
       root.dataset.checkpointIndex = state.index;
-      lastIndex = state.index;
+      lastEventIndex = state.index;
     }
     document
       .getElementById("journey-object-track")
@@ -268,116 +240,146 @@ function startJourney(root) {
         "transform",
         `translate(${state.position.x} ${state.position.y})`,
       );
-    const marker = document.getElementById("journey-marker");
-    const objectStep = !celebration.active && state.frame % 2 ? 1 : 0;
-    marker.dataset.frame = state.frame;
-    marker.dataset.celebrating = String(celebration.active);
-    marker.setAttribute(
-      "transform",
-      `translate(0 ${-celebration.lift - objectStep})`,
-    );
-    document
-      .getElementById("hud-object-marker")
-      .setAttribute(
-        "transform",
-        `translate(16 ${30 - Math.round(celebration.lift / 3)}) scale(.8)`,
-      );
   }
 
-  function measure() {
-    const height = html.clientHeight;
-    const theater = hud.closest(".theater");
-    const theaterHeight = theater.getBoundingClientRect().height;
-    // Keep enough unobscured space for enlarged text and very short viewports.
-    const theaterFlow =
-      theaterHeight > height * 0.62 || height - theaterHeight < 240;
-    html.dataset.theaterFlow = String(theaterFlow);
-    const stageBottom = theaterFlow
-      ? 0
-      : Math.max(0, theater.getBoundingClientRect().bottom);
-    html.style.setProperty("--stage-height", `${Math.ceil(stageBottom)}px`);
-    const top = stageBottom ? stageBottom + 12 : 16;
-    readingOffset = top + 0.15 * (height - top);
-    anchors = markers.map((marker) => {
-      const chapter = marker.closest(".chapter");
-      const target =
-        chapter.querySelector("[data-checkpoint]") === marker
-          ? chapter
-          : marker;
-      return target.getBoundingClientRect().top + window.scrollY;
+  function render() {
+    const screen = currentScreen();
+    const beats = currentBeats();
+    const beatIndex = clamp(beatIndexes[screenIndex], 0, beats.length - 1);
+    beatIndexes[screenIndex] = beatIndex;
+    const eventIndex = eventIndexForScreen();
+
+    screens.forEach((candidate, index) => {
+      const current = index === screenIndex;
+      candidate.classList.toggle("is-current-screen", current);
+      candidate.setAttribute("aria-hidden", String(!current));
     });
-    achievementAnchors = achievements.map(
-      (marker) => marker.getBoundingClientRect().top + window.scrollY,
+    chapters.forEach((chapter) => {
+      const current = chapter.contains(screen);
+      chapter.classList.toggle("is-current-chapter", current);
+      chapter.setAttribute("aria-hidden", String(!current));
+    });
+    beats.forEach((beat, index) =>
+      beat.classList.toggle("is-current-beat", index === beatIndex),
     );
-    maxScroll = Math.max(0, document.scrollingElement.scrollHeight - height);
-    if (
-      anchors.some(
-        (position, i) =>
-          !Number.isFinite(position) || (i > 0 && position <= anchors[i - 1]),
-      )
-    )
-      throw new Error("Invalid checkpoint geometry");
-    if (
-      achievementAnchors.some(
-        (position, i) =>
-          !Number.isFinite(position) ||
-          (i > 0 && position <= achievementAnchors[i - 1]),
-      )
-    ) {
-      throw new Error("Invalid achievement geometry");
+
+    const finalBeat = beatIndex === beats.length - 1;
+    screen.classList.toggle("is-reward-visible", finalBeat);
+    document
+      .getElementById("journey-marker")
+      .classList.toggle(
+        "is-celebrating",
+        finalBeat &&
+          screen.dataset.screenKind === "chapter" &&
+          !reducedMotion.matches,
+      );
+
+    renderState(deriveState(game, eventIndex));
+    const chapter = screen.closest(".chapter");
+    status.textContent = chapter
+      ? `Chapter ${chapter.dataset.chapterNumber} / 11 - ${REGIONS[chapter.dataset.region]}`
+      : screen.dataset.screenKind === "ending"
+        ? "Epilogue - San Jose"
+        : "Title screen";
+    chapterProgress.style.width = `${(screenIndex / (screens.length - 1)) * 100}%`;
+    root.dataset.screenIndex = screenIndex;
+    root.dataset.beatIndex = beatIndex;
+    beatProgress.textContent =
+      beats.length > 1
+        ? `Dialogue ${beatIndex + 1} / ${beats.length}`
+        : status.textContent;
+    backButton.disabled = screenIndex === 0 && beatIndex === 0;
+    inspectButton.hidden = screen.dataset.screenKind !== "chapter";
+    inspectButton.setAttribute(
+      "aria-expanded",
+      String(screen.classList.contains("is-inspecting")),
+    );
+
+    if (screen.classList.contains("is-inspecting")) {
+      advanceLabel.textContent = "Return to story";
+    } else if (screenIndex === 0) {
+      advanceLabel.textContent = "Start game";
+    } else if (!finalBeat) {
+      advanceLabel.textContent = "Continue";
+    } else if (screen.dataset.screenKind === "ending") {
+      advanceLabel.textContent = "Open quest log";
+    } else {
+      advanceLabel.textContent = "Travel onward";
     }
-    geometryDirty = false;
+  }
+
+  function moveToScreen(nextIndex, direction = 1) {
+    const previousScreen = currentScreen();
+    previousScreen.classList.remove("is-inspecting");
+    screenIndex = clamp(nextIndex, 0, screens.length - 1);
+    const beats = [...screens[screenIndex].querySelectorAll(".dialogue-beat")];
+    beatIndexes[screenIndex] =
+      direction < 0 ? Math.max(0, beats.length - 1) : 0;
+    lastEventIndex = null;
+    render();
+    focusedHeading?.removeAttribute("tabindex");
+    focusedHeading = currentScreen().querySelector("h1, h2, h3");
+    focusedHeading?.setAttribute("tabindex", "-1");
+    focusedHeading?.focus({ preventScroll: true });
+  }
+
+  function advance() {
+    const screen = currentScreen();
+    if (screen.classList.contains("is-inspecting")) {
+      screen.classList.remove("is-inspecting");
+      render();
+      return;
+    }
+    const beats = currentBeats();
+    if (beatIndexes[screenIndex] < beats.length - 1) {
+      beatIndexes[screenIndex] += 1;
+      render();
+      return;
+    }
+    if (screenIndex < screens.length - 1) moveToScreen(screenIndex + 1);
+    else openPanel(questLog, questsButton);
+  }
+
+  function back() {
+    const screen = currentScreen();
+    if (screen.classList.contains("is-inspecting")) {
+      screen.classList.remove("is-inspecting");
+      render();
+      return;
+    }
+    if (beatIndexes[screenIndex] > 0) {
+      beatIndexes[screenIndex] -= 1;
+      render();
+      return;
+    }
+    if (screenIndex > 0) moveToScreen(screenIndex - 1, -1);
   }
 
   function fallback() {
-    failed = true;
-    cancelAnimationFrame(frameRequest);
+    closePanels();
     html.classList.remove("enhanced");
-    html.removeAttribute("data-theater-flow");
-    html.style.removeProperty("--stage-height");
-    lastIndex = null;
-    if (gameValid) {
-      try {
-        render(deriveState(game, [], 0, true), false);
-      } catch {
-        hud.hidden = true;
-      }
-    } else {
-      hud.hidden = true;
-    }
-    status.textContent = "Paper edition. The stats are beside the story.";
-  }
-
-  function update() {
-    frameRequest = 0;
-    if (failed) return;
-    try {
-      if (geometryDirty) measure();
-      const readingPosition =
-        clamp(window.scrollY, 0, maxScroll) + readingOffset;
-      render(
-        deriveState(game, anchors, readingPosition, reducedMotion.matches),
-        true,
-        deriveCelebration(
-          achievementAnchors,
-          readingPosition,
-          reducedMotion.matches,
-        ),
+    screens.forEach((screen) => {
+      screen.classList.remove(
+        "is-current-screen",
+        "is-inspecting",
+        "is-reward-visible",
       );
-    } catch {
-      fallback();
-    }
-  }
-
-  function schedule(remeasure = false) {
-    if (failed) return;
-    geometryDirty ||= remeasure;
-    if (!frameRequest) frameRequest = requestAnimationFrame(update);
+      screen.removeAttribute("aria-hidden");
+    });
+    root
+      .querySelectorAll(".chapter")
+      .forEach((chapter) => chapter.classList.remove("is-current-chapter"));
+    chapters.forEach((chapter) => chapter.removeAttribute("aria-hidden"));
+    fallbackOnly.forEach((node) => node.removeAttribute("aria-hidden"));
+    statsPanel.inert = false;
+    questLog.inert = false;
+    status.textContent = "Opening stats. The complete story follows.";
   }
 
   try {
     game = JSON.parse(root.dataset.game);
     if (
+      screens.length !== markers.length + 2 ||
       statRows.length !== STAT_KEYS.length ||
       statRows.some((row, index) => row.dataset.stat !== STAT_KEYS[index]) ||
       !validGame(
@@ -387,28 +389,81 @@ function startJourney(root) {
       )
     )
       throw new Error("Invalid story projection");
-    gameValid = true;
+
     html.classList.add("enhanced");
-    measure();
-    update();
-    document.addEventListener("scroll", () => schedule(), { passive: true });
-    document.addEventListener("keydown", scrollWithSideArrow);
-    window.addEventListener("resize", () => schedule(true), { passive: true });
-    window.visualViewport?.addEventListener("resize", () => schedule(true), {
-      passive: true,
+    fallbackOnly.forEach((node) => node.setAttribute("aria-hidden", "true"));
+    statsPanel.setAttribute("aria-hidden", "true");
+    questLog.setAttribute("aria-hidden", "true");
+    statsPanel.inert = true;
+    questLog.inert = true;
+    render();
+
+    root.addEventListener("click", (event) => {
+      const action = event.target.closest("[data-action]")?.dataset.action;
+      if (!action) return;
+      if (action === "advance") advance();
+      else if (action === "back") back();
+      else if (action === "inspect") {
+        currentScreen().classList.toggle("is-inspecting");
+        render();
+      } else if (action === "toggle-stats") {
+        if (statsPanel.classList.contains("is-open")) closePanels(true);
+        else openPanel(statsPanel, statsButton);
+      } else if (action === "toggle-quests") {
+        if (questLog.classList.contains("is-open")) closePanels(true);
+        else openPanel(questLog, questsButton);
+      } else if (action === "close-panels") closePanels(true);
     });
-    window.addEventListener("pageshow", () => schedule(true));
-    window.addEventListener("load", () => schedule(true));
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) schedule(true);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.key === "Escape") {
+        closePanels(true);
+        return;
+      }
+      if (
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey ||
+        (typeof event.target?.closest === "function" &&
+          event.target.closest(
+            "a, button, input, textarea, select, [contenteditable]",
+          ))
+      )
+        return;
+      if (["ArrowRight", "Enter", " "].includes(event.key)) {
+        event.preventDefault();
+        advance();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        back();
+      }
     });
-    reducedMotion.addEventListener("change", () => schedule());
-    if ("ResizeObserver" in window) {
-      const observer = new ResizeObserver(() => schedule(true));
-      observer.observe(root.querySelector(".story-track"));
-      observer.observe(hud);
-    }
-    document.fonts?.ready.then(() => schedule(true));
+
+    gameShell.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (event.pointerType === "touch")
+          touchStart = { x: event.clientX, y: event.clientY };
+      },
+      { passive: true },
+    );
+    gameShell.addEventListener(
+      "pointerup",
+      (event) => {
+        if (!touchStart || event.pointerType !== "touch") return;
+        const x = event.clientX - touchStart.x;
+        const y = event.clientY - touchStart.y;
+        touchStart = null;
+        if (Math.abs(x) < 52 || Math.abs(y) > Math.abs(x) * 0.75) return;
+        if (x < 0) advance();
+        else back();
+      },
+      { passive: true },
+    );
+    reducedMotion.addEventListener("change", render);
+    window.addEventListener("pageshow", render);
   } catch {
     fallback();
   }

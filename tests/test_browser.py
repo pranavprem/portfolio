@@ -1,8 +1,7 @@
-"""Real-engine checks under the application's enforced CSP, without a shell server."""
+"""Real-engine checks for the chapter-adventure enhancement and readable fallback."""
 
 import html
 import json
-import math
 import random
 import re
 from copy import deepcopy
@@ -29,29 +28,10 @@ OBJECTS_BY_SNAPSHOT = [
     "agent-nodes",
 ]
 
-GEOMETRY = """() => {
-  const html = document.documentElement;
-  const hud = document.getElementById('character-sheet').getBoundingClientRect();
-  const theater = document.querySelector('.theater').getBoundingClientRect();
-  const height = html.clientHeight;
-  const flow = html.dataset.theaterFlow === 'true';
-  const top = flow ? 16 : theater.bottom + 12;
-  return {
-    height, flow, top, offset: top + .15 * (height - top),
-    maxScroll: Math.max(0, document.scrollingElement.scrollHeight - height),
-    scroll: window.scrollY, hudHeight: hud.height, stageHeight: theater.height,
-    stageTop: theater.top, stageBottom: theater.bottom,
-    anchors: [...document.querySelectorAll('.story-card[data-checkpoint]')]
-      .map(node => {
-        const chapter = node.closest('.chapter');
-        const target = chapter.querySelector('[data-checkpoint]') === node ? chapter : node;
-        return target.getBoundingClientRect().top + window.scrollY;
-      })
-  };
-}"""
-
 HUD = """() => ({
   index: Number(document.getElementById('journey').dataset.checkpointIndex),
+  screen: Number(document.getElementById('journey').dataset.screenIndex),
+  beat: Number(document.getElementById('journey').dataset.beatIndex),
   stats: Object.fromEntries([...document.querySelectorAll('[data-stat]')]
     .map(row => [row.dataset.stat, Number(row.querySelector('.stat-value').textContent)])),
   pips: Object.fromEntries([...document.querySelectorAll('[data-stat]')]
@@ -60,57 +40,24 @@ HUD = """() => ({
   region: document.querySelector('[data-region-art].current').dataset.regionArt,
   mood: document.getElementById('overworld').dataset.mood,
   object: document.querySelector('#journey-marker .object-sprite.current').dataset.objectSprite,
-  frame: Number(document.getElementById('journey-marker').dataset.frame),
   transform: document.getElementById('journey-object-track').getAttribute('transform')
 })"""
 
 
-def settle_layout(page):
+def settle(page):
     page.evaluate("""async () => {
       await document.fonts.ready;
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     }""")
 
 
-def settle_scroll(page, edge=None):
-    # Playwright's string-predicate polling uses eval; keep the real CSP enforced.
-    page.evaluate(
-        """async edge => {
-          const deadline = performance.now() + 5000;
-          let settled = 0;
-          let previous = window.scrollY;
-          while (performance.now() < deadline) {
-            await new Promise(resolve => requestAnimationFrame(resolve));
-            const target = edge === 'bottom' ? document.scrollingElement.scrollHeight
-                - document.documentElement.clientHeight : edge === 'top' ? 0 : previous;
-            settled = Math.abs(window.scrollY - target) <= 1 ? settled + 1 : 0;
-            previous = window.scrollY;
-            if (settled === 3) return;
-          }
-          throw new Error('Native scrolling did not settle at the requested position');
-        }""",
-        edge,
-    )
-
-
-def open_journey(page, live_server):
+def open_game(page, live_server):
     response = page.goto(live_server + "/")
     assert response.status == 200
     expect(page.locator("html")).to_have_class("enhanced")
-    settle_layout(page)
-
-
-def scroll_to_checkpoint(page, index, fraction=0):
-    geometry = page.evaluate(GEOMETRY)
-    if index < 0:
-        target = 0
-    else:
-        anchor = geometry["anchors"][index]
-        following = geometry["anchors"][index + 1] if index < 11 else anchor + 100
-        target = anchor - geometry["offset"] + 2 + fraction * (following - anchor)
-    page.evaluate("y => window.scrollTo(0, y)", target)
-    expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", str(index))
-    settle_layout(page)
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
+    expect(page.locator('.game-screen[data-screen-kind="intro"]')).to_be_visible()
+    settle(page)
 
 
 def assert_hud(page, expected):
@@ -120,58 +67,46 @@ def assert_hud(page, expected):
     assert actual["object"] == OBJECTS_BY_SNAPSHOT[expected["index"] + 1]
     assert actual["pips"] == expected["stats"]
     expect(page.locator("#badge-count")).to_have_text(f"{len(expected['badges']):02d}")
-    slots = page.locator("li[data-badge]")
-    assert slots.count() == 11
-    for index in range(11):
-        slot = slots.nth(index)
-        if index < len(expected["badges"]):
-            assert slot.get_attribute("aria-hidden") is None
-            assert slot.get_attribute("aria-label")
-        else:
-            expect(slot).to_have_attribute("aria-hidden", "true")
-            assert slot.get_attribute("aria-label") is None
     return actual
 
 
-def assert_matches_geometry(page, snapshots):
-    geometry = page.evaluate(GEOMETRY)
-    cursor = min(max(geometry["scroll"], 0), geometry["maxScroll"]) + geometry["offset"]
-    index = max((i for i, anchor in enumerate(geometry["anchors"]) if anchor <= cursor), default=-1)
+def advance_to_next_screen(page):
+    before = int(page.locator("#journey").get_attribute("data-screen-index"))
+    for _ in range(10):
+        page.locator('[data-action="advance"]').click()
+        after = int(page.locator("#journey").get_attribute("data-screen-index"))
+        if after != before:
+            settle(page)
+            return after
+    raise AssertionError("The current scene could not be completed")
+
+
+def go_to_event(page, index):
+    target_screen = index + 1
+    while int(page.locator("#journey").get_attribute("data-screen-index")) < target_screen:
+        advance_to_next_screen(page)
     expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", str(index))
-    assert_hud(page, snapshots[index + 1])
 
 
-def assert_complete_story(page, story_document, snapshots):
+def assert_complete_story(page, story_document, snapshots, *, visible):
     expect(page.locator(".chapter")).to_have_count(11)
     cards = page.locator(".story-card[data-checkpoint]")
     expect(cards).to_have_count(12)
     for card in [card for chapter in story_document["chapters"] for card in chapter["cards"]]:
         node = page.locator(f'[data-checkpoint="{card["id"]}"]')
         expect(node.locator(".story-prose")).to_have_text(card["body"].split("\n\n"))
-        for paragraph in node.locator(".story-prose").all():
-            expect(paragraph).to_be_visible()
-        expect(page.locator(f'[data-bonus-for="{card["id"]}"] .field-notes li')).to_have_text(
-            card["facts"]
-        )
+        expect(node.locator(".field-notes li")).to_have_text(card["facts"])
+        if visible:
+            for paragraph in node.locator(".story-prose").all():
+                expect(paragraph).to_be_visible()
     for index, expected in enumerate(snapshots[1:]):
         expect(cards.nth(index).locator(".chapter-stats dd")).to_have_text(
             [f"{value}/10" for value in expected["stats"].values()]
         )
     expect(page.locator(".achievement-note")).to_have_count(len(story_document["achievements"]))
-    for achievement in story_document["achievements"]:
-        node = page.locator(f"#achievement-{achievement['id']}")
-        expect(node.locator("h3")).to_have_text(achievement["heading"])
-        expect(node.locator("p:not(.eyebrow)")).to_have_text(achievement["body"])
-        expect(node.locator("a")).to_have_text(list(achievement["links"]))
-    expect(page.locator(".loot .milestone-label")).to_have_text(
+    expect(page.locator(".loot strong")).to_have_text(
         [badge["label"] for badge in story_document["badges"]]
     )
-    for badge in story_document["badges"]:
-        expect(page.locator(f'[data-achievement="story-{badge["id"]}"]')).to_contain_text(
-            badge["description"]
-        )
-    expect(page.locator(".inventory-ledger")).to_have_count(0)
-    expect(page.locator("button, input, form, [tabindex], [role=application]")).to_have_count(0)
 
 
 @pytest.fixture
@@ -189,207 +124,202 @@ def observations(page):
     return result
 
 
-def test_pure_selector_thresholds_equality_and_random_rewinds(page, live_server, game, snapshots):
-    open_journey(page, live_server)
-    anchors = [700, 1220.5, 1890, 2520, 3340, 3790, 4801, 5590, 6430, 7200, 7711, 8690]
-    positions = [-100_000, 0, 100_000]
-    positions += [anchor + delta for anchor in anchors for delta in (-0.001, 0, 0.001)]
-    positions += [
-        start + (end - start) * 0.21 for start, end in zip(anchors[:-1], anchors[1:], strict=True)
-    ]
-    randomized = positions * 3
-    random.Random(20260906).shuffle(randomized)  # noqa: S311 - reproducible test order, not security
+def test_pure_chapter_state_is_absolute_and_order_independent(page, live_server, game, snapshots):
+    open_game(page, live_server)
+    indexes = list(range(-4, 17)) * 3
+    random.Random(20261004).shuffle(indexes)  # noqa: S311 - deterministic test order
     result = page.evaluate(
-        """async ({game, anchors, positions}) => {
-      const {deriveState} = await import('/static/story.js');
-      const before = JSON.stringify(game);
-      const states = positions.map(position => deriveState(game, anchors, position));
-      return {states, unchanged: JSON.stringify(game) === before,
-        opening: deriveState(game, [], 0),
-        reduced: positions.map(position => deriveState(game, anchors, position, true))};
-    }""",
-        {"game": game, "anchors": anchors, "positions": randomized},
+        """async ({game, indexes}) => {
+          const {deriveState} = await import('/static/story.js');
+          const before = JSON.stringify(game);
+          return {states: indexes.map(index => deriveState(game, index)),
+            unchanged: JSON.stringify(game) === before};
+        }""",
+        {"game": game, "indexes": indexes},
     )
     assert result["unchanged"]
-    assert result["opening"]["index"] == -1
     seen = {}
-    for cursor, state, reduced in zip(randomized, result["states"], result["reduced"], strict=True):
-        index = max((i for i, anchor in enumerate(anchors) if anchor <= cursor), default=-1)
+    for requested, state in zip(indexes, result["states"], strict=True):
+        index = max(-1, min(requested, 11))
         expected = snapshots[index + 1]
         for key in ("index", "stats", "badges", "region", "mood"):
-            assert state[key] == reduced[key] == expected[key]
-        event = game["initial"] if index < 0 else game["events"][index]
-        next_event = game["events"][index + 1] if index < 11 else None
-        position, frame = event["position"], 0
-        if index >= 0 and next_event and next_event["region_id"] == event["region_id"]:
-            fraction = (cursor - anchors[index]) / (anchors[index + 1] - anchors[index])
-            position = {
-                axis: math.floor(value + (next_event["position"][axis] - value) * fraction + 0.5)
-                for axis, value in event["position"].items()
-            }
-            frame = math.floor(fraction * 12) % 4
-        assert state["position"] == position
-        assert state["frame"] == frame
+            assert state[key] == expected[key]
         assert state["object"] == OBJECTS_BY_SNAPSHOT[index + 1]
-        assert reduced["position"] == event["position"] and reduced["frame"] == 0
-        assert 20 <= state["position"]["x"] <= 300 and 0 <= state["position"]["y"] <= 180
-        if cursor in seen:
-            assert state == seen[cursor]
-        seen[cursor] = state
+        assert 20 <= state["position"]["x"] <= 300
+        assert 0 <= state["position"]["y"] <= 180
+        if requested in seen:
+            assert state == seen[requested]
+        seen[requested] = state
 
 
-def test_real_scroll_all_snapshots_rewind_and_jump(page, live_server, snapshots, observations):
-    open_journey(page, live_server)
+def test_buttons_play_every_chapter_and_backtrack_exactly(page, live_server, snapshots):
+    open_game(page, live_server)
     assert_hud(page, snapshots[0])
-    before = page.evaluate(GEOMETRY)
-    order = [*range(12), *range(11, -2, -1), 11, -1, 9, 8, 9, 1, 0, 6, 11, -1]
-    seen = {}
-    for index in order:
-        scroll_to_checkpoint(page, index, 0.21)
-        actual = assert_hud(page, snapshots[index + 1])
-        if index in seen:
-            assert actual == seen[index]
-        seen[index] = actual
-    after = page.evaluate(GEOMETRY)
-    assert after["anchors"] == pytest.approx(before["anchors"], abs=1)
-    assert after["hudHeight"] == pytest.approx(before["hudHeight"], abs=1)
-    assert observations["pageerrors"] == []
-    assert page.evaluate("window.testCspViolations") == []
-
-
-@pytest.mark.parametrize("width", [320, 375, 390, 768, 1024, 1440])
-def test_responsive_clearance_and_endpoint_reachability(page, live_server, snapshots, width):
-    page.set_viewport_size({"width": width, "height": 1000})
-    open_journey(page, live_server)
-    initial = page.evaluate(GEOMETRY)
-    assert initial["anchors"][0] > initial["offset"]
-    assert initial["anchors"][-1] <= initial["maxScroll"] + initial["offset"]
-    assert not initial["flow"]
-    for index in (0, 8, 9, 11):
-        scroll_to_checkpoint(page, index)
-        assert_hud(page, snapshots[index + 1])
-        geometry = page.evaluate(GEOMETRY)
-        heading = (
-            page.locator(".story-card").nth(index).locator(".story-prose").first.bounding_box()
+    for index in range(12):
+        assert advance_to_next_screen(page) == index + 1
+        state = assert_hud(page, snapshots[index + 1])
+        expect(page.locator(".game-screen.is-current-screen")).to_have_attribute(
+            "data-checkpoint", snapshots[index + 1]["id"]
         )
-        assert heading["y"] >= geometry["top"]
-        assert heading["y"] + 32 < geometry["height"]
-        hud = page.locator("#character-sheet").bounding_box()
-        scene = page.locator(".scene-panel").bounding_box()
-        theater = page.locator(".theater").bounding_box()
-        assert theater["y"] == pytest.approx(0, abs=1)
-        assert scene["y"] >= hud["y"] + hud["height"]
-        assert 0 <= theater["y"] < theater["y"] + theater["height"] < 1000 - 240
-        expect(page.locator(".scene-panel")).to_be_visible()
-        expect(page.locator(".mobile-landscape").first).to_be_hidden()
-    layout = page.evaluate("""() => ({
-      width: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-      clipped: [...document.querySelectorAll('html, body, .journey, .story-track')]
-        .filter(node => ['hidden', 'clip'].includes(getComputedStyle(node).overflowX) ||
-          ['hidden', 'clip'].includes(getComputedStyle(node).overflowY)).map(node => node.tagName),
-      outside: [...document.querySelectorAll(
-        'h1, h2, h3:not(.sr-only), .story-prose, .field-notes li, ' +
-        '.stat-value, .stat-max, .achievement-note > p:not(.eyebrow)')]
-        .filter(node => { const box = node.getBoundingClientRect();
-          return box.left < -1 || box.right > document.documentElement.clientWidth + 1;
-        }).map(node => node.className)
-    })""")
-    assert layout["scrollWidth"] <= layout["width"] + 1
-    assert layout["clipped"] == layout["outside"] == []
-    assert page.evaluate(GEOMETRY)["anchors"] == pytest.approx(initial["anchors"], abs=1)
-    page.evaluate("window.scrollTo(0, document.scrollingElement.scrollHeight)")
-    expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "11")
-    scroll_to_checkpoint(page, -1)
-    assert_hud(page, snapshots[0])
+        expect(page.locator("#sheet-status")).to_contain_text("Chapter")
+        assert state["screen"] == index + 1
+
+    assert advance_to_next_screen(page) == 13
+    expect(page.locator('.game-screen[data-screen-kind="ending"]')).to_be_visible()
+    assert_hud(page, snapshots[-1])
+
+    # Back rewinds dialogue first, then returns to the previous deterministic checkpoint.
+    page.locator('[data-action="back"]').click()
+    expect(page.locator("#journey")).to_have_attribute("data-beat-index", "2")
+    for _ in range(2):
+        page.locator('[data-action="back"]').click()
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "12")
+    assert_hud(page, snapshots[-1])
 
 
-def test_visible_card_subheadings_have_clear_hierarchy(page, live_server):
-    open_journey(page, live_server)
-    card = page.locator('[data-checkpoint="fog-arrives"]')
-    heading = card.locator("h3")
-    prose = card.locator(".story-prose")
-    styles = page.evaluate(
-        """([heading, prose]) => ({
-          headingSize: parseFloat(getComputedStyle(heading).fontSize),
-          proseSize: parseFloat(getComputedStyle(prose).fontSize),
-          headingFamily: getComputedStyle(heading).fontFamily,
-          proseFamily: getComputedStyle(prose).fontFamily,
-        })""",
-        [heading.element_handle(), prose.element_handle()],
+def test_dialogue_is_part_of_play_and_scene_hotspots_reveal_discoveries(
+    page, live_server, story_document
+):
+    open_game(page, live_server)
+    go_to_event(page, 0)
+    screen = page.locator(".game-screen.is-current-screen")
+    beats = screen.locator(".dialogue-beat")
+    expect(beats).to_have_count(1)
+    expect(beats).to_be_visible()
+    expect(page.locator('[data-action="inspect"]')).to_be_visible()
+    page.locator('[data-action="inspect"]').click()
+    expect(screen.locator(".dialogue-card")).to_be_hidden()
+    expect(screen.locator(".discovery-panel")).to_be_visible()
+    expect(screen.locator(".field-notes li")).to_have_text(
+        story_document["chapters"][0]["cards"][0]["facts"]
     )
-    assert styles["headingSize"] > styles["proseSize"]
-    assert styles["headingFamily"] != styles["proseFamily"]
+    expect(page.locator("#advance-label")).to_have_text("Return to story")
+    page.locator('[data-action="advance"]').click()
+    expect(screen.locator(".dialogue-card")).to_be_visible()
+
+    go_to_event(page, 1)
+    beats = page.locator(".game-screen.is-current-screen .dialogue-beat")
+    expect(beats).to_have_count(2)
+    expect(beats.nth(0)).to_be_visible()
+    expect(beats.nth(1)).to_be_hidden()
+    page.locator('[data-action="advance"]').click()
+    expect(beats.nth(0)).to_be_hidden()
+    expect(beats.nth(1)).to_be_visible()
+    expect(page.locator(".game-screen.is-current-screen .loot")).to_be_visible()
 
 
-def test_short_mobile_uses_normal_flow_and_resize_remeasures(page, live_server, snapshots):
-    page.set_viewport_size({"width": 390, "height": 300})
-    open_journey(page, live_server)
-    expect(page.locator("html")).to_have_attribute("data-theater-flow", "true")
-    assert page.locator(".theater").evaluate("node => getComputedStyle(node).position") == "static"
-    for index in (7, 11, -1):
-        scroll_to_checkpoint(page, index)
-        assert_hud(page, snapshots[index + 1])
-    page.set_viewport_size({"width": 390, "height": 1000})
-    expect(page.locator("html")).to_have_attribute("data-theater-flow", "false")
-    settle_layout(page)
-    assert page.locator(".theater").evaluate("node => getComputedStyle(node).position") == "sticky"
-    assert_matches_geometry(page, snapshots)
-    scroll_to_checkpoint(page, 6)
-    for width in (1440, 320, 1024, 768):
-        page.set_viewport_size({"width": width, "height": 1000})
-        settle_layout(page)
-        assert_matches_geometry(page, snapshots)
+def test_keyboard_and_touch_swipe_are_complete_game_controls(page, live_server):
+    open_game(page, live_server)
+    page.keyboard.press("ArrowRight")
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "1")
+    page.keyboard.press("ArrowLeft")
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
+
+    page.evaluate("""() => {
+      const shell = document.querySelector('.game-shell');
+      shell.dispatchEvent(new PointerEvent('pointerdown', {
+        pointerType: 'touch', clientX: 300, clientY: 300, bubbles: true
+      }));
+      shell.dispatchEvent(new PointerEvent('pointerup', {
+        pointerType: 'touch', clientX: 210, clientY: 305, bubbles: true
+      }));
+    }""")
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "1")
+    page.evaluate("""() => {
+      const shell = document.querySelector('.game-shell');
+      shell.dispatchEvent(new PointerEvent('pointerdown', {
+        pointerType: 'touch', clientX: 120, clientY: 300, bubbles: true
+      }));
+      shell.dispatchEvent(new PointerEvent('pointerup', {
+        pointerType: 'touch', clientX: 220, clientY: 304, bubbles: true
+      }));
+    }""")
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
+    page.locator('[data-action="toggle-stats"]').focus()
+    page.keyboard.press("ArrowRight")
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
 
 
-def test_short_desktop_does_not_pin_an_unreadable_sheet(page, live_server, snapshots):
-    open_journey(page, live_server)
-    for height, flow in ((300, True), (900, False), (300, True)):
-        page.set_viewport_size({"width": 1440, "height": height})
-        expect(page.locator("html")).to_have_attribute("data-theater-flow", str(flow).lower())
-        settle_layout(page)
-        scroll_to_checkpoint(page, 6)
-        assert_hud(page, snapshots[7])
-        theater = page.locator(".theater")
-        position = theater.evaluate("node => getComputedStyle(node).position")
-        # Clearance includes the whole panel's padding and sticky inset, not just its HUD.
-        if flow:
-            assert theater.bounding_box()["height"] > height * 0.62
-            assert position == "static"
-        else:
-            assert position == "sticky"
-            box = theater.bounding_box()
-            assert 0 <= box["y"] < box["y"] + box["height"] <= height - 240
+@pytest.mark.parametrize("width,height", [(320, 568), (390, 844), (768, 1024), (1440, 1000)])
+def test_mobile_first_game_fills_viewport_without_page_scrolling(page, live_server, width, height):
+    page.set_viewport_size({"width": width, "height": height})
+    open_game(page, live_server)
+    go_to_event(page, 3)
+    layout = page.evaluate("""() => {
+      const shell = document.querySelector('.game-shell').getBoundingClientRect();
+      const scene = document.querySelector('.scene-panel').getBoundingClientRect();
+      const story = document.querySelector('.game-screen.is-current-screen')
+        .getBoundingClientRect();
+      const controls = document.querySelector('.game-controls').getBoundingClientRect();
+      return {
+        innerWidth, innerHeight, scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+        shell: {top: shell.top, bottom: shell.bottom, left: shell.left, right: shell.right},
+        scene: {top: scene.top, bottom: scene.bottom, left: scene.left, right: scene.right},
+        story: {top: story.top, bottom: story.bottom, left: story.left, right: story.right},
+        controls: {top: controls.top, bottom: controls.bottom},
+        buttons: [...document.querySelectorAll('.game-controls button')]
+          .map(node => node.getBoundingClientRect().height)
+      };
+    }""")
+    assert layout["scrollWidth"] <= width + 1
+    assert layout["scrollHeight"] <= height + 1
+    assert 0 <= layout["shell"]["top"] < layout["shell"]["bottom"] <= height + 1
+    if width <= 760:
+        assert layout["scene"]["bottom"] <= layout["story"]["top"] + 1
+    assert layout["controls"]["bottom"] <= height + 1
+    assert min(layout["buttons"]) >= 48
+    expect(page.locator(".scene-panel")).to_be_visible()
+    expect(page.locator(".game-screen.is-current-screen")).to_be_visible()
+
+    page.locator('[data-action="toggle-stats"]').click()
+    expect(page.locator("#character-sheet")).to_be_visible()
+    stats = page.locator("#character-sheet").bounding_box()
+    assert 0 <= stats["x"] and stats["x"] + stats["width"] <= width + 1
+    assert 0 <= stats["y"] and stats["y"] + stats["height"] <= height + 1
+    page.locator('#character-sheet [data-action="close-panels"]').click()
 
 
-def test_no_javascript_has_the_complete_story(new_context, live_server, story_document, snapshots):
+def test_quest_log_is_optional_overlay_and_restores_focus(page, live_server, story_document):
+    open_game(page, live_server)
+    button = page.locator('[data-action="toggle-quests"]')
+    button.click()
+    expect(page.locator("#bonus")).to_be_visible()
+    expect(button).to_have_attribute("aria-expanded", "true")
+    expect(page.locator("#bonus .achievement-note")).to_have_count(
+        len(story_document["achievements"])
+    )
+    assert page.locator(".game-shell").get_attribute("inert") is not None
+    page.keyboard.press("Escape")
+    expect(page.locator("#bonus")).to_be_hidden()
+    expect(button).to_be_focused()
+    expect(button).to_have_attribute("aria-expanded", "false")
+
+
+def test_no_javascript_and_script_failure_keep_complete_readable_story(
+    new_context, live_server, story_document, snapshots
+):
     page = new_context(java_script_enabled=False).new_page()
     page.goto(live_server + "/")
-    assert_complete_story(page, story_document, snapshots)
+    assert_complete_story(page, story_document, snapshots, visible=True)
     expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator("#sheet-status")).to_have_text(
-        "Starting stats. Later stats are beside the story."
-    )
-    expect(page.locator(".chapter-stats").first).to_be_visible()
-    expect(page.locator(".stat-value")).to_have_text(
-        [str(value) for value in snapshots[0]["stats"].values()]
-    )
-    expect(page.locator("li[data-badge].earned")).to_have_count(0)
+    expect(page.locator(".fallback-landscape")).to_have_count(11)
+    expect(page.locator(".game-controls")).to_be_hidden()
+    expect(page.locator(".scene-panel")).to_be_hidden()
+    expect(page.locator("#character-sheet")).to_be_visible()
 
 
 @pytest.mark.parametrize("resource", ["story.js", "story.css", "art/goa.svg"])
-def test_failed_local_resource_never_hides_prose(
+def test_failed_local_resource_never_removes_content(
     page, live_server, story_document, snapshots, resource
 ):
     page.route(f"**/static/{resource}*", lambda route: route.abort())
     page.goto(live_server + "/")
-    assert_complete_story(page, story_document, snapshots)
+    assert_complete_story(
+        page, story_document, snapshots, visible=resource in {"story.js", "story.css"}
+    )
     if resource == "story.js":
         expect(page.locator("html")).not_to_have_class("enhanced")
-        expect(page.locator("#sheet-status")).to_have_text(
-            "Starting stats. Later stats are beside the story."
-        )
-        expect(page.locator("li[data-badge].earned")).to_have_count(0)
 
 
 @pytest.mark.parametrize(
@@ -441,268 +371,35 @@ def test_invalid_projection_falls_back(page, live_server, game, story_document, 
 
     page.route(live_server + "/", replace_projection)
     page.goto(live_server + "/")
-    expect(page.locator("#sheet-status")).to_have_text(
-        "Paper edition. The stats are beside the story."
-    )
     expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator("#character-sheet")).to_be_hidden()
-    expect(page.locator("li[data-badge].earned")).to_have_count(0)
-    assert_complete_story(page, story_document, snapshots)
+    expect(page.locator("#sheet-status")).to_have_text("Opening stats. The complete story follows.")
+    assert_complete_story(page, story_document, snapshots, visible=True)
 
 
-def test_geometry_failure_resets_a_live_hud(page, live_server, story_document, snapshots):
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 9)
-    assert_hud(page, snapshots[10])
-    page.evaluate("""() => {
-      const chapters = document.querySelectorAll('.chapter');
-      chapters[1].getBoundingClientRect = () => chapters[0].getBoundingClientRect();
-      window.dispatchEvent(new Event('resize'));
-    }""")
-    expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator("#sheet-status")).to_have_text(
-        "Paper edition. The stats are beside the story."
-    )
-    expect(page.locator(".stat-value")).to_have_text(
-        [str(value) for value in snapshots[0]["stats"].values()]
-    )
-    expect(page.locator("li[data-badge].earned")).to_have_count(0)
-    assert_complete_story(page, story_document, snapshots)
-
-
-def test_reduced_motion_load_and_mid_story_toggle(page, live_server, game, snapshots):
+def test_reduced_motion_disables_reactions_but_keeps_game_state(page, live_server, snapshots):
     page.emulate_media(reduced_motion="reduce")
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 0, 0.12)
-    reduced = assert_hud(page, snapshots[1])
-    assert reduced["frame"] == 0
-    position = game["events"][0]["position"]
-    assert reduced["transform"] == f"translate({position['x']} {position['y']})"
-    page.emulate_media(reduced_motion="no-preference")
-    expect(page.locator("#journey-marker")).not_to_have_attribute("data-frame", "0")
-    moving = assert_hud(page, snapshots[1])
-    assert moving["transform"] != reduced["transform"]
-    expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 -1)")
-    page.emulate_media(reduced_motion="reduce")
-    expect(page.locator("#journey-marker")).to_have_attribute("data-frame", "0")
-    expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 0)")
-    assert assert_hud(page, snapshots[1]) == reduced
-    scroll_to_checkpoint(page, 9, 0.4)
-    assert assert_hud(page, snapshots[10])["frame"] == 0
+    open_game(page, live_server)
+    go_to_event(page, 1)
+    page.locator('[data-action="advance"]').click()
+    expect(page.locator("#journey-marker")).not_to_have_class(re.compile("is-celebrating"))
+    assert page.locator("#journey-marker").evaluate("node => node.getAnimations().length") == 0
+    assert_hud(page, snapshots[2])
 
 
-def test_reload_history_fragments_and_native_keyboard(page, live_server, snapshots):
-    page.add_init_script("""window.testScrollWrites = [];
-      for (const name of ['scroll', 'scrollTo', 'scrollBy']) {
-        const original = window[name].bind(window);
-        window[name] = (...args) => {
-          window.testScrollWrites.push(name); return original(...args);
-        };
-      }
-    """)
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 6, 0.2)
-    before = page.evaluate(HUD)
-    scroll = page.evaluate("window.scrollY")
-    page.reload()
-    settle_layout(page)
-    assert_matches_geometry(page, snapshots)
-    assert page.evaluate("window.testScrollWrites") == []
-    # A fast WebKit automation reload can return to top even with the module blocked.
-    # Test state at the native position rather than require application scroll writes.
-    restored = page.evaluate("window.scrollY")
-    assert restored == 0 or restored == pytest.approx(scroll, abs=2)
-    if restored:
-        assert page.evaluate(HUD) == before
-    scroll_to_checkpoint(page, 6, 0.2)
-    before = page.evaluate(HUD)
-    page.evaluate("window.testScrollWrites = []")
-    page.goto(live_server + "/healthz")
-    page.go_back()
-    settle_layout(page)
-    assert_matches_geometry(page, snapshots)
-    assert page.evaluate("window.testScrollWrites") == []
-    assert page.evaluate("window.scrollY") == pytest.approx(scroll, abs=2)
-    assert page.evaluate(HUD) == before
-    assert page.evaluate("history.scrollRestoration") == "auto"
-    page.goto(live_server + "/#continuing")
-    settle_layout(page)
-    assert_matches_geometry(page, snapshots)
-    assert page.evaluate("window.scrollY") > 0
-    page.keyboard.press("End")
-    # A checkpoint can change before the browser's native key-scroll finishes.
-    settle_scroll(page, "bottom")
-    expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "11")
-    page.keyboard.press("Home")
-    settle_scroll(page, "top")
-    expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "-1")
-    page.keyboard.press("PageDown")
-    expect(page.locator(".theater")).to_be_in_viewport()
-    assert page.locator(".theater").bounding_box()["y"] == pytest.approx(0, abs=1)
-    settle_scroll(page)
-    page.keyboard.press("Home")
-    settle_scroll(page, "top")
-    expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", "-1")
-    page.mouse.move(200, 300)
-    page.mouse.wheel(0, 500)
-    expect(page.locator(".theater")).to_be_in_viewport()
-    assert page.locator(".theater").bounding_box()["y"] == pytest.approx(0, abs=1)
-    settle_scroll(page)
-    assert_matches_geometry(page, snapshots)
-    assert page.evaluate("window.testScrollWrites") == []
-
-
-def test_side_arrows_move_the_page_and_object_without_intercepting_input(page, live_server):
-    page.add_init_script("""window.testScrollWrites = [];
-      const original = window.scrollBy.bind(window);
-      window.scrollBy = (...args) => {
-        window.testScrollWrites.push(args); return original(...args);
-      };
-    """)
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 0, 0.1)
-    page.evaluate("window.testScrollWrites = []")
-    before = page.evaluate("""() => ({
-      scrollY: window.scrollY,
-      position: document.getElementById('journey-object-track').getAttribute('transform'),
-    })""")
-    page.keyboard.press("ArrowRight")
-    page.wait_for_function("before => window.scrollY > before", arg=before["scrollY"])
-    page.wait_for_timeout(500)
-    settle_layout(page)
-    page.wait_for_function(
-        "before => document.getElementById('journey-object-track')"
-        ".getAttribute('transform') !== before",
-        arg=before["position"],
-    )
-    after_right = page.evaluate("""() => ({
-      scrollY: window.scrollY,
-      position: document.getElementById('journey-object-track').getAttribute('transform'),
-    })""")
-    assert page.evaluate("window.testScrollWrites[0][0]") == {
-        "top": 40,
-        "behavior": "smooth",
-    }
-    assert after_right["position"] != before["position"]
-    assert len(page.evaluate("window.testScrollWrites")) == 1
-
-    page.keyboard.press("ArrowLeft")
-    page.wait_for_function("before => window.scrollY < before", arg=after_right["scrollY"])
-    page.wait_for_timeout(500)
-    settle_layout(page)
-    assert page.evaluate("window.scrollY") == pytest.approx(before["scrollY"], abs=2)
-    assert len(page.evaluate("window.testScrollWrites")) == 2
-    assert (
-        page.evaluate("""() => {
-      const event = new KeyboardEvent('keydown', {key: 'ArrowRight', cancelable: true});
-      document.dispatchEvent(event);
-      return event.defaultPrevented;
-    }""")
-        is False
-    )
-
-    page.evaluate("""() => {
-      window.testScrollWrites = [];
-      const overflow = document.createElement('div');
-      overflow.id = 'horizontal-overflow-probe';
-      overflow.style.width = '200vw';
-      overflow.style.height = '1px';
-      document.body.append(overflow);
-    }""")
-    assert page.evaluate(
-        "document.documentElement.scrollWidth > document.documentElement.clientWidth"
-    )
-    page.keyboard.press("ArrowRight")
-    assert page.evaluate("window.testScrollWrites") == []
-    page.evaluate("document.getElementById('horizontal-overflow-probe').remove()")
-
-    page.evaluate("""() => {
-      const editable = document.createElement('div');
-      editable.id = 'editable-probe';
-      editable.contentEditable = 'true';
-      document.body.append(editable);
-      editable.focus();
-    }""")
-    page.keyboard.press("ArrowRight")
-    assert page.evaluate("window.testScrollWrites") == []
-
-    page.locator("#editable-probe").evaluate("node => node.remove()")
-    page.emulate_media(reduced_motion="reduce")
-    page.evaluate("window.testScrollWrites = []")
-    page.keyboard.press("ArrowRight")
-    assert page.evaluate("window.testScrollWrites[0][0]") == {"top": 40, "behavior": "auto"}
-
-
-def test_resize_observer_remeasures_layout_expansion(page, live_server, snapshots):
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 6)
-    before = page.evaluate(GEOMETRY)
-    page.locator(".story-card").first.evaluate("node => { node.style.paddingBottom = '900px'; }")
-    settle_layout(page)
-    after = page.evaluate(GEOMETRY)
-    assert after["anchors"][2] > before["anchors"][2]
-    assert_matches_geometry(page, snapshots)
-
-
-def test_reflow_font_notifications_and_observer_fallback(page, live_server, snapshots):
-    page.add_init_script("delete window.ResizeObserver")
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 7, 0.2)
-    page.evaluate("""() => {
-      document.querySelector('.story-prose').style.fontSize = '32px';
-      window.dispatchEvent(new PageTransitionEvent('pageshow', {persisted: true}));
-      document.dispatchEvent(new Event('visibilitychange'));
-    }""")
-    settle_layout(page)
-    assert_matches_geometry(page, snapshots)
-    page.set_viewport_size({"width": 390, "height": 1000})
-    settle_layout(page)
-    assert_matches_geometry(page, snapshots)
-
-
-def test_csp_privacy_and_no_idle_animation(page, live_server, observations, snapshots):
-    page.add_init_script("""window.testRafCalls = 0;
-      const original = window.requestAnimationFrame.bind(window);
-      window.testOriginalRaf = original;
-      window.requestAnimationFrame = callback => {
-        window.testRafCalls++; return original(callback);
-      };
-    """)
-    open_journey(page, live_server)
-    for index in (0, 4, 6, 8, 9, 11, -1):
-        scroll_to_checkpoint(page, index, 0.2)
+def test_csp_privacy_and_idle_scene_are_clean(page, live_server, observations, snapshots):
+    open_game(page, live_server)
+    for index in (0, 4, 8, 9, 11):
+        go_to_event(page, index)
         assert_hud(page, snapshots[index + 1])
-    scheduled = page.evaluate("""() => {
-      const before = window.testRafCalls;
-      for (let i = 0; i < 100; i++) document.dispatchEvent(new Event('scroll'));
-      return window.testRafCalls - before;
-    }""")
-    assert scheduled == 1
-    # Observe a number of paints, not a wall-clock sleep or the instrumented scheduler.
-    idle = page.evaluate("""async () => {
-      const frames = count => new Promise(resolve => {
-        const next = () => --count ? window.testOriginalRaf(next) : resolve();
-        window.testOriginalRaf(next);
-      });
-      await frames(5);
-      const calls = window.testRafCalls;
-      const transform = document.getElementById('journey-object-track').getAttribute('transform');
-      await frames(12);
-      const currentTransform = document.getElementById('journey-object-track')
-        .getAttribute('transform');
-      return {extraCalls: window.testRafCalls - calls,
-        unchanged: transform === currentTransform,
-        animations: document.getAnimations().length,
-        local: localStorage.length, session: sessionStorage.length, cookies: document.cookie};
-    }""")
-    assert idle == {
-        "extraCalls": 0,
-        "unchanged": True,
-        "animations": 0,
-        "local": 0,
-        "session": 0,
-        "cookies": "",
-    }
+    page.wait_for_timeout(500)
+    idle = page.evaluate("""() => ({
+      animations: document.getAnimations().length,
+      local: localStorage.length,
+      session: sessionStorage.length,
+      cookies: document.cookie,
+      scrollY: window.scrollY
+    })""")
+    assert idle == {"animations": 0, "local": 0, "session": 0, "cookies": "", "scrollY": 0}
     assert page.context.cookies() == []
     assert observations["pageerrors"] == []
     assert not [message for kind, message in observations["console"] if kind == "error"]
@@ -719,14 +416,19 @@ def test_csp_privacy_and_no_idle_animation(page, live_server, observations, snap
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_local_axe_accessibility(page, live_server, project_root, width, scheme):
     page.emulate_media(color_scheme=scheme)
-    page.set_viewport_size({"width": width, "height": 1000})
-    open_journey(page, live_server)
+    page.set_viewport_size({"width": width, "height": 900})
+    open_game(page, live_server)
     axe_path = project_root / "node_modules/axe-core/axe.min.js"
-    assert axe_path.is_file(), "Run npm ci to install the pinned local axe-core test dependency"
-    # Playwright evaluation is test instrumentation; the response CSP stays enforced.
+    assert axe_path.is_file(), "Run npm ci to install the pinned local axe-core dependency"
     page.evaluate(axe_path.read_text(encoding="utf-8"))
-    for index in (-1, 9, 11):
-        scroll_to_checkpoint(page, index)
+    for state in ("intro", "chapter", "stats", "quests"):
+        if state == "chapter":
+            go_to_event(page, 9)
+        elif state == "stats":
+            page.locator('[data-action="toggle-stats"]').click()
+        elif state == "quests":
+            page.locator('#character-sheet [data-action="close-panels"]').click()
+            page.locator('[data-action="toggle-quests"]').click()
         violations = page.evaluate("""async () => {
           const result = await axe.run(document, {runOnly: {
             type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
@@ -737,210 +439,99 @@ def test_local_axe_accessibility(page, live_server, project_root, width, scheme)
         assert violations == [], json.dumps(violations, indent=2)
 
 
-def test_text_enlargement_and_narrow_reflow(page, live_server, snapshots, tmp_path):
-    page.set_viewport_size({"width": 320, "height": 1000})
-    open_journey(page, live_server)
-    # 320 CSS pixels models 1280px desktop at 400% reflow, not native browser zoom.
+def test_text_enlargement_keeps_controls_and_current_dialogue_reachable(page, live_server):
+    page.set_viewport_size({"width": 320, "height": 700})
+    open_game(page, live_server)
+    go_to_event(page, 3)
     page.evaluate("""() => {
-      const nodes = [...document.querySelectorAll('body *:not(svg):not(svg *)')];
-      const sizes = nodes.map(node => parseFloat(getComputedStyle(node).fontSize));
-      nodes.forEach((node, index) => node.style.fontSize = `${sizes[index] * 2}px`);
-      window.dispatchEvent(new Event('resize'));
+      document.querySelectorAll('.dialogue-card *, .game-controls *, .game-hud *')
+        .forEach(node => {
+          const size = parseFloat(getComputedStyle(node).fontSize);
+          if (size) node.style.fontSize = `${size * 1.8}px`;
+        });
     }""")
-    settle_layout(page)
-    assert_matches_geometry(page, snapshots)
+    settle(page)
     layout = page.evaluate("""() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
-      overflowing: [...document.querySelectorAll(
-        'h1, h2, h3, .milestone, .character-sheet, .stat, .field-notes li')]
-        .filter(node => node.scrollWidth > node.clientWidth + 1)
-        .map(node => ({tag: node.tagName, class: node.className,
-          width: node.clientWidth, scrollWidth: node.scrollWidth})),
-      overlappingStats: [...document.querySelectorAll('[data-stat]')].filter(row => {
-        const label = row.querySelector('.stat-compact').getBoundingClientRect();
-        const value = row.querySelector('.stat-value').getBoundingClientRect();
-        return label.width && label.right > value.left && label.left < value.right
-          && label.bottom > value.top && label.top < value.bottom;
-      }).map(row => row.dataset.stat)
+      next: document.querySelector('[data-action=advance]').getBoundingClientRect(),
+      story: document.querySelector('.game-screen.is-current-screen').getBoundingClientRect()
     })""")
-    if layout["scrollWidth"] > layout["width"] + 1:
-        screenshot = tmp_path / "text-enlargement.png"
-        page.screenshot(path=str(screenshot))
-        layout["screenshot"] = str(screenshot)
-    assert layout["scrollWidth"] <= layout["width"] + 1, json.dumps(layout, indent=2)
-    assert layout["overlappingStats"] == [], layout
-    geometry = page.evaluate(GEOMETRY)
-    if not geometry["flow"]:
-        assert geometry["stageBottom"] <= geometry["height"] - 240
-    scroll_to_checkpoint(page, 11)
-    assert_hud(page, snapshots[12])
+    assert layout["scrollWidth"] <= layout["width"] + 1
+    assert 0 <= layout["next"]["top"] < layout["next"]["bottom"] <= 700
+    assert layout["story"]["height"] > 0
+    expect(page.locator(".game-screen.is-current-screen .dialogue-card")).to_be_visible()
 
 
-def test_print_preserves_prose_and_semantic_snapshots(page, live_server, story_document, snapshots):
-    open_journey(page, live_server)
+def test_print_and_no_js_keep_every_paragraph_and_snapshot(
+    page, live_server, story_document, snapshots
+):
+    open_game(page, live_server)
     page.emulate_media(media="print")
-    assert_complete_story(page, story_document, snapshots)
-    expect(page.locator(".theater")).to_be_hidden()
-    assert page.locator(".journey").evaluate("node => getComputedStyle(node).display") == "block"
+    assert_complete_story(page, story_document, snapshots, visible=True)
+    expect(page.locator(".game-hud")).to_be_hidden()
+    expect(page.locator(".scene-panel")).to_be_hidden()
     expect(page.locator(".ending")).to_be_visible()
 
 
-def test_forced_colors_and_native_text_selection(page, live_server, snapshots):
+def test_forced_colors_selection_and_findable_text(page, live_server):
     page.emulate_media(forced_colors="active")
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 9)
-    assert_hud(page, snapshots[10])
-    expect(page.locator(".chapter-stats").nth(9)).to_contain_text("Health")
+    open_game(page, live_server)
+    go_to_event(page, 9)
     selected = page.evaluate("""() => {
-      const range = document.createRange();
       const paragraph = document.querySelector('[data-checkpoint="fog-arrives"] .story-prose');
+      const range = document.createRange();
       range.selectNodeContents(paragraph);
       const selection = window.getSelection();
       selection.removeAllRanges(); selection.addRange(range);
       return selection.toString();
     }""")
     assert "new cadence of contribution" in selected
+    expect(page.locator('[data-action="advance"]')).to_be_visible()
 
 
-def test_main_story_reading_budget_and_optional_inventory(page, live_server, story_document):
-    open_journey(page, live_server)
+def test_story_budget_links_and_game_surface(page, live_server, story_document):
+    open_game(page, live_server)
     words = page.locator("#main-story").evaluate(r"""node => {
       const copy = node.cloneNode(true);
-      copy.querySelectorAll('.sr-only, .chapter-stats, noscript, [aria-hidden=true]')
+      copy.querySelectorAll(
+        '.chapter-header, .chapter-stats, .scene-period, .scene-heading, ' +
+        '.story-card h3, .discovery-panel, .loot, .input-hint, .project-links'
+      )
         .forEach(element => element.remove());
       return copy.textContent.trim().split(/\s+/).length;
     }""")
-    assert words <= 900, f"Main story is {words} words; keep it under five minutes at 180 wpm"
-    assert page.locator("#main-story .achievement-note").count() == 0
-    assert page.locator("#bonus .achievement-note").count() == len(story_document["achievements"])
-    assert page.locator(".chapter-snapshot, .meter-disclaimer").count() == 0
+    assert words <= 900, f"Main story is {words} words"
     expect(page.locator("[data-stat]")).to_have_count(5)
-    expect(page.locator('[data-stat="experience"] .stat-full')).to_have_text("Experience")
-    expect(
-        page.locator(".inventory-ledger, .milestone, [data-stat=automancy], [data-stat=sidequests]")
-    ).to_have_count(0)
-    assert page.locator("#bonus .achievement-catalog").evaluate("node => node.tagName") == "UL"
-    assert page.locator("#bonus .achievement-note").evaluate_all(
-        "nodes => nodes.every(n => n.tagName === 'LI')"
+    expect(page.locator(".scene-hotspot")).to_have_count(1)
+    expect(page.locator(".game-controls button")).to_have_count(2)
+    expect(page.locator("#bonus .achievement-note")).to_have_count(
+        len(story_document["achievements"])
     )
-    stats = page.locator(".chapter-stats").first
-    assert stats.evaluate("node => getComputedStyle(node).position") == "absolute"
-    assert stats.get_attribute("aria-hidden") is None
-    assert "Coding" in stats.aria_snapshot()
     assert page.locator('a[href="mailto:pranavprem93@gmail.com"]').count() == 1
-    assert page.locator('#main-story a[href*="einstein-bot-channel-connector"]').count() == 1
-    assert page.locator('#bot-workshop a[href*="einstein-bot-channel-connector"]').count() == 1
-    expect(page.locator("#automation .story-prose a")).to_have_text("TasKing")
-    expect(page.locator("#sjsu .story-prose a")).to_have_text("SpartanBot")
-    expect(page.locator(".ending > .story-prose")).to_have_count(3)
-    expect(page.locator(".ending > .story-prose").nth(2)).to_have_text(
-        "I've also got into 3D printing."
-    )
-    expect(page.locator(".route-track li").last).to_have_text("San Francisco")
-    expect(page.locator("#achievement-tmp-all-star h3")).to_have_text(
-        "Corporate awards are meaningless"
-    )
-    expect(page.locator(".pla-meme")).to_have_text("Bender voice: I'm 40% PLA.")
-    expect(page.locator('.pla-meme img[src^="/static/art/pla-robot.svg?v="]')).to_be_visible()
-    assert page.locator("iframe, video").count() == 0
-
-
-def test_every_achievement_has_a_reversible_object_reaction(page, live_server):
-    open_journey(page, live_server)
-    geometry = page.evaluate(GEOMETRY)
-    anchors = page.locator("[data-achievement]").evaluate_all(
-        "nodes => nodes.map(node => node.getBoundingClientRect().top + scrollY)"
-    )
-    assert len(anchors) == 32  # Eleven story badges plus 21 grouped highlights.
-    positions = [
-        anchor + min(180, anchors[i + 1] - anchor if i + 1 < len(anchors) else 180) / 2
-        for i, anchor in enumerate(anchors)
-    ]
-    for anchor, cursor in zip(anchors, positions, strict=True):
-        page.evaluate("y => window.scrollTo(0, y)", anchor - geometry["offset"])
-        settle_layout(page)
-        assert page.locator("#journey-marker").get_attribute("transform") in {
-            "translate(0 0)",
-            "translate(0 -1)",
-        }
-        page.evaluate("y => window.scrollTo(0, y)", cursor - geometry["offset"])
-        settle_layout(page)
-        expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 -8)")
-        expect(page.locator("#journey-marker")).to_have_attribute("data-celebrating", "true")
-        expect(page.locator("#hud-object-marker")).to_have_attribute(
-            "transform", "translate(16 27) scale(.8)"
-        )
-        expect(page.locator("#journey-marker .object-sprite.current")).to_have_count(1)
-        expect(page.locator("#hud-object-marker .object-sprite.current")).to_have_count(1)
-    for cursor in (positions[8], positions[0], positions[-1], positions[0]):
-        page.evaluate("y => window.scrollTo(0, y)", cursor - geometry["offset"])
-        settle_layout(page)
-        expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 -8)")
-    before = page.evaluate(HUD)
-    page.emulate_media(reduced_motion="reduce")
-    expect(page.locator("#journey-marker")).to_have_attribute("transform", "translate(0 0)")
-    expect(page.locator("#journey-marker")).to_have_attribute("data-celebrating", "false")
-    after = page.evaluate(HUD)
-    assert after["stats"] == before["stats"] and after["badges"] == before["badges"]
-    pure = page.evaluate("""async () => {
-      const {deriveCelebration} = await import('/static/story.js');
-      return [-1, 0, 45, 90, 1000, 45, 90].map(y => deriveCelebration([0, 90], y));
-    }""")
-    assert pure[0] == pure[4] == {"lift": 0, "active": False}
-    assert pure[1] == pure[3] == pure[6] == {"lift": 0, "active": True}
-    assert pure[2] == pure[5] == {"lift": 8, "active": True}
+    expect(page.locator(".pla-meme")).to_have_text("I'm 40% PLA.")
+    assert page.locator("iframe, video, canvas").count() == 0
 
 
 @pytest.mark.parametrize("width", [390, 1440])
-def test_dark_mode_follows_device_without_resetting_story(page, live_server, snapshots, width):
-    page.set_viewport_size({"width": width, "height": 1000})
+def test_dark_mode_does_not_reset_game(page, live_server, snapshots, width):
+    page.set_viewport_size({"width": width, "height": 900})
     page.emulate_media(color_scheme="light")
-    open_journey(page, live_server)
-    scroll_to_checkpoint(page, 8)
+    open_game(page, live_server)
+    go_to_event(page, 8)
     before = page.evaluate(HUD)
     page.emulate_media(color_scheme="dark")
-    settle_layout(page)
-    assert (
-        page.locator("html").evaluate("node => getComputedStyle(node).backgroundColor")
-        == "rgb(20, 35, 31)"
-    )
+    settle(page)
     assert page.evaluate(HUD) == before
     assert_hud(page, snapshots[9])
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-    page.emulate_media(color_scheme="light")
-    settle_layout(page)
-    assert (
-        page.locator("html").evaluate("node => getComputedStyle(node).backgroundColor")
-        == "rgb(245, 241, 231)"
-    )
 
 
-def test_quiet_reading_hierarchy_preserves_story_and_city_context(page, live_server, snapshots):
-    open_journey(page, live_server)
-    expect(
-        page.locator(
-            ".edition, .wordmark-sub, .intro-deck, .cartridge-details, .region-heading, "
-            ".chapter-index, .sheet-topline, .player-class, .identity-star, .scene-topline, "
-            ".scene-coordinates, .theater-footnote"
-        )
-    ).to_have_count(0)
-    expect(page.locator("#college .story-beats > li")).to_have_count(6)
-    assert "first time living on my own" in page.locator("#college .story-prose").first.inner_text()
-    track = page.locator(".story-track").bounding_box()
-    theater = page.locator(".theater").bounding_box()
-    assert track["width"] <= 640
-    assert abs((track["x"] + track["width"] / 2) - (theater["x"] + theater["width"] / 2)) <= 1
-    assert theater["y"] + theater["height"] <= track["y"]
-    assert (
-        page.locator(".story-prose").first.evaluate(
-            "node => parseFloat(getComputedStyle(node).fontSize)"
-        )
-        >= 18
-    )
-    for index, city in ((0, "Goa"), (5, "Pune"), (7, "San Jose"), (11, "San Francisco")):
-        scroll_to_checkpoint(page, index)
-        assert_hud(page, snapshots[index + 1])
-        expect(page.locator("#world-label")).to_have_text(city)
-        expect(page.locator("#sheet-status")).to_contain_text("Chapter")
-        assert "SCROLL TO EXPLORE" not in page.locator("#sheet-status").inner_text()
+def test_scene_change_moves_focus_and_has_no_living_sprites(page, live_server):
+    open_game(page, live_server)
+    page.locator('[data-action="advance"]').click()
+    heading = page.locator(".game-screen.is-current-screen h2")
+    expect(heading).to_be_focused()
+    expect(page.locator("#traveler, #companion")).to_have_count(0)
+    expect(page.locator("#journey-marker .object-sprite.current")).to_have_count(1)
+    expect(page.locator("#world-label")).to_have_text("Goa")

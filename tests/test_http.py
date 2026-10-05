@@ -326,13 +326,22 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
     assert all(attrs.get("aria-hidden") == "true" and "aria-label" not in attrs for attrs in slots)
     assert all("earned" not in attrs.get("class", "").split() for attrs in slots)
     assert document.select(id="character-sheet")[0]["aria-live"] == "off"
-    assert "Starting stats. Later stats are beside the story." in document.text
+    assert "Opening screen" in document.text
     assert not document.select(id="traveler")
     assert not document.select(id="companion")
-    assert len(document.select(class_="object-sprite")) == 22
+    assert len(document.select(class_="object-sprite")) == 11
+    controls = document.select("button")
+    assert {control.get("data-action") for control in controls} == {
+        "advance",
+        "back",
+        "close-panels",
+        "inspect",
+        "toggle-quests",
+        "toggle-stats",
+    }
+    assert all(control.get("type") == "button" for control in controls)
     for tag, attrs in document.elements:
         assert tag not in {
-            "button",
             "input",
             "select",
             "textarea",
@@ -449,7 +458,6 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "This was the work I wanted",
         "engineers far better than me",
         "back in San Jose",
-        "Bender voice",
         "Argo CD",
         "99.99% availability",
         "100% of customer traffic",
@@ -506,6 +514,7 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "My first sworn enemy was a mosquito",
         "youngest Rising Star nominee at 21",
         "Chat Alchemist",
+        "Bender voice",
     ):
         assert rejected not in text, rejected
     assert not re.search(r"\bshit\b", text, re.I)
