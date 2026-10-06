@@ -1,5 +1,5 @@
 **Current Handoff**
-The current work is the chronological, revisitable Quest log revision, including the accumulated HUD, encounter, voice, and pacing changes after `7b5339e`. The owner explicitly authorized commit and push after verification. That does not authorize or establish a Portainer/public redeployment. Publication and exact-SHA CI evidence are recorded below when observed.
+The chronological, revisitable Quest log revision, including the accumulated HUD, encounter, voice, and pacing changes, is committed and pushed as `7f9e6fbd77530ea9570652e06c1207546769980a`. All four exact-SHA hosted CI jobs passed. This documentation-only follow-up records the observed result without changing runtime behavior. Code publication does not establish a Portainer/public redeployment.
 
 **Current Experience**
 
@@ -52,14 +52,16 @@ The main session performed design, implementation, testing, code/security review
 
 **Publication**
 
-- Last previously published baseline: `7b5339e94b77518afa956f7896e9b445401d6b3f`, with successful run [37338483892](https://github.com/pranavprem/portfolio/actions/runs/37338483892).
-- The current task authorizes publishing the reviewed accumulated work. Its new commit/SHA and hosted CI result are not implied by the older baseline's green run.
+- Published implementation: `7f9e6fbd77530ea9570652e06c1207546769980a`, `feat: make quest log chronological and revisitable`.
+- Exact-SHA hosted run [37439824630](https://github.com/pranavprem/portfolio/actions/runs/37439824630) passed `checks`, Chromium, Firefox, and WebKit. It includes the staged-tree/full-range public scan, lint, tests, Compose parsing, container build/health, and runtime boundary.
+- The 18 intended public files were explicitly staged. The release scanner reported one tree, 42 blobs, zero findings for both the staged tree and implementation push range. A separate full-history guard check reported ten prior trees, 404 blobs, zero findings; private originals and environment files were not opened.
+- Before the documentation follow-up, local `HEAD` and `origin/main` both matched the implementation SHA and the worktree was clean. This follow-up changes only documentation. Its own exact-SHA status remains available in the repository's Checks workflow; application verification is anchored to the implementation run above.
 - The production stack remains `portfolio`, repository `https://github.com/pranavprem/portfolio.git`, reference `refs/heads/main`, and exactly `compose.yaml` + `compose.tunnel.yaml`. Do not use `compose.local.yaml` in Portainer or expose `CLOUDFLARED_TOKEN`.
 - Public deployment was not performed in this task. Historical public checks on 2026-10-04 saw HTTP `200` rather than a redirect and a Python-user-agent edge `403`. Do not mistake those historical responses for today's deployed SHA. Keep HSTS off until the real redirect/TLS check passes.
 
 **Remaining Gates**
 
-1. Confirm exact-SHA hosted CI for the release and pull/redeploy that revision through the existing Portainer Git stack when authorized.
+1. Pull/redeploy the verified release through the existing Portainer Git stack when authorized, then check the exact deployed asset bytes. GitHub publication alone does not perform that operation.
 2. Verify public digest-versioned assets, chapter/discovery/log behavior, health/security headers, and absence of optional edge injection/challenges.
 3. Configure and verify HTTP-to-HTTPS redirect before enabling exactly `Strict-Transport-Security: max-age=31536000`.
 4. Check physical phones, safe areas, native zoom, screen readers, and representative performance.
