@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
@@ -27,6 +28,17 @@ jobs:
       - run: npm run lint
       - run: .venv/bin/ruff check .
       - run: .venv/bin/ruff format --check .
+      - name: Check public artifacts across the push or PR range
+        env:
+          BASE_REV: ${{ github.event.before || github.event.pull_request.base.sha }}
+        run: |
+          .venv/bin/python tools/check_public.py --self-test
+          .venv/bin/python tools/check_public.py --staged
+          if [ -n "$BASE_REV" ] && [ "$BASE_REV" != "0000000000000000000000000000000000000000" ]; then
+            .venv/bin/python tools/check_public.py "$BASE_REV..HEAD"
+          else
+            .venv/bin/python tools/check_public.py HEAD
+          fi
       - run: .venv/bin/pytest -m 'not browser'
       - run: docker compose -f compose.yaml -f compose.local.yaml config --quiet
       - run: CLOUDFLARED_TOKEN=synthetic-ci-token docker compose -f compose.yaml -f compose.tunnel.yaml config --quiet

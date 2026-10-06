@@ -1,41 +1,32 @@
 **Current Review**
-Scope: uncommitted full-screen chapter-adventure redesign. This is a main-session engineering/audience review, not an independent penetration test, user study, recruiter panel, or owner approval inferred from automation.
+Scope: the accumulated HUD, encounters, voice/pacing, and final chronological Quest log revision after `7b5339e`. All review roles were performed sequentially by the main session, not independent agents or an invented audience panel. This is not a penetration test or owner aesthetic approval.
 
-**Findings**
+**Findings Resolved**
 
-No known local functional or security blocker remains after the fixes below.
+1. **Catalog-only facts and repeated optional prose.** The old catalog is replaced by summaries derived from twelve cards, the epilogue, and eleven discoverable popup sources. Coldplay, CyanogenMod, academic extras, tools, promotions, awards, and local AI now have real scene targets. Opportunity Hack and current hobbies are not repeated in main dialogue. Main reward recitals are removed; milestone descriptions live in the log.
+2. **Future material exposed before discovery.** Main records require reaching their final beat; optional records require opening the actual popup. In-memory reached/found sets retain only encountered material during the page visit and reset on reload. Reading to the ending alone exposes thirteen story entries, not all discoveries.
+3. **A log that could not navigate the story.** All 24 entries have validated targets. Clicking a story summary returns to its first beat; clicking a discovery reopens its original popup. Every target is tested against exact stats and focus, with unchanged URL/history and no loss of journal entries.
+4. **Presentation classes treated as authority.** Revisit permission now checks the reached/found sets, not merely `is-unlocked`. A forged visibility class cannot skip ahead. Cached DOM identity and validated metadata reject mismatched targets, duplicate IDs, invalid positions, and wrong popup/link associations.
+5. **Duplicate browser-module initialization in a test.** The pure-state test imports the already-loaded versioned module URL, preserving real browser cache identity rather than initializing another session through an unversioned URL.
+6. **Hidden stats, oversized navigation, and empty Inspect UI.** The prior fixes remain: all meters stay in the HUD; real 48px scene glints replace Inspect; popups preserve dialogue and restore the actual trigger. Multiple glints are tested for separation and content/link reachability at desktop and mobile sizes.
+7. **Earlier semantic and pacing defects.** The script says "Being house captain," names concrete actions, distinguishes the Alexa projects and project metrics, keeps the owner's jokes, and does not invent printing duration or medical detail. College remains four main beats and automation two, with optional detail in discoveries.
 
-1. **High: the former interaction model could not satisfy the owner’s game requirement. Corrected.** The sticky-stage version was still a long document with animation beside it. Enhanced mode now presents one full-screen game scene and one paragraph-sized dialogue beat at a time, with explicit controls, touch swipes, keyboard input, discoveries, stats, rewards, and a Quest log.
-2. **High: mobile previously felt like a reduced website. Corrected.** Mobile now has a dedicated viewport composition: compact HUD, complete landscape, active dialogue, and a fixed three-part thumb row. Automated 320x568 and 390x844 checks confirm no page/horizontal scrolling and at least 48px control targets.
-3. **High: progressive enhancement could have been lost in the game conversion. Preserved.** Every paragraph, fact, link, stat equivalent, milestone description, and catalog item remains in the first semantic HTML response. No-JS, invalid projection, resource failure, and print expose the complete document.
-4. **Medium: the first visual capture showed the closed Stats panel during startup. Corrected.** A close transition allowed the base visible panel to paint while `.enhanced` initialized. Closed panels now become hidden immediately; only opening is animated.
-5. **Medium: the title-screen Inspect control remained visible despite `hidden`. Corrected.** Author `display:flex` overrode the browser’s hidden rule. A global `[hidden] { display: none !important; }` contract now protects dynamic visibility.
-6. **Medium: hidden overlays and the scene wrapper initially produced `aria-hidden-focus` failures. Corrected.** Closed overlays are now inert as well as assistive-hidden, and the scene wrapper no longer hides its interactive hotspot. Axe passes in both themes at mobile and desktop sizes.
-7. **Medium: small hidden-panel text appeared to fail contrast because opacity blended it with the page. Corrected by the inert/visibility fix.** Open Stats and Quest log panels now pass the same automated contrast checks.
-8. **Low: the Inspect hotspot uses one consistent screen position. Accepted.** Scene-specific coordinates could add visual variety, but the current approach is predictable on mobile, keeps the implementation small, and still reveals chapter-specific content. Revisit only after real-device review.
+No known blocking local finding remains after these corrections.
 
-**Engineering Assessment**
+**Security And Conformance**
 
-- `deriveState()` remains a small pure selector over absolute event snapshots.
-- Input is bounded and guarded; no gesture is the only route through content.
-- Runtime remains one vanilla module with no dependency/build-system expansion.
-- No server/API/storage behavior changed.
-- Jinja escaping, inert projection data, static allowlisting, strict CSP, host/method/request limits, and generic errors remain intact.
-- No `innerHTML`, eval, remote runtime request, cookies, storage, or visitor logging was added.
-- Reduced motion, forced colors, enlarged text, print, resource failures, all three browser engines, and exact container contents are covered.
+- Main prose and discoveries are single authored sources; summaries cannot become an orphan content catalog. Sources, years, numeric scopes, canonical snapshots, five stat keys, eleven chapters, and eleven real milestones are preserved.
+- The cameo's age-based narrative anchor does not assert a filming location or guessed year. Grouped recognition retains broad labels. Linked project visibility remains metadata evidence, not a security certification.
+- No runtime dependency, route, remote asset, tracking storage, server mutation, CSP relaxation, or secret access was added. Jinja autoescaping and numeric-only CSSOM positions remain covered by real-engine tests.
+- Milestone grants and stats remain absolute authored state. Discovery/journal sets are independent presentation state, never a progression or animation-completion gate.
+- The public-artifact scanner and CI scan each commit in the push/PR range, report counts only, and refuse private-file paths before reading blobs. Manual diff review remains necessary; no exhaustive privacy claim is made.
+- Practical OWASP review covered input/escaping, static/request boundaries, CSP/configuration, logging/privacy, unchanged dependency pins, and least privilege. No new active SVG content or copied art was introduced.
 
-**Audience Assessment**
+**Verification**
+Local content/HTTP suite: 202 passed. Real browsers: 177 passed (59 each in Chromium, Firefox, WebKit). Coverage includes completion/discovery/jump behavior, duplicate-copy regression, invalid metadata, full fallback/print, exact snapshots, CSP/privacy, focus, light/dark axe, forced colors, enlarged text, touch cancellation, bounded encounters, and mobile controls. The rendered main-story count is 748 words. Commands, container checks, visual captures, and publication status are recorded in [handoff.md](handoff.md).
 
-- The experience now reads as a deliberate game interface immediately: title screen, scene, object marker, HUD, progress bar, controls, and chapter transitions share one viewport.
-- Dialogue is part of the scene rather than a long column underneath it.
-- The owner’s human story remains intact; interaction does not turn illness, boredom, or burnout into a joke or skill check.
-- Mobile is no longer an afterthought. The 390x844 dark capture is visually coherent and playable with one hand.
-- The visual language remains specific to this project rather than becoming a generic neon/game-dashboard skin.
+**Residual Limits**
 
-**Residual Risks**
-
-- Physical iOS/Android browser chrome and safe areas remain unverified.
-- Native zoom and a real screen-reader session remain unverified.
-- The fixed Inspect position may feel repetitive across all eleven chapters.
-- This working copy has not passed hosted CI or a public deployment.
-- HTTP redirect/HSTS, NAS network isolation, and recovery rehearsal remain operator gates.
+- Long popups and short 320x568 dialogue use internal scrolling, not smaller text or clipped content.
+- Physical phones/browser chrome, native zoom, real touch feel, screen readers, and subjective voice/glint/animation quality still need human checks. Automation is not owner approval.
+- Code publication is separate from Portainer redeployment and public verification. HTTP redirect/HSTS, NAS isolation, connector privacy, and recovery remain operator gates.

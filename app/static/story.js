@@ -27,20 +27,6 @@ const OBJECT_BY_CHAPTER = {
   continuing: "agent-nodes",
 };
 
-const OBJECT_LABELS = {
-  controller: "Controller",
-  backpack: "Backpack",
-  compass: "Compass",
-  laptop: "Laptop",
-  "java-mug": "Java mug",
-  "automation-gear": "Automation gear",
-  books: "Books",
-  toolkit: "Toolkit",
-  "cloud-terminal": "Cloud terminal",
-  "bot-console": "Bot console",
-  "agent-nodes": "Agent nodes",
-};
-
 const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
 
 // The selected chapter is the save state. Absolute snapshots keep backtracking exact.
@@ -130,12 +116,41 @@ function startJourney(root) {
   const badgeSlots = [...root.querySelectorAll("[data-badge]")];
   const art = [...root.querySelectorAll("[data-region-art]")];
   const objectSprites = [...root.querySelectorAll("[data-object-sprite]")];
+  const encounters = [...root.querySelectorAll("[data-encounter]")];
   const status = document.getElementById("sheet-status");
-  const statsPanel = document.getElementById("character-sheet");
   const questLog = document.getElementById("bonus");
-  const statsButton = root.querySelector('[data-action="toggle-stats"]');
+  const questEntries = [...questLog.querySelectorAll("[data-quest]")];
+  const gameSurfaces = [
+    ...root.querySelectorAll(
+      ".game-hud, .scene-panel, .story-deck, .game-controls",
+    ),
+  ];
   const questsButton = root.querySelector('[data-action="toggle-quests"]');
-  const inspectButton = root.querySelector('[data-action="inspect"]');
+  const inspectButtons = [...root.querySelectorAll('[data-action="inspect"]')];
+  const quests = new Map(
+    questEntries.map((node) => [
+      node.dataset.quest,
+      {
+        node,
+        kind: node.dataset.questKind,
+        screen: Number(node.dataset.targetScreen),
+      },
+    ]),
+  );
+  const discoveries = new Map(
+    inspectButtons.map((button) => [
+      button.dataset.discovery,
+      {
+        button,
+        panel: document.getElementById(button.getAttribute("aria-controls")),
+        screen: Number(button.dataset.screen),
+        x: Number(button.dataset.x),
+        y: Number(button.dataset.y),
+      },
+    ]),
+  );
+  const completedScreens = new Set();
+  const foundDiscoveries = new Set();
   const backButton = root.querySelector('[data-action="back"]');
   const advanceLabel = document.getElementById("advance-label");
   const beatProgress = document.getElementById("beat-progress");
@@ -147,6 +162,8 @@ function startJourney(root) {
   let lastEventIndex = null;
   let touchStart = null;
   let focusedHeading = null;
+  let questTrigger = questsButton;
+  let activeDiscovery = null;
 
   function eventIndexForScreen() {
     if (screenIndex === 0) return -1;
@@ -161,32 +178,59 @@ function startJourney(root) {
     return [...currentScreen().querySelectorAll(".dialogue-beat")];
   }
 
-  function closePanels(returnFocus = false) {
-    const activeToggle = questLog.classList.contains("is-open")
-      ? questsButton
-      : statsPanel.classList.contains("is-open")
-        ? statsButton
-        : null;
-    statsPanel.classList.remove("is-open");
+  function closeQuestLog(returnFocus = false) {
+    const wasOpen = questLog.classList.contains("is-open");
     questLog.classList.remove("is-open");
-    statsPanel.setAttribute("aria-hidden", "true");
     questLog.setAttribute("aria-hidden", "true");
-    statsPanel.inert = true;
     questLog.inert = true;
-    statsButton.setAttribute("aria-expanded", "false");
+    questLog.removeAttribute("role");
+    questLog.removeAttribute("aria-modal");
     questsButton.setAttribute("aria-expanded", "false");
-    gameShell.inert = false;
-    if (returnFocus) activeToggle?.focus();
+    gameSurfaces.forEach((surface) => {
+      surface.inert = false;
+    });
+    if (returnFocus && wasOpen) questTrigger.focus();
   }
 
-  function openPanel(panel, button) {
-    closePanels();
-    panel.classList.add("is-open");
-    panel.removeAttribute("aria-hidden");
-    panel.inert = false;
-    button.setAttribute("aria-expanded", "true");
-    if (panel === questLog) gameShell.inert = true;
-    panel.querySelector(".panel-close")?.focus();
+  function openQuestLog(trigger = questsButton) {
+    closeDiscovery();
+    questTrigger = trigger;
+    questLog.classList.add("is-open");
+    questLog.removeAttribute("aria-hidden");
+    questLog.inert = false;
+    questLog.setAttribute("role", "dialog");
+    questLog.setAttribute("aria-modal", "true");
+    questLog.scrollTop = 0;
+    questsButton.setAttribute("aria-expanded", "true");
+    gameSurfaces.forEach((surface) => {
+      surface.inert = true;
+    });
+    questLog.querySelector(".panel-close").focus();
+  }
+
+  function closeDiscovery(returnFocus = false) {
+    if (!activeDiscovery) return;
+    const { button, panel } = discoveries.get(activeDiscovery);
+    panel.classList.remove("is-open");
+    activeDiscovery = null;
+    currentScreen().classList.remove("is-inspecting");
+    render();
+    if (returnFocus) button.focus();
+  }
+
+  function openDiscovery(id) {
+    const discovery = discoveries.get(id);
+    if (!discovery || discovery.screen !== screenIndex) return;
+    closeDiscovery();
+    activeDiscovery = id;
+    foundDiscoveries.add(id);
+    discovery.panel.classList.add("is-open");
+    currentScreen().classList.add("is-inspecting");
+    render();
+    discovery.panel.scrollTop = 0;
+    const heading = discovery.panel.querySelector("h3");
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
   }
 
   function renderState(state) {
@@ -203,13 +247,6 @@ function startJourney(root) {
       badgeSlots.forEach((slot) => {
         const earned = state.badges.includes(slot.dataset.badge);
         slot.classList.toggle("earned", earned);
-        if (earned) {
-          slot.removeAttribute("aria-hidden");
-          slot.setAttribute("aria-label", slot.dataset.badgeLabel);
-        } else {
-          slot.setAttribute("aria-hidden", "true");
-          slot.removeAttribute("aria-label");
-        }
       });
       document.getElementById("badge-count").textContent = String(
         state.badges.length,
@@ -228,8 +265,15 @@ function startJourney(root) {
       );
       document.getElementById("world-label").textContent =
         REGIONS[state.region];
-      document.getElementById("scene-object-label").textContent =
-        OBJECT_LABELS[state.object];
+      encounters.forEach((encounter) => {
+        const active =
+          encounter.dataset.encounter === currentScreen().dataset.checkpoint;
+        encounter.classList.toggle("is-active", active);
+        encounter.classList.toggle(
+          "can-animate",
+          active && !reducedMotion.matches,
+        );
+      });
       document.getElementById("overworld").dataset.mood = state.mood;
       root.dataset.checkpointIndex = state.index;
       lastEventIndex = state.index;
@@ -246,6 +290,9 @@ function startJourney(root) {
     const screen = currentScreen();
     const beats = currentBeats();
     const beatIndex = clamp(beatIndexes[screenIndex], 0, beats.length - 1);
+    const dialogueChanged =
+      root.dataset.screenIndex !== String(screenIndex) ||
+      root.dataset.beatIndex !== String(beatIndex);
     beatIndexes[screenIndex] = beatIndex;
     const eventIndex = eventIndexForScreen();
 
@@ -262,15 +309,17 @@ function startJourney(root) {
     beats.forEach((beat, index) =>
       beat.classList.toggle("is-current-beat", index === beatIndex),
     );
+    if (dialogueChanged)
+      screen.querySelector(".title-card, .dialogue-card").scrollTop = 0;
 
     const finalBeat = beatIndex === beats.length - 1;
-    screen.classList.toggle("is-reward-visible", finalBeat);
     document
       .getElementById("journey-marker")
       .classList.toggle(
         "is-celebrating",
         finalBeat &&
           screen.dataset.screenKind === "chapter" &&
+          screen.dataset.milestone === "true" &&
           !reducedMotion.matches,
       );
 
@@ -289,10 +338,27 @@ function startJourney(root) {
         ? `Dialogue ${beatIndex + 1} / ${beats.length}`
         : status.textContent;
     backButton.disabled = screenIndex === 0 && beatIndex === 0;
-    inspectButton.hidden = screen.dataset.screenKind !== "chapter";
-    inspectButton.setAttribute(
-      "aria-expanded",
-      String(screen.classList.contains("is-inspecting")),
+    inspectButtons.forEach((button) => {
+      const active =
+        discoveries.get(button.dataset.discovery).screen === screenIndex;
+      button.hidden = !active;
+      button.setAttribute(
+        "aria-expanded",
+        String(active && activeDiscovery === button.dataset.discovery),
+      );
+    });
+    if (screenIndex > 0 && finalBeat) completedScreens.add(screenIndex);
+    quests.forEach((quest, id) => {
+      quest.node.classList.toggle(
+        "is-unlocked",
+        quest.kind === "story"
+          ? completedScreens.has(quest.screen)
+          : foundDiscoveries.has(id),
+      );
+    });
+    questLog.classList.toggle(
+      "is-empty",
+      !questEntries.some((entry) => entry.classList.contains("is-unlocked")),
     );
 
     if (screen.classList.contains("is-inspecting")) {
@@ -304,11 +370,12 @@ function startJourney(root) {
     } else if (screen.dataset.screenKind === "ending") {
       advanceLabel.textContent = "Open quest log";
     } else {
-      advanceLabel.textContent = "Travel onward";
+      advanceLabel.textContent = "Next";
     }
   }
 
   function moveToScreen(nextIndex, direction = 1) {
+    closeDiscovery();
     const previousScreen = currentScreen();
     previousScreen.classList.remove("is-inspecting");
     screenIndex = clamp(nextIndex, 0, screens.length - 1);
@@ -316,6 +383,7 @@ function startJourney(root) {
     beatIndexes[screenIndex] =
       direction < 0 ? Math.max(0, beats.length - 1) : 0;
     lastEventIndex = null;
+    touchStart = null;
     render();
     focusedHeading?.removeAttribute("tabindex");
     focusedHeading = currentScreen().querySelector("h1, h2, h3");
@@ -323,11 +391,11 @@ function startJourney(root) {
     focusedHeading?.focus({ preventScroll: true });
   }
 
-  function advance() {
+  function advance(trigger = document.activeElement) {
+    if (questLog.classList.contains("is-open")) return;
     const screen = currentScreen();
     if (screen.classList.contains("is-inspecting")) {
-      screen.classList.remove("is-inspecting");
-      render();
+      closeDiscovery(true);
       return;
     }
     const beats = currentBeats();
@@ -337,14 +405,14 @@ function startJourney(root) {
       return;
     }
     if (screenIndex < screens.length - 1) moveToScreen(screenIndex + 1);
-    else openPanel(questLog, questsButton);
+    else openQuestLog(trigger);
   }
 
   function back() {
+    if (questLog.classList.contains("is-open")) return;
     const screen = currentScreen();
     if (screen.classList.contains("is-inspecting")) {
-      screen.classList.remove("is-inspecting");
-      render();
+      closeDiscovery(true);
       return;
     }
     if (beatIndexes[screenIndex] > 0) {
@@ -356,14 +424,10 @@ function startJourney(root) {
   }
 
   function fallback() {
-    closePanels();
+    closeQuestLog();
     html.classList.remove("enhanced");
     screens.forEach((screen) => {
-      screen.classList.remove(
-        "is-current-screen",
-        "is-inspecting",
-        "is-reward-visible",
-      );
+      screen.classList.remove("is-current-screen", "is-inspecting");
       screen.removeAttribute("aria-hidden");
     });
     root
@@ -371,15 +435,64 @@ function startJourney(root) {
       .forEach((chapter) => chapter.classList.remove("is-current-chapter"));
     chapters.forEach((chapter) => chapter.removeAttribute("aria-hidden"));
     fallbackOnly.forEach((node) => node.removeAttribute("aria-hidden"));
-    statsPanel.inert = false;
     questLog.inert = false;
+    questLog.removeAttribute("aria-hidden");
     status.textContent = "Opening stats. The complete story follows.";
   }
 
   try {
     game = JSON.parse(root.dataset.game);
+    const validScreen = (value) =>
+      Number.isInteger(value) && value >= 1 && value < screens.length;
+    const storyQuests = [...quests.entries()].filter(
+      ([, quest]) => quest.kind === "story",
+    );
     if (
+      window
+        .getComputedStyle(html)
+        .getPropertyValue("--chapter-adventure")
+        .trim() !== "ready" ||
       screens.length !== markers.length + 2 ||
+      questEntries.length !== 24 ||
+      quests.size !== 24 ||
+      inspectButtons.length !== 11 ||
+      discoveries.size !== 11 ||
+      root.querySelectorAll("[data-discovery-panel]").length !== 11 ||
+      storyQuests.length !== game.events.length + 1 ||
+      new Set(storyQuests.map(([, quest]) => quest.screen)).size !==
+        storyQuests.length ||
+      [...quests].some(([id, quest]) => {
+        if (
+          !/^[a-z][a-z0-9-]{0,63}$/.test(id) ||
+          !validScreen(quest.screen) ||
+          quest.node.dataset.targetScreen !== String(quest.screen)
+        )
+          return true;
+        const screen = screens[quest.screen];
+        const link = quest.node.querySelector('[data-action="revisit"]');
+        if (quest.kind === "story")
+          return (
+            id !== (screen.dataset.checkpoint ?? "epilogue") ||
+            link?.getAttribute("href") !== `#${screen.id}`
+          );
+        if (quest.kind !== "discovery") return true;
+        const discovery = discoveries.get(id);
+        return (
+          !discovery ||
+          discovery.screen !== quest.screen ||
+          discovery.button.dataset.screen !== String(discovery.screen) ||
+          discovery.panel?.id !== `discovery-${id}` ||
+          discovery.panel.dataset.discoveryPanel !== id ||
+          !screen.contains(discovery.panel) ||
+          link?.getAttribute("href") !== `#discovery-${id}` ||
+          !Number.isFinite(discovery.x) ||
+          discovery.x < 48 ||
+          discovery.x > 272 ||
+          !Number.isFinite(discovery.y) ||
+          discovery.y < 48 ||
+          discovery.y > 132
+        );
+      }) ||
       statRows.length !== STAT_KEYS.length ||
       statRows.some((row, index) => row.dataset.stat !== STAT_KEYS[index]) ||
       !validGame(
@@ -391,34 +504,74 @@ function startJourney(root) {
       throw new Error("Invalid story projection");
 
     html.classList.add("enhanced");
+    discoveries.forEach(({ button, x, y }) => {
+      button.style.left = `${(x / 320) * 100}%`;
+      button.style.top = `${(y / 180) * 100}%`;
+    });
     fallbackOnly.forEach((node) => node.setAttribute("aria-hidden", "true"));
-    statsPanel.setAttribute("aria-hidden", "true");
     questLog.setAttribute("aria-hidden", "true");
-    statsPanel.inert = true;
     questLog.inert = true;
     render();
 
     root.addEventListener("click", (event) => {
-      const action = event.target.closest("[data-action]")?.dataset.action;
+      const trigger = event.target.closest("[data-action]");
+      const action = trigger?.dataset.action;
       if (!action) return;
-      if (action === "advance") advance();
+      if (action === "revisit") {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+          return;
+        event.preventDefault();
+        const entry = trigger.closest("[data-quest]");
+        const quest = quests.get(entry?.dataset.quest);
+        if (
+          !quest ||
+          quest.node !== entry ||
+          !(quest.kind === "story"
+            ? completedScreens.has(quest.screen)
+            : foundDiscoveries.has(entry.dataset.quest))
+        )
+          return;
+        closeQuestLog();
+        moveToScreen(quest.screen);
+        if (quest.kind === "discovery") openDiscovery(entry.dataset.quest);
+      } else if (action === "advance") advance(trigger);
       else if (action === "back") back();
       else if (action === "inspect") {
-        currentScreen().classList.toggle("is-inspecting");
-        render();
-      } else if (action === "toggle-stats") {
-        if (statsPanel.classList.contains("is-open")) closePanels(true);
-        else openPanel(statsPanel, statsButton);
+        if (activeDiscovery === trigger.dataset.discovery) {
+          closeDiscovery(true);
+          return;
+        }
+        openDiscovery(trigger.dataset.discovery);
+      } else if (action === "close-discovery") {
+        closeDiscovery(true);
       } else if (action === "toggle-quests") {
-        if (questLog.classList.contains("is-open")) closePanels(true);
-        else openPanel(questLog, questsButton);
-      } else if (action === "close-panels") closePanels(true);
+        openQuestLog(trigger);
+      } else if (action === "close-panels") closeQuestLog(true);
     });
 
     document.addEventListener("keydown", (event) => {
       if (event.defaultPrevented || event.isComposing) return;
       if (event.key === "Escape") {
-        closePanels(true);
+        if (questLog.classList.contains("is-open")) closeQuestLog(true);
+        else closeDiscovery(true);
+        return;
+      }
+      if (questLog.classList.contains("is-open")) {
+        if (
+          event.key === "Tab" &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey
+        ) {
+          const targets = [
+            ...questLog.querySelectorAll("button, a[href]"),
+          ].filter((node) => node.getClientRects().length);
+          const edge = event.shiftKey ? targets[0] : targets.at(-1);
+          if (document.activeElement === edge) {
+            event.preventDefault();
+            (event.shiftKey ? targets.at(-1) : targets[0]).focus();
+          }
+        }
         return;
       }
       if (
@@ -444,15 +597,32 @@ function startJourney(root) {
     gameShell.addEventListener(
       "pointerdown",
       (event) => {
-        if (event.pointerType === "touch")
-          touchStart = { x: event.clientX, y: event.clientY };
+        touchStart = null;
+        if (
+          event.pointerType === "touch" &&
+          event.isPrimary &&
+          !questLog.classList.contains("is-open") &&
+          !event.target.closest(
+            "a, button, input, textarea, select, [contenteditable], .discovery-panel",
+          )
+        )
+          touchStart = {
+            id: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+          };
       },
       { passive: true },
     );
     gameShell.addEventListener(
       "pointerup",
       (event) => {
-        if (!touchStart || event.pointerType !== "touch") return;
+        if (
+          !touchStart ||
+          event.pointerType !== "touch" ||
+          event.pointerId !== touchStart.id
+        )
+          return;
         const x = event.clientX - touchStart.x;
         const y = event.clientY - touchStart.y;
         touchStart = null;
@@ -462,7 +632,16 @@ function startJourney(root) {
       },
       { passive: true },
     );
-    reducedMotion.addEventListener("change", render);
+    gameShell.addEventListener("pointercancel", () => {
+      touchStart = null;
+    });
+    reducedMotion.addEventListener("change", () => {
+      // Restoring motion does not replay an encounter already entered with reduced motion.
+      encounters.forEach((encounter) =>
+        encounter.classList.remove("can-animate"),
+      );
+      render();
+    });
     window.addEventListener("pageshow", render);
   } catch {
     fallback();
@@ -470,4 +649,12 @@ function startJourney(root) {
 }
 
 const journey = document.getElementById("journey");
-if (journey) startJourney(journey);
+if (journey) {
+  // WebKit can execute a module before the stylesheet is applied. Until load,
+  // the complete server document stays readable rather than hiding behind a gate.
+  if (document.readyState === "complete") startJourney(journey);
+  else
+    window.addEventListener("load", () => startJourney(journey), {
+      once: true,
+    });
+}

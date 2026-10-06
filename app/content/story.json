@@ -1,5 +1,6 @@
 {
   "schema_version": 2,
+  "epilogue_summary": "Back in San Jose, I run Home Assistant and a media server, and have replaced Google Drive/iCloud. OpenClaw and Hermes maintain each other; Morpheus keeps credential access human-approved. 3D printing is my retail therapy. I'm 40% PLA.",
   "sources": {
     "owner-brief": { "kind": "owner-supplied" },
     "resume": { "kind": "supplied-document" },
@@ -56,66 +57,77 @@
     {
       "id": "first-game",
       "label": "First game",
+      "quest_id": "first-script",
       "description": "I started making little PC games at eight.",
       "art_key": "spark"
     },
     {
       "id": "house-captain",
       "label": "House Captain",
-      "description": "I became house captain at Navy Children School and found public speaking and debate.",
+      "quest_id": "school-unlocked",
+      "description": "Being house captain at Navy Children School got me into leadership, public speaking, and debate.",
       "art_key": "flag"
     },
     {
       "id": "cs-percentile",
       "label": "National top 0.01%",
+      "quest_id": "unexpected-detour",
       "description": "I finished Class 12 in the national top 0.01% for computer science.",
       "art_key": "star"
     },
     {
       "id": "hackathon-wins",
       "label": "7 hackathon wins",
+      "quest_id": "college-unlocked",
       "description": "I won seven different hackathons during four years of college.",
       "art_key": "leaf"
     },
     {
       "id": "java-training",
       "label": "Java training #1",
+      "quest_id": "java-unlocked",
       "description": "I finished first in HSDI's six-month Java training.",
       "art_key": "cup"
     },
     {
       "id": "green-belt",
       "label": "Green Belt: 2,000+ hours",
+      "quest_id": "green-belt",
       "description": "My Green Belt project saved 2,000+ hours of manual work.",
       "art_key": "gear"
     },
     {
       "id": "teaching-assistant",
       "label": "Prof. Paul's TA",
-      "description": "I became Professor Paul Nguyen's TA and built automated grading and student leaderboards.",
+      "quest_id": "sjsu-unlocked",
+      "description": "As Professor Paul Nguyen's TA, I automated grading and built student leaderboards.",
       "art_key": "cloud"
     },
     {
       "id": "google-internship",
       "label": "Google Hardware/Nest intern",
-      "description": "I built performance monitoring and test-failure automation during my Google Hardware/Nest internship.",
+      "quest_id": "google-tools",
+      "description": "I built performance-monitoring tools and automated test-failure reporting during my Google Hardware/Nest internship.",
       "art_key": "heart"
     },
     {
       "id": "release-automation",
       "label": "Months to minutes",
-      "description": "I automated months of manual Chat release-preparation work down to minutes.",
+      "quest_id": "cloud-unlocked",
+      "description": "I automated Chat release prep, cutting months of manual work down to minutes.",
       "art_key": "gear"
     },
     {
       "id": "bots-reliability",
       "label": "Bots at 99.99%",
+      "quest_id": "bots-unlocked",
       "description": "I got Einstein Bots to 99.99% availability through CI/CD and monitoring improvements, including Argo CD.",
       "art_key": "bot"
     },
     {
       "id": "principal",
       "label": "Principal engineer",
+      "quest_id": "career-titles",
       "description": "I became a Principal engineer in February 2025. Still plenty to learn.",
       "art_key": "star"
     }
@@ -179,11 +191,9 @@
       "cards": [
         {
           "id": "first-script",
+          "summary": "I grew up in Goa, got hooked on PC games at seven, and started writing little games at eight.",
           "heading": "Then, making them",
           "body": "I got hooked on PC games when I was seven. By eight, I was writing little games of my own.",
-          "facts": [
-            "I still play on PC, PlayStation, and Switch. I love Pokemon. Growing up has done very little to fix any of this."
-          ],
           "source_refs": ["owner-brief", "profile"],
           "event": {
             "stats_after": {
@@ -208,9 +218,9 @@
       "cards": [
         {
           "id": "school-unlocked",
+          "summary": "Computer science in 11th and 12th grade, with C/C++ as my main languages, pointed me toward computer engineering. Being house captain got me into leadership, public speaking, and debate.",
           "heading": "C, C++, and an audience",
-          "body": "The lucky part was finding my thing early: computer science and C/C++.\n\nHouse captain introduced me to leadership, public speaking, and debate, irrespective of how many people wanted to hear my opinions.",
-          "facts": [],
+          "body": "I had computer science as a subject in 11th and 12th grade. I was good at it, and computer engineering felt like the obvious next step.\n\nBeing house captain introduced me to leadership, public speaking, and debate, irrespective of how many people wanted to hear my opinions.",
           "source_refs": ["owner-brief", "profile"],
           "event": {
             "stats_after": {
@@ -235,9 +245,9 @@
       "cards": [
         {
           "id": "unexpected-detour",
+          "summary": "Dengue put me in hospital before finals. I still finished Class 12 in the national top 0.01% for CS and went to GEC, Goa University, for computer engineering.",
           "heading": "Dengue, right before finals",
-          "body": "A few weeks before my Class 12 final exams, complicated dengue put me in hospital for a month.\n\nI still finished Class 12 in the national top 0.01% for CS and entered the BE in Computer Engineering at Goa Engineering College, Goa University.\n\nMosquitoes and I have not reconciled.",
-          "facts": [],
+          "body": "A few weeks before my Class 12 final exams, complicated dengue put me in hospital for a month.\n\nI still finished Class 12 in the national top 0.01% for CS and started my BE in Computer Engineering at Goa Engineering College, Goa University.\n\nMosquitoes and I have not reconciled.",
           "source_refs": ["owner-brief", "profile"],
           "event": {
             "stats_after": {
@@ -262,9 +272,9 @@
       "cards": [
         {
           "id": "college-unlocked",
+          "summary": "At GEC I learned to live on my own, found Python through PyCon, won seven hackathons, placed nationally in IEEE Xtreme's top ten, and finished among the top students with a 3.7 GPA.",
           "heading": "The syllabus had competition",
-          "body": "College was my first time living on my own. A lot of growing up happened here.\n\nI became department general secretary.\n\nPyCon introduced me to Python.\n\nMy Zuari internship introduced me to enterprise software: an on-premise SAP data center.\n\nI presented a paper on securing voice and video calls.\n\nHackathons became minibosses: seven wins in four years, plus national top ten in the 24-hour IEEE Xtreme.\n\nI finished among the top of my class. This was becoming a bit of a trend.",
-          "facts": [],
+          "body": "College was my first time living on my own. I had a lot to figure out.\n\nI discovered Python at PyCon.\n\nHackathons became minibosses: seven wins in four years, plus a national top-ten finish in the 24-hour IEEE Xtreme.\n\nI finished among the top students in my class with a 3.7 GPA. This was becoming a bit of a trend.",
           "source_refs": [
             "owner-brief",
             "resume",
@@ -294,9 +304,9 @@
       "cards": [
         {
           "id": "java-unlocked",
+          "summary": "I moved to Pune for HSDI, finished first in six months of Java training, and went on to lead five developers building banking utilities.",
           "heading": "A proper training program",
-          "body": "HSDI (HSBC Software Development India) took me to Pune for six months of Java training. I finished, you guessed it, at the top of the class.\n\nC/C++, Python, now Java. Gotta catch 'em all. I went on to lead five developers building banking utilities.",
-          "facts": [],
+          "body": "I joined HSDI (HSBC Software Development India) in Pune. First came six months of Java training. I finished, you guessed it, at the top of the class.\n\nC/C++, Python, now Java. Gotta catch 'em all. I went on to lead five developers building banking utilities.",
           "source_refs": ["owner-brief", "profile", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -321,9 +331,9 @@
       "cards": [
         {
           "id": "automation-unlocked",
+          "summary": "Banking red tape pushed me toward automating manual work and building TasKing in Java/Swing. Wanting more to learn, I looked at US universities and did well on GRE and TOEFL.",
           "heading": "Bored, not done",
-          "body": "Banking red tape blocked new work, so I automated mine and built apps like TasKing.\n\nMy Lean Six Sigma Green Belt project saved over 2,000 hours.\n\nHungry to learn more, I looked at US universities and took GRE and TOEFL. I did really well. Again.",
-          "facts": [],
+          "body": "Banking red tape blocked new work, so I started automating the manual stuff and building apps like TasKing, which I wrote in Java/Swing.\n\nI wanted to learn more, so I looked at US universities, then took the GRE and TOEFL. I did really well. Again.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -348,9 +358,9 @@
       "cards": [
         {
           "id": "sjsu-unlocked",
+          "summary": "At SJSU, I was Prof. Paul's only student to score the maximum 110% and became his TA. I automated grading, built student leaderboards, and made the Alexa-powered campus chatbot SpartanBot.",
           "heading": "Prof. Paul, 110%, and competitive homework",
-          "body": "SJSU was affordable, challenging, and exactly what I needed. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA, automating grading and building student leaderboards.\n\nI also built SpartanBot, an Alexa-powered campus chatbot, and placed second at PayPal's Opportunity Hack.",
-          "facts": [],
+          "body": "SJSU was affordable and gave me the challenge I wanted. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nI also built SpartanBot, an Alexa-powered campus chatbot.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -375,11 +385,9 @@
       "cards": [
         {
           "id": "developer-ally-unlocked",
+          "summary": "My Google Hardware/Nest internship, during the MS, showed me how much I enjoyed developer tools, direct feedback, and choosing the right language for the job. Imposter syndrome came with plenty to learn.",
           "heading": "Google, during my master's",
-          "body": "Google Hardware/Nest felt different: cooler products and a culture with matching whimsy.\n\nI built tools and infrastructure for developers, with feedback coming straight back to me. This was the work I wanted.\n\nImposter syndrome was real, but so was learning from engineers far better than me. Intimidating, intoxicating, addictive. I left wanting more.",
-          "facts": [
-            "I loved choosing whatever language fit, digging into infrastructure and deployment, and hearing directly from developers. You never have to wonder whether they have feedback."
-          ],
+          "body": "Google Hardware/Nest felt different. Everyone wanted to build cooler products, and the culture was playful.\n\nI could pick whatever language suited the problem. I built tools and infrastructure for developers and got feedback directly from them. This was the work I wanted.\n\nI had imposter syndrome around engineers far better than me. Learning from them was intimidating, intoxicating, addictive. I left wanting more.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -404,9 +412,9 @@
       "cards": [
         {
           "id": "cloud-unlocked",
+          "summary": "I joined Salesforce in 2019 and moved to San Francisco. I cut Chat release prep from months to minutes and helped move its monolith to AWS, with room to explore beyond an internship's fixed end date.",
           "heading": "And room to explore",
-          "body": "I joined Salesforce in 2019 and moved to San Francisco.\n\nI automated months of manual Chat release prep down to minutes and helped move the monolith from data centers to AWS.\n\nFull-time work had no internship end date. I had room to explore, surrounded by smart people.",
-          "facts": [],
+          "body": "I joined Salesforce in 2019 and moved to San Francisco.\n\nI automated Chat release prep, cutting months of manual work down to minutes. I also helped move the monolith from data centers to AWS.\n\nFull-time work didn't have my internship's fixed end date. I had room to explore, surrounded by smart people.",
           "source_refs": [
             "owner-brief",
             "resume",
@@ -428,9 +436,9 @@
         },
         {
           "id": "fog-arrives",
-          "heading": "Finding a new cadence",
-          "body": "COVID forced a sustainable new cadence of contribution without burning myself out.",
-          "facts": [],
+          "summary": "During COVID, I had to find a pace I could sustain without burning myself out.",
+          "heading": "A pace I could keep up",
+          "body": "During COVID, I had to find a pace I could keep up without burning myself out.",
           "source_refs": ["owner-brief"],
           "event": {
             "stats_after": {
@@ -451,15 +459,13 @@
       "id": "bot-workshop",
       "region_id": "bay-area",
       "period_label": "Salesforce Bots / Copilot by 2023",
-      "heading": "The bots became a platform.",
+      "heading": "From bots to Copilot.",
       "cards": [
         {
           "id": "bots-unlocked",
+          "summary": "Bots reached 99.99% availability after CI/CD and monitoring work. I worked on its API, contributed to the Slack connector, migrated all customer traffic from Heroku to multisubstrate public cloud, and moved to Copilot's configurable agents.",
           "heading": "Reliability, APIs, then LLMs",
-          "body": "On Einstein Bots, I improved CI/CD and monitoring, including Argo CD, and got the service to 99.99% availability. I also worked on its public API and seamlessly migrated 100% of customer traffic from Heroku to multisubstrate public-cloud instances.\n\nAs part of the API work, I contributed to the public Slack connector. Useful, but not the main quest.\n\nWhen LLMs arrived, I pivoted to Einstein Copilot: a platform for talking to a configurable AI agent inside Salesforce.",
-          "facts": [
-            "Off the clock: guitar, drones, golf, cooking, cocktails, karting, sim racing, dogs, blogging, and poetry. Also lists. You may have noticed."
-          ],
+          "body": "On Einstein Bots, I improved CI/CD and monitoring, including Argo CD, and got the service to 99.99% availability. I also worked on its public API and seamlessly migrated 100% of customer traffic from Heroku to multisubstrate public-cloud instances.\n\nMy contribution to the public Slack connector was a small part of that API work.\n\nWhen LLMs arrived, I moved to Einstein Copilot: a platform for talking to a configurable AI agent inside Salesforce.",
           "source_refs": ["owner-brief", "profile", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -484,9 +490,9 @@
       "cards": [
         {
           "id": "continuing-unlocked",
+          "summary": "As a Principal engineer on Agentforce, I help customers build agents through Atlas, AgentScript, voice, memory, MCP, async work, and long-running sessions. I also build team DevOps tools. My enthusiasm, drive, and passion are at an all-time high.",
           "heading": "Principal, not finished",
-          "body": "Next came a platform where Salesforce customers could build their own agents. Basic topics and actions grew into the Atlas Reasoning Engine and AgentScript, making agent behavior more deterministic in an LLM world.\n\nNow we add voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nConnecting Salesforce CRM data to the agent platform has been a fun place to work, learn, and grow. I also build context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",
-          "facts": [],
+          "body": "Then came Agentforce: a platform where Salesforce customers could build their own agents. Basic topics and actions grew into the Atlas Reasoning Engine and AgentScript, making agent behavior more deterministic in an LLM world.\n\nWe're adding voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nI enjoy connecting Salesforce CRM data to the agent platform. I'm learning and growing. I also build context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -504,214 +510,140 @@
       ]
     }
   ],
-  "achievements": [
+  "discoveries": [
     {
-      "id": "agentic-team-tools",
-      "era": "current",
-      "period_label": "Now",
-      "heading": "Agentforce products and developer tools",
-      "body": "I help grow Agentforce's Atlas Reasoning Engine and AgentScript with voice, MCP, native context, memory, agentic runtime, async work, and long-running turns, actions, and sessions. I also build context-aware DevOps tools for my team.",
-      "source_refs": ["owner-brief", "profile"],
-      "links": {}
-    },
-    {
-      "id": "home-automation",
-      "era": "current",
-      "period_label": "Now / San Jose",
-      "heading": "DevOpsing the house",
-      "body": "My homelab runs Home Assistant and a media stack. My OpenClaw and Hermes agents maintain each other; Morpheus keeps credential access behind human approval.",
-      "source_refs": ["owner-brief", "github"],
+      "id": "gec-extras",
+      "card_id": "college-unlocked",
+      "period_label": "2010-2014 / GEC",
+      "heading": "More from GEC",
+      "body": "I became my department's general secretary.\n\nDuring my Zuari internship, I saw enterprise software running in an on-premise SAP data center for the first time. I built a PHP dashboard and monitoring tools with Python alerts.\n\nI presented a paper on securing voice and video calls.",
+      "summary": "Department general secretary, a first look at enterprise SAP during my Zuari internship, and a paper on securing voice and video calls.",
+      "position": { "x": 249, "y": 99 },
+      "source_refs": ["owner-brief", "resume", "profile", "github"],
       "links": {
-        "Morpheus credential gatekeeper": "https://github.com/pranavprem/morpheus",
-        "Media server": "https://github.com/pranavprem/mediaserver",
-        "Home Assistant": "https://github.com/pranavprem/homeassistant"
+        "Zuari SAP dashboard": "https://github.com/pranavprem/ZuariSAPDetail",
+        "Request monitor": "https://github.com/pranavprem/ZuariRequestMonitor",
+        "Call-security project": "https://github.com/pranavprem/fyp"
       }
     },
     {
-      "id": "three-d-printing",
-      "era": "current",
-      "period_label": "Now",
-      "heading": "I'm 40% PLA.",
-      "body": "MakerWorld, Bambu Studio, and Autodesk Fusion replaced Amazon Prime. Why buy it when I can spend six hours making it?",
-      "source_refs": ["owner-brief"],
-      "links": {}
-    },
-    {
-      "id": "principal",
-      "era": "principal",
-      "period_label": "2020-2025 / Salesforce",
-      "heading": "Senior, Lead, Principal",
-      "body": "Senior in October 2020, Lead in August 2023, Principal in February 2025.",
-      "source_refs": ["owner-brief", "profile"],
-      "links": {}
-    },
-    {
-      "id": "einstein-bots-platform",
-      "era": "bots",
-      "period_label": "Salesforce",
-      "heading": "Einstein Bots: reliability, API, migration",
-      "body": "I got Bots to 99.99% availability through CI/CD, Argo CD, and monitoring; worked on its public API; and seamlessly migrated 100% of customer traffic from Heroku to multisubstrate public cloud. The API work included my Slack connector contribution.",
+      "id": "early-projects",
+      "card_id": "college-unlocked",
+      "period_label": "Early projects / Goa",
+      "heading": "Games and custom ROMs",
+      "body": "I made 3D Tic-Tac-Toe and, at GEC, a C++ Snake graphics project.\n\nFrom 18 to 20, I worked on CyanogenMod for the Samsung Galaxy Ace in Southeast Asia.",
+      "summary": "I made 3D Tic-Tac-Toe and C++ Snake, and worked on CyanogenMod for the Galaxy Ace from 18 to 20.",
+      "position": { "x": 114.5, "y": 96.5 },
       "source_refs": ["owner-brief", "profile", "github"],
-      "links": {
-        "My Slack connector contributions": "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem"
-      }
-    },
-    {
-      "id": "public-cloud",
-      "era": "chat",
-      "period_label": "2019-2021 / Salesforce Chat",
-      "heading": "Chat automation and public cloud",
-      "body": "I helped turn months of Chat release prep into minutes, then helped move the monolith from data centers to AWS.",
-      "source_refs": ["owner-brief", "resume", "profile"],
-      "links": {}
-    },
-    {
-      "id": "masters",
-      "era": "sjsu",
-      "period_label": "2017-2018 / SJSU",
-      "heading": "MS in Software Engineering, 3.90 GPA",
-      "body": "My MS focused on enterprise systems and cloud computing, with graduate research work in JavaScript and Python.",
-      "source_refs": ["resume", "profile"],
-      "links": {}
-    },
-    {
-      "id": "google-internship",
-      "era": "sjsu",
-      "period_label": "Jun-Aug 2018 / Google Hardware & Nest",
-      "heading": "Helping developers was the job",
-      "body": "I built Nest performance monitoring in Python/Dremel and automatic Jira issues for failed tests.",
-      "source_refs": ["owner-brief", "resume", "profile"],
-      "links": {}
-    },
-    {
-      "id": "paul-110",
-      "era": "sjsu",
-      "period_label": "SJSU",
-      "heading": "110%, then Prof. Paul's TA",
-      "body": "I was Prof. Paul's only student to score the maximum 110%. Then I became his TA and built a Docker/Python autograder and live leaderboards.",
-      "source_refs": ["owner-brief", "profile"],
-      "links": {}
-    },
-    {
-      "id": "spartanbot",
-      "era": "sjsu",
-      "period_label": "SJSU",
-      "heading": "SpartanBot and a PayPal hackathon",
-      "body": "I built an Alexa campus chatbot, then placed second at PayPal's Opportunity Hack with another Alexa project for San Jose.",
-      "source_refs": ["owner-brief", "resume", "github"],
-      "links": {
-        "SpartanBot": "https://github.com/pranavprem/Spartanbot",
-        "Opportunity Hack project": "https://github.com/pranavprem/Parks-RecSanJose"
-      }
-    },
-    {
-      "id": "tasking",
-      "era": "hsbc",
-      "period_label": "2014-2017 / HSBC",
-      "heading": "TasKing, Green Belt, and CI/CD",
-      "body": "I built TasKing in Java/Swing. A separate Green Belt project saved 2,000+ hours; separate CI/CD work cut time to market by 25%.",
-      "source_refs": ["owner-brief", "resume", "github"],
-      "links": { "TasKing": "https://github.com/pranavprem/TasKing" }
-    },
-    {
-      "id": "java-training",
-      "era": "hsbc",
-      "period_label": "2014-2017 / HSDI, Pune",
-      "heading": "Caught the Java bug",
-      "body": "At HSDI (HSBC Software Development India), I finished first in six-month Java training, led five developers, and became its youngest Rising Star nominee at 20.",
-      "source_refs": ["owner-brief", "resume", "profile"],
-      "links": {}
-    },
-    {
-      "id": "college-degree",
-      "era": "goa",
-      "period_label": "2010-2014 / GEC, Goa University",
-      "heading": "GEC: degree, leadership, and a paper",
-      "body": "I finished my BE in Computer Engineering with a 3.7 GPA, served as department general secretary, and presented a call-security paper.",
-      "source_refs": ["owner-brief", "resume", "profile"],
-      "links": { "Call-security project": "https://github.com/pranavprem/fyp" }
-    },
-    {
-      "id": "seven-hackathons",
-      "era": "goa",
-      "period_label": "College",
-      "heading": "The miniboss collection",
-      "body": "Seven wins in four years. The final miniboss was a national top-ten finish in the 24-hour IEEE Xtreme.",
-      "source_refs": ["owner-brief", "resume", "profile"],
-      "links": {}
-    },
-    {
-      "id": "zuari",
-      "era": "goa",
-      "period_label": "2013-2014 / Zuari Agro Chemicals",
-      "heading": "My first look at enterprise software",
-      "body": "Zuari was my first look at enterprise software: on-premise SAP. I built a PHP dashboard, monitoring, and Python alerts.",
-      "source_refs": ["owner-brief", "profile", "github"],
-      "links": {
-        "SAP dashboard": "https://github.com/pranavprem/ZuariSAPDetail",
-        "Request monitor": "https://github.com/pranavprem/ZuariRequestMonitor"
-      }
-    },
-    {
-      "id": "cyanogenmod",
-      "era": "goa",
-      "period_label": "Ages 18-20",
-      "heading": "CyanogenMod for the Galaxy Ace",
-      "body": "From 18 to 20, I worked on CyanogenMod for the Samsung Galaxy Ace in Southeast Asia. This was my idea of a hobby.",
-      "source_refs": ["profile"],
-      "links": {}
-    },
-    {
-      "id": "school-cs",
-      "era": "school",
-      "period_label": "School / Goa",
-      "heading": "School: CS, speaking, and leadership",
-      "body": "At Navy Children School, I was house captain, found public speaking and debate, and finished Class 12 in the national top 0.01% for CS.",
-      "source_refs": ["owner-brief", "profile"],
-      "links": {}
-    },
-    {
-      "id": "early-games",
-      "era": "undated",
-      "period_label": "Early game experiments",
-      "heading": "Making the games I wanted to play",
-      "body": "I kept making games: 3D Tic-Tac-Toe and a C++ Snake graphics project at GEC.",
-      "source_refs": ["owner-brief", "github"],
       "links": {
         "3D Tic-Tac-Toe": "https://github.com/pranavprem/3D-TicTacToe",
         "C++ Snake": "https://github.com/pranavprem/Cpp-Snake"
       }
     },
     {
-      "id": "ai-workflows",
-      "era": "undated",
-      "period_label": "Personal projects",
-      "heading": "Memory, context, and local AI",
-      "body": "I gave my personal agent persistent memory with OpenMemory and Qdrant, and run local speech, image, and voice services on Apple Silicon.",
+      "id": "green-belt",
+      "card_id": "automation-unlocked",
+      "period_label": "2014-2017 / HSBC",
+      "heading": "Green Belt and CI/CD",
+      "body": "My Lean Six Sigma Green Belt project saved over 2,000 hours of manual work.\n\nSeparate CI/CD work cut time to market by 25%.",
+      "summary": "My Green Belt project saved 2,000+ hours of manual work. Separate CI/CD improvements cut time to market by 25%.",
+      "position": { "x": 217, "y": 102.5 },
+      "source_refs": ["owner-brief", "resume", "supplied-documents"],
+      "links": {}
+    },
+    {
+      "id": "coldplay",
+      "card_id": "automation-unlocked",
+      "period_label": "Age 22 / Coldplay & Oxfam",
+      "heading": "The Coldplay cameo",
+      "body": "That's my silhouette at 3:41 in Coldplay's \"In My Place\" video for Oxfam. It also became my Gmail picture.",
+      "summary": "My silhouette appears at 3:41 in the Coldplay/Oxfam video for \"In My Place.\" It became my Gmail picture too.",
+      "position": { "x": 70, "y": 84.5 },
+      "source_refs": ["owner-brief", "profile"],
+      "links": { "My cameo at 3:41": "https://youtu.be/ogItgrO9GSg?t=221" }
+    },
+    {
+      "id": "opportunity-hack",
+      "card_id": "sjsu-unlocked",
+      "period_label": "SJSU / Opportunity Hack",
+      "heading": "Opportunity Hack",
+      "body": "At PayPal's Opportunity Hack, I worked on an Alexa project for the City of San Jose. We placed second.",
+      "summary": "I placed second at PayPal's Opportunity Hack with an Alexa project for the City of San Jose.",
+      "position": { "x": 52.5, "y": 96 },
+      "source_refs": ["owner-brief", "resume", "github"],
+      "links": {
+        "Opportunity Hack project": "https://github.com/pranavprem/Parks-RecSanJose"
+      }
+    },
+    {
+      "id": "masters",
+      "card_id": "developer-ally-unlocked",
+      "period_label": "2017-2018 / SJSU",
+      "heading": "The rest of my MS",
+      "body": "My MS in Software Engineering focused on enterprise systems and cloud computing. I finished with a 3.90 GPA.\n\nI also worked as a research assistant using JavaScript and Python.",
+      "summary": "An MS in Software Engineering with a 3.90 GPA, focused on enterprise systems and cloud computing, plus research work in JavaScript and Python.",
+      "position": { "x": 52.5, "y": 96 },
+      "source_refs": ["resume", "profile", "supplied-documents"],
+      "links": {}
+    },
+    {
+      "id": "google-tools",
+      "card_id": "developer-ally-unlocked",
+      "period_label": "Jun-Aug 2018 / Google Hardware & Nest",
+      "heading": "Tools I built at Google",
+      "body": "I built a Python/Dremel dashboard to track a Nest web app's performance.\n\nI also built tooling to create Jira issues when tests failed.",
+      "summary": "A Python/Dremel performance dashboard for a Nest web app and tooling to create Jira issues from failed tests.",
+      "position": { "x": 208, "y": 95.5 },
+      "source_refs": ["owner-brief", "resume", "profile"],
+      "links": {}
+    },
+    {
+      "id": "career-titles",
+      "card_id": "continuing-unlocked",
+      "period_label": "2020-2025 / Salesforce",
+      "heading": "Senior, Lead, Principal",
+      "body": "I became Senior in October 2020, Lead in August 2023, and Principal in February 2025.",
+      "summary": "Senior in October 2020, Lead in August 2023, and Principal in February 2025.",
+      "position": { "x": 69, "y": 74 },
+      "source_refs": ["owner-brief", "profile"],
+      "links": {}
+    },
+    {
+      "id": "awards",
+      "card_id": "continuing-unlocked",
+      "period_label": "Recognition / across my career",
+      "heading": "Corporate awards are meaningless",
+      "body": "I still kept the list: TMP All Star (top 1% of Salesforce contributors), Rising Star, SPOT, PEARL, Above and Beyond, and an AppSprint win.\n\nI was HSDI's youngest Rising Star nominee at 20. HSDI is HSBC Software Development India.",
+      "summary": "HSDI's youngest Rising Star nominee at 20, plus TMP All Star, Rising Star, SPOT, PEARL, Above and Beyond, and AppSprint recognition. I still kept the list.",
+      "position": { "x": 158, "y": 106.5 },
+      "source_refs": ["owner-brief", "profile"],
+      "links": {}
+    },
+    {
+      "id": "off-clock",
+      "card_id": "epilogue",
+      "period_label": "Now / outside work",
+      "heading": "Still playing",
+      "body": "I still play on PC, PlayStation, and Switch. I love Pokemon. Growing up has just given me more money to fund it. So I have a Formula 1-style simulator now.\n\nOutside work, I'm an amateur guitarist and enjoy drones, golf, cooking, mixology, karting, sim racing, and dog whispering. I also blog, write poetry, and make lists. You may have noticed.",
+      "summary": "PC, PlayStation, Switch, Pokemon, and a Formula 1-style simulator. Also guitar, drones, golf, cooking, mixology, karting, dogs, blogging, poetry, and lists.",
+      "position": { "x": 158, "y": 106.5 },
+      "source_refs": ["owner-brief", "profile"],
+      "links": {}
+    },
+    {
+      "id": "local-ai",
+      "card_id": "epilogue",
+      "period_label": "Personal projects / current",
+      "heading": "Memory and local AI",
+      "body": "I use OpenMemory and Qdrant for my agent's persistent memory. I also run speech, image, and voice services locally on Apple Silicon.",
+      "summary": "OpenMemory and Qdrant for persistent agent memory, with local speech, image, and voice services on Apple Silicon.",
+      "position": { "x": 69, "y": 74 },
       "source_refs": ["github"],
       "links": {
         "OpenMemory": "https://github.com/pranavprem/openmemory-local",
         "Qdrant on the NAS": "https://github.com/pranavprem/qdrant-nas",
         "Local AI services": "https://github.com/pranavprem/neo-services"
       }
-    },
-    {
-      "id": "coldplay",
-      "era": "undated",
-      "period_label": "Coldplay & Oxfam",
-      "heading": "The Coldplay cameo",
-      "body": "That's my silhouette at 3:41 in \"In My Place.\" It also became my Gmail picture.",
-      "source_refs": ["owner-brief", "profile"],
-      "links": { "My cameo at 3:41": "https://youtu.be/ogItgrO9GSg?t=221" }
-    },
-    {
-      "id": "tmp-all-star",
-      "era": "undated",
-      "period_label": "Recognition",
-      "heading": "Corporate awards are meaningless",
-      "body": "I still kept the list: TMP All Star (top 1% of Salesforce contributors), Rising Star, SPOT, PEARL, Above and Beyond, and an AppSprint win.",
-      "source_refs": ["profile"],
-      "links": {}
     }
   ]
 }

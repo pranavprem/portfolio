@@ -68,6 +68,42 @@ def test_projection_is_prose_free_and_does_not_alias_input(story_document):
     assert story_document == original
 
 
+def test_quests_cover_the_story_and_discoveries_in_order(
+    story_document, quest_targets, discovery_positions
+):
+    original = deepcopy(story_document)
+    story, game = prepare_story(story_document)
+    assert [quest["id"] for quest in story["quests"]] == list(quest_targets)
+    assert {
+        quest["id"]: (quest["kind"], quest["screen_index"]) for quest in story["quests"]
+    } == quest_targets
+    assert [quest["id"] for quest in story["quests"] if quest["kind"] == "story"] == [
+        event["id"] for event in game["events"]
+    ] + ["epilogue"]
+    assert {
+        item["id"]: (item["position"]["x"], item["position"]["y"]) for item in story["discoveries"]
+    } == discovery_positions
+    for quest in story["quests"]:
+        assert quest["summary"]
+        for badge in quest["badges"]:
+            assert badge["quest_id"] == quest["id"]
+    assert sum(len(quest["badges"]) for quest in story["quests"]) == 11
+    owners = {badge["id"]: badge["quest_id"] for badge in story["badges"]}
+    assert {key: owners[key] for key in ("green-belt", "google-internship", "principal")} == {
+        "green-belt": "green-belt",
+        "google-internship": "google-tools",
+        "principal": "career-titles",
+    }
+    assert story_document == original
+
+
+@pytest.mark.parametrize("reference", [None, True, 2, "", "school", "future", "<script>"])
+def test_invalid_discovery_targets_are_rejected(story_document, reference):
+    story_document["discoveries"][0]["card_id"] = reference
+    with pytest.raises(ContentValidationError, match="card_id"):
+        validate_story(story_document)
+
+
 @pytest.mark.parametrize(
     ("path", "value"),
     [
@@ -101,8 +137,11 @@ def test_projection_is_prose_free_and_does_not_alias_input(story_document):
         (("chapters", 0, "cards", 0, "body"), " \t "),
         (("chapters", 0, "cards", 0, "body"), "text\x7f"),
         (("chapters", 0, "cards", 0, "heading"), "x" * 101),
-        (("chapters", 0, "cards", 0, "facts"), ["x"] * 4),
-        (("chapters", 0, "cards", 0, "facts"), ["x" * 221]),
+        (("chapters", 0, "cards", 0, "summary"), "x" * 351),
+        (("chapters", 0, "cards", 0, "summary"), "line\nbreak"),
+        (("epilogue_summary",), "x" * 351),
+        (("badges", 0, "quest_id"), "missing"),
+        (("badges", 0, "quest_id"), "college-unlocked"),
         (("chapters", 0, "cards", 0, "source_refs"), []),
         (("chapters", 0, "cards", 0, "source_refs"), ["private-pdf"]),
         (("chapters", 0, "cards", 0, "source_refs"), ["profile", "profile"]),
@@ -143,6 +182,8 @@ def test_stats_reject_invalid_numbers_without_clamping(story_document, value):
         ("chapters", 0, "cards", 0),
         ("chapters", 0, "cards", 0, "event"),
         ("chapters", 0, "cards", 0, "event", "stats_after"),
+        ("discoveries", 0),
+        ("discoveries", 0, "position"),
     ],
 )
 def test_unknown_and_missing_keys_are_rejected(story_document, path):
@@ -160,7 +201,9 @@ def test_unknown_and_missing_keys_are_rejected(story_document, path):
         validate_story(story_document)
 
 
-@pytest.mark.parametrize("key", ["chapters", "badges", "regions", "stat_definitions"])
+@pytest.mark.parametrize(
+    "key", ["chapters", "badges", "regions", "stat_definitions", "discoveries"]
+)
 def test_release_counts_cannot_be_relaxed(story_document, key):
     story_document[key].pop()
     with pytest.raises(ContentValidationError):
@@ -179,7 +222,7 @@ def test_card_count_and_ledger_order_are_authoritative(story_document):
 
 def test_text_and_geometry_limits_are_inclusive(story_document):
     card = story_document["chapters"][0]["cards"][0]
-    card.update(body="x" * 600, heading="x" * 100, facts=["x" * 220])
+    card.update(body="x" * 600, heading="x" * 100, summary="x" * 350)
     story_document["stat_definitions"][0]["label"] = "x" * 64
     story_document["regions"][0]["landmarks"]["home"] = {"x": 20, "y": 0}
     story_document["regions"][0]["landmarks"]["school"] = {"x": 300, "y": 180}
@@ -344,35 +387,24 @@ def test_claim_provenance_and_full_source_ledger(story_document, project_root):
         assert (project_root / name).is_file()
 
 
-def test_full_achievement_inventory_and_project_evidence(story_document):
+def test_full_discovery_inventory_and_project_evidence(story_document):
     expected = {
-        "agentic-team-tools",
-        "home-automation",
-        "three-d-printing",
-        "principal",
-        "einstein-bots-platform",
-        "public-cloud",
-        "masters",
-        "google-internship",
-        "paul-110",
-        "spartanbot",
-        "tasking",
-        "java-training",
-        "college-degree",
-        "seven-hackathons",
-        "zuari",
-        "cyanogenmod",
-        "school-cs",
-        "early-games",
-        "ai-workflows",
+        "gec-extras",
+        "early-projects",
+        "green-belt",
         "coldplay",
-        "tmp-all-star",
+        "opportunity-hack",
+        "masters",
+        "google-tools",
+        "career-titles",
+        "awards",
+        "off-clock",
+        "local-ai",
     }
-    assert {item["id"] for item in story_document["achievements"]} == expected
-    links = {url for item in story_document["achievements"] for url in item["links"].values()}
+    assert {item["id"] for item in story_document["discoveries"]} == expected
+    links = {url for item in story_document["discoveries"] for url in item["links"].values()}
     assert "https://github.com/pranavprem/Cpp-Snake" in links
     assert "https://github.com/pranavprem/Parks-RecSanJose" in links
-    assert "https://github.com/pranavprem/morpheus" in links
     assert "https://github.com/pranavprem/openmemory-local" in links
     assert "https://github.com/pranavprem/qdrant-nas" in links
     assert "https://github.com/pranavprem/neo-services" in links
@@ -390,11 +422,14 @@ def test_full_achievement_inventory_and_project_evidence(story_document):
         )
         for link in links
     )
-    text = " ".join(item["body"] for item in story_document["achievements"])
+    text = " ".join(item["body"] for item in story_document["discoveries"])
+    text += " ".join(
+        card["body"] for chapter in story_document["chapters"] for card in chapter["cards"]
+    )
     for milestone in (
         "110%",
         "Green Belt",
-        "2,000+",
+        "2,000",
         "25%",
         "SPOT",
         "PEARL",
@@ -408,10 +443,9 @@ def test_full_achievement_inventory_and_project_evidence(story_document):
     ):
         assert milestone in text
     prepared, _ = prepare_story(story_document)
-    eras = [content.ACHIEVEMENT_ERAS.index(item["era"]) for item in prepared["achievements"]]
-    assert eras == sorted(eras)
-    assert prepared["achievements"][0]["era"] == "current"
-    assert prepared["achievements"][-1]["era"] == "undated"
+    screens = [item["screen_index"] for item in prepared["quests"]]
+    assert screens == sorted(screens)
+    assert len(prepared["quests"]) == 24
 
 
 @pytest.mark.parametrize(
@@ -429,30 +463,51 @@ def test_full_achievement_inventory_and_project_evidence(story_document):
         "https://youtu.be/unapproved?t=221",
     ],
 )
-def test_achievement_links_reject_unreviewed_destinations(story_document, url):
-    story_document["achievements"][0]["links"] = {"Unsafe destination": url}
+def test_discovery_links_reject_unreviewed_destinations(story_document, url):
+    story_document["discoveries"][0]["links"] = {"Unsafe destination": url}
     with pytest.raises(ContentValidationError, match="public owner GitHub"):
         validate_story(story_document)
 
 
 @pytest.mark.parametrize(
-    "change", ["duplicate", "unknown-source", "unknown-era", "long-body", "missing", "too-many"]
+    "change",
+    [
+        "duplicate",
+        "unknown-source",
+        "card-id-collision",
+        "long-body",
+        "missing",
+        "too-many",
+        "empty-paragraph",
+        "long-summary",
+    ],
 )
-def test_achievement_catalog_fails_closed(story_document, change):
-    entries = story_document["achievements"]
+def test_discovery_content_fails_closed(story_document, change):
+    entries = story_document["discoveries"]
     if change == "duplicate":
         entries[1]["id"] = entries[0]["id"]
     elif change == "unknown-source":
         entries[0]["source_refs"] = ["made-up"]
-    elif change == "unknown-era":
-        entries[0]["era"] = "guessed-date"
+    elif change == "card-id-collision":
+        entries[0]["id"] = "college-unlocked"
     elif change == "long-body":
         entries[0]["body"] = "x" * 601
     elif change == "missing":
         entries[0].pop("links")
+    elif change == "empty-paragraph":
+        entries[0]["body"] = "One\n\n\n\nTwo"
+    elif change == "long-summary":
+        entries[0]["summary"] = "x" * 351
     else:
         entries *= 4
     with pytest.raises(ContentValidationError):
+        validate_story(story_document)
+
+
+@pytest.mark.parametrize("value", [True, "100", -1, 273, None, float("nan"), float("inf")])
+def test_discovery_positions_reject_bad_coordinates(story_document, value):
+    story_document["discoveries"][0]["position"]["x"] = value
+    with pytest.raises(ContentValidationError, match="position"):
         validate_story(story_document)
 
 
@@ -543,33 +598,46 @@ def test_independent_story_beats_are_not_collated(story_document):
         card["id"]: card for chapter in story_document["chapters"] for card in chapter["cards"]
     }
     college = cards["college-unlocked"]["body"].split("\n\n")
+    extras = {item["id"]: item for item in story_document["discoveries"]}
+    discoveries = extras["gec-extras"]["body"].split("\n\n")
+    assert len(college) == 4
+    assert len(discoveries) == 3
     assert "first time living on my own" in college[0]
+    assert "PyCon" in college[1]
+    assert "Hackathons" in college[2]
+    assert "top students in my class" in college[3]
     beats = [
         "general secretary",
         "PyCon",
         "Zuari",
         "paper on securing",
         "Hackathons",
-        "top of my class",
+        "top students in my class",
     ]
     positions = [
-        next(i for i, paragraph in enumerate(college) if beat in paragraph) for beat in beats
+        next(i for i, paragraph in enumerate(college + discoveries) if beat in paragraph)
+        for beat in beats
     ]
     assert len(set(positions)) == len(beats)
     banking = cards["automation-unlocked"]["body"].split("\n\n")
-    assert "TasKing" in banking[0] and "Green Belt" not in banking[0]
-    assert "Green Belt" in banking[1] and "2,000" in banking[1]
+    assert len(banking) == 2
+    assert "TasKing" in banking[0]
+    assert "US universities" in banking[1]
+    assert "Green Belt" not in cards["automation-unlocked"]["body"]
+    assert extras["green-belt"]["body"].split("\n\n")[0] == (
+        "My Lean Six Sigma Green Belt project saved over 2,000 hours of manual work."
+    )
     detour = cards["unexpected-detour"]
     assert detour["heading"] == "Dengue, right before finals"
     assert "A few weeks before my Class 12 final exams" in detour["body"]
     assert "hospital for a month" in detour["body"]
     assert "first sworn enemy" not in detour["body"]
     assert detour["body"].split("\n\n")[-1] == "Mosquitoes and I have not reconciled."
-    assert (
-        "found" in cards["school-unlocked"]["body"]
-        or "finding out early" in cards["school-unlocked"]["body"]
-        or "finding my thing early" in cards["school-unlocked"]["body"]
-    )
+    school = cards["school-unlocked"]["body"].split("\n\n")
+    assert "computer science as a subject in 11th and 12th grade" in school[0]
+    assert "I was good at it" in school[0]
+    assert "computer engineering felt like the obvious next step" in school[0]
+    assert school[1].startswith("Being house captain introduced me")
 
 
 def test_owner_voice_and_corrected_hsdi_details(story_document):
@@ -580,7 +648,7 @@ def test_owner_voice_and_corrected_hsdi_details(story_document):
     cards = {
         card["id"]: card for chapter in story_document["chapters"] for card in chapter["cards"]
     }
-    achievements = {item["id"]: item for item in story_document["achievements"]}
+    discoveries = {item["id"]: item for item in story_document["discoveries"]}
     assert (
         "irrespective of how many people wanted to hear my opinions"
         in cards["school-unlocked"]["body"]
@@ -590,10 +658,9 @@ def test_owner_voice_and_corrected_hsdi_details(story_document):
     assert "HSDI (HSBC Software Development India)" in cards["java-unlocked"]["body"]
     assert "tools and infrastructure for developers" in cards["developer-ally-unlocked"]["body"]
     assert "This was the work I wanted" in cards["developer-ally-unlocked"]["body"]
-    assert achievements["cyanogenmod"]["body"].startswith("From 18 to 20, I worked on")
-    assert "Stock firmware was apparently insufficient" not in achievements["cyanogenmod"]["body"]
-    hsdi = achievements["java-training"]
-    assert hsdi["period_label"] == "2014-2017 / HSDI, Pune"
+    assert "From 18 to 20, I worked on" in discoveries["early-projects"]["body"]
+    assert "Stock firmware was apparently insufficient" not in discoveries["early-projects"]["body"]
+    hsdi = discoveries["awards"]
     assert "HSBC Software Development India" in hsdi["body"]
     assert "youngest Rising Star nominee at 20" in hsdi["body"]
 
@@ -627,6 +694,27 @@ def test_owner_voice_and_corrected_hsdi_details(story_document):
     ):
         assert phrase in current
 
-    home = achievements["home-automation"]
-    assert "OpenClaw and Hermes agents maintain each other" in home["body"]
-    assert home["links"]["Morpheus credential gatekeeper"].endswith("/morpheus")
+    assert "Morpheus keeps credential access human-approved" in story_document["epilogue_summary"]
+
+
+def test_semantic_copy_keeps_roles_projects_and_metrics_distinct(story_document):
+    cards = {
+        card["id"]: card for chapter in story_document["chapters"] for card in chapter["cards"]
+    }
+    badges = {badge["id"]: badge for badge in story_document["badges"]}
+    discoveries = {item["id"]: item for item in story_document["discoveries"]}
+    assert badges["house-captain"]["description"].startswith("Being house captain")
+    assert "software running in an on-premise SAP data center" in discoveries["gec-extras"]["body"]
+    assert "then took the GRE and TOEFL" in cards["automation-unlocked"]["body"]
+    assert "SpartanBot" in cards["sjsu-unlocked"]["body"]
+    assert "Opportunity Hack" not in cards["sjsu-unlocked"]["body"]
+    assert (
+        "Alexa project for the City of San Jose. We placed second"
+        in discoveries["opportunity-hack"]["body"]
+    )
+    assert "tooling to create Jira issues when tests failed" in discoveries["google-tools"]["body"]
+    assert "Green Belt project saved over 2,000 hours" in discoveries["green-belt"]["body"]
+    assert "Separate CI/CD work cut time to market by 25%" in discoveries["green-belt"]["body"]
+    assert cards["fog-arrives"]["body"].startswith("During COVID, I had to find a pace")
+    assert "a small part of that API work" in cards["bots-unlocked"]["body"]
+    assert cards["continuing-unlocked"]["body"].startswith("Then came Agentforce: a platform")

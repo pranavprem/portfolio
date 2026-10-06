@@ -2,9 +2,16 @@
 {% block content %}
 {% set inline_projects = {
   'automation': ['TasKing', 'https://github.com/pranavprem/TasKing'],
-  'college': ['Zuari', 'https://github.com/pranavprem/ZuariSAPDetail'],
-  'sjsu': ['SpartanBot', 'https://github.com/pranavprem/Spartanbot']
+  'sjsu': ['SpartanBot', 'https://github.com/pranavprem/Spartanbot'],
+  'bot-workshop': ['public Slack connector', 'https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem']
 } %}
+{% macro discovery_panel(discovery) %}
+<aside class="discovery-panel" id="discovery-{{ discovery.id }}" data-discovery-panel="{{ discovery.id }}" data-screen="{{ discovery.screen_index }}" aria-labelledby="discovery-title-{{ discovery.id }}">
+  <div class="discovery-heading"><div><p class="panel-kicker">{{ discovery.period_label }}</p><h3 id="discovery-title-{{ discovery.id }}">{{ discovery.heading }}</h3></div><button type="button" class="panel-close" data-action="close-discovery" aria-label="Close discovery">Close</button></div>
+  {% for paragraph in discovery.paragraphs %}<p class="discovery-copy">{{ paragraph }}</p>{% endfor %}
+  {% if discovery.links %}<p class="project-links">{% for label, href in discovery.links.items() %}<a href="{{ href }}">{{ label }}</a>{% endfor %}</p>{% endif %}
+</aside>
+{% endmacro %}
 <main class="journey" id="journey" data-game="{{ game | tojson | forceescape }}">
   <svg class="sprite-definitions" aria-hidden="true" focusable="false" width="0" height="0">
     <defs>
@@ -29,17 +36,10 @@
         <strong id="sheet-status">Opening screen</strong>
       </div>
       <div class="hud-actions">
-        <button type="button" class="hud-button" data-action="toggle-stats" aria-controls="character-sheet" aria-expanded="false">Stats</button>
         <button type="button" class="hud-button" data-action="toggle-quests" aria-controls="bonus" aria-expanded="false">Quest log</button>
       </div>
       <div class="chapter-progress" aria-hidden="true"><span id="chapter-progress-fill"></span></div>
-    </header>
-
     <section class="character-sheet" id="character-sheet" aria-label="Character stats" aria-live="off">
-      <div class="sheet-heading">
-        <span>CHARACTER DATA</span>
-        <button type="button" class="panel-close" data-action="close-panels" aria-label="Close stats">Close</button>
-      </div>
       <dl class="stats-grid">
         {% for stat in story.stat_definitions %}
         <div class="stat" data-stat="{{ stat.key }}">
@@ -49,11 +49,13 @@
         </div>
         {% endfor %}
       </dl>
-      <div class="sheet-inventory"><span>MILESTONES <span id="badge-count">00</span>/{{ story.badges | length }}</span><ul class="badge-rack" aria-label="Earned achievements">{% for badge in story.badges %}<li data-badge="{{ badge.id }}" data-badge-label="{{ badge.label }}" aria-hidden="true"><span aria-hidden="true">&#10022;</span></li>{% endfor %}</ul></div>
+      <div class="sheet-inventory"><span>MILESTONES <span id="badge-count">00</span>/{{ story.badges | length }}</span><ul class="badge-rack" aria-hidden="true">{% for badge in story.badges %}<li data-badge="{{ badge.id }}" aria-hidden="true"><span>&#10022;</span></li>{% endfor %}</ul></div>
     </section>
+    </header>
 
     <div class="scene-panel">
-      <svg class="overworld" id="overworld" viewBox="0 0 320 180" focusable="false" shape-rendering="crispEdges">
+      <div class="scene-art">
+      <svg class="overworld" id="overworld" viewBox="0 0 320 180" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
         {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-region-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg', v=asset_versions['art/' ~ region.art_key ~ '.svg']) }}" width="320" height="180" />{% endfor %}
         <g id="journey-object-track" transform="translate(65 143)">
           <ellipse cx="0" cy="0" rx="10" ry="2" fill="#234e3d" opacity=".22" />
@@ -63,9 +65,28 @@
           </g>
         </g>
         <g class="scene-fog" id="scene-fog"><path d="M0 58h45v7h37v-5h64v9h70v-4h104v19H0zm0 54h85v-7h50v7h71v-7h55v7h59v15H0z" fill="#e4e7d9" opacity=".65"/></g>
+        <g class="scene-encounter" data-encounter="unexpected-detour" transform="translate(174 62)">
+          <g class="encounter-motion mosquito">
+            <path d="M-3-3h-9v-5h7v3h3zm6 0h9v-5H5v3H2z" fill="#eee7cf" stroke="#526453" stroke-width="1"/>
+            <path d="M-2-5h4v5h3v3H2v6h-4V3h-3V0h3zM-1 9h2v8h-2z" fill="#573e32"/>
+            <path d="M-2 1h-5v3h-4m13-3h5v3h4M-2 5h-4v5h-4m12-5h4v5h4" fill="none" stroke="#573e32" stroke-width="1"/>
+          </g>
+        </g>
+        <g class="scene-encounter" data-encounter="fog-arrives" transform="translate(120 56)">
+          <g class="encounter-motion pandemic">
+            <g class="virus-symbol" fill="#8b7156" stroke="#514e3d" stroke-width="2">
+              <path d="M-5-8H5l4 4V5L5 9H-5l-4-4V-4z"/><path d="M0-8v-7m-3 0h6M9 0h7m0-3v6M0 9v7m-3 0h6M-9 0h-7m0-3v6M6-6l5-5M6 6l5 5M-6 6l-5 5M-6-6l-5-5" fill="none"/>
+              <path d="M-4-3h2v2h-2zm7 2h2v2H3zM-1 4h2v2h-2z" fill="#e7d7ae" stroke="none"/>
+            </g>
+            <g transform="translate(42 -17) scale(.6)" fill="#8b7156" stroke="#514e3d" stroke-width="2"><path d="M-5-8H5l4 4V5L5 9H-5l-4-4V-4z"/><path d="M0-8v-7M9 0h7M0 9v7M-9 0h-7M6-6l5-5M6 6l5 5M-6 6l-5 5M-6-6l-5-5" fill="none"/></g>
+          </g>
+        </g>
       </svg>
-      <div class="scene-label"><span id="world-label">{{ story.regions[0].label }}</span><span id="scene-object-label">Controller</span></div>
-      <button type="button" class="scene-hotspot" data-action="inspect" aria-label="Inspect this scene"><span aria-hidden="true">!</span><strong>Inspect</strong></button>
+      {% for discovery in story.discoveries %}
+      <button type="button" class="scene-hotspot" data-action="inspect" data-discovery="{{ discovery.id }}" data-screen="{{ discovery.screen_index }}" data-x="{{ discovery.position.x }}" data-y="{{ discovery.position.y }}" aria-controls="discovery-{{ discovery.id }}" aria-expanded="false" aria-label="Discover: {{ discovery.heading }}"><span class="window-glint" aria-hidden="true"></span></button>
+      {% endfor %}
+      </div>
+      <div class="scene-label"><span id="world-label">{{ story.regions[0].label }}</span></div>
     </div>
 
     <div class="story-deck" id="main-story">
@@ -87,7 +108,7 @@
         <figure class="fallback-landscape"><img src="{{ url_for('static', filename='art/' ~ chapter.region_id ~ '.svg', v=asset_versions['art/' ~ chapter.region_id ~ '.svg']) }}" alt="" width="320" height="180" loading="lazy" /><figcaption>{{ region.label }}</figcaption></figure>
         <header class="chapter-header"><p class="chapter-period">{{ chapter.period_label }}</p><h2 id="heading-{{ chapter.id }}">{{ chapter.heading }}</h2></header>
         {% for card in chapter.cards %}
-        <article class="story-card game-screen" data-checkpoint="{{ card.id }}" data-screen-kind="chapter" aria-labelledby="card-{{ card.id }}">
+        <article class="story-card game-screen" id="moment-{{ card.id }}" data-checkpoint="{{ card.id }}" data-screen-kind="chapter"{% if card.earned_badges %} data-milestone="true"{% endif %} aria-labelledby="card-{{ card.id }}">
           <div class="dialogue-card">
             <p class="scene-period">CHAPTER {{ '%02d' | format(chapter_number) }} / {{ chapter.period_label }}</p>
             <h2 class="scene-heading">{{ chapter.heading }}</h2>
@@ -96,35 +117,28 @@
               {% set project = inline_projects.get(chapter.id) %}
               {% for paragraph in card.paragraphs %}<p class="story-prose dialogue-beat">{% if project and project[0] in paragraph %}{% set parts = paragraph.partition(project[0]) %}{{ parts[0] }}<a href="{{ project[1] }}">{{ parts[1] }}</a>{{ parts[2] }}{% else %}{{ paragraph }}{% endif %}</p>{% endfor %}
             </div>
-            {% if card.earned_badges %}<div class="loot">{% for badge in card.earned_badges %}<p data-achievement="story-{{ badge.id }}"><span class="loot-spark" aria-hidden="true">&#10022;</span><strong>{{ badge.label }}</strong><span>{{ badge.description }}</span></p>{% endfor %}</div>{% endif %}
           </div>
-          <aside class="discovery-panel" aria-label="Scene discoveries">
-            <p class="panel-kicker">DISCOVERY LOG</p>
-            {% if card.facts %}<ul class="field-notes">{% for fact in card.facts %}<li>{{ fact }}</li>{% endfor %}</ul>{% else %}<p class="empty-discovery">Nothing hidden here. The main quest has the useful bit.</p>{% endif %}
-            {% if chapter.id == 'spawn' %}<p class="project-links">Later experiments: <a href="https://github.com/pranavprem/3D-TicTacToe">3D Tic-Tac-Toe</a><a href="https://github.com/pranavprem/Cpp-Snake">C++ Snake</a></p>{% endif %}
-            {% if chapter.id == 'sjsu' %}<p class="project-links"><a href="https://github.com/pranavprem/Parks-RecSanJose">Opportunity Hack project</a></p>{% endif %}
-            {% if chapter.id == 'bot-workshop' %}<p class="project-links"><a href="https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem">My public Slack connector contributions</a></p>{% endif %}
-          </aside>
+          {% for discovery in card.discoveries %}{{ discovery_panel(discovery) }}{% endfor %}
           <dl class="chapter-stats" aria-label="Stats at this point in the story">{% for stat in card.stats %}<div><dt>{{ stat.label }}</dt><dd>{{ stat.value }}<span>/10</span></dd></div>{% endfor %}</dl>
         </article>
         {% endfor %}
       </section>
       {% endfor %}
 
-      <section class="ending game-screen" aria-labelledby="ending-title" data-screen-kind="ending">
+      <section class="ending game-screen" id="epilogue" aria-labelledby="ending-title" data-screen-kind="ending">
         <div class="dialogue-card ending-card">
           <p class="chapter-period">EPILOGUE / BACK IN SAN JOSE</p>
           <h2 id="ending-title">DevOps,<br /><em>but it's my house.</em></h2>
           <div class="dialogue-beats">
-            <p class="story-prose dialogue-beat">I'm back in San Jose, secretly cosplaying as a sysadmin and DevOpsing everything. The homelab runs Home Assistant and my media server; Google Drive and iCloud are out, one small unplug from the Matrix.</p>
-            <p class="story-prose dialogue-beat">My OpenClaw and Hermes agents maintain each other. <a href="https://github.com/pranavprem/morpheus">Morpheus</a> is their human-in-the-loop credential layer. This site is the next resident, via Docker and Cloudflare.</p>
-            <p class="story-prose dialogue-beat">I've also got into 3D printing.</p>
+            <p class="story-prose dialogue-beat">I'm back in San Jose, secretly cosplaying as a sysadmin and DevOpsing everything. My homelab runs <a href="https://github.com/pranavprem/homeassistant">Home Assistant</a> and a <a href="https://github.com/pranavprem/mediaserver">media server</a>. I've replaced Google Drive and iCloud. Slowly unplugging from the Matrix.</p>
+            <p class="story-prose dialogue-beat">My OpenClaw and Hermes agents maintain each other. <a href="https://github.com/pranavprem/morpheus">Morpheus</a> is the human-in-the-loop credential layer I built for them. This site is next, with Docker and Cloudflare.</p>
+            <p class="story-prose dialogue-beat">I've also got into 3D printing. MakerWorld, Bambu Studio, and Autodesk Fusion have replaced my Amazon Prime habit.</p>
             <p class="ending-note dialogue-beat">Retail therapy? Nah, I'll make my own stuff.</p>
             <blockquote class="pla-meme dialogue-beat"><img src="{{ url_for('static', filename='art/pla-robot.svg', v=asset_versions['art/pla-robot.svg']) }}" alt="" width="32" height="36" aria-hidden="true" />I'm 40% PLA.</blockquote>
           </div>
-          <ul class="project-links"><li><a href="https://github.com/pranavprem/morpheus">Morpheus</a></li><li><a href="https://github.com/pranavprem/mediaserver">Media server</a></li><li><a href="https://github.com/pranavprem/homeassistant">Home Assistant</a></li></ul>
           <div class="contact-links"><a href="https://www.linkedin.com/in/pranavprem/">LinkedIn</a><a href="mailto:pranavprem93@gmail.com">pranavprem93@gmail.com</a></div>
         </div>
+        {% for discovery in story.epilogue_discoveries %}{{ discovery_panel(discovery) }}{% endfor %}
       </section>
     </div>
 
@@ -133,18 +147,23 @@
       <div class="beat-progress" aria-live="off"><span id="beat-progress">Title screen</span></div>
       <button type="button" class="control-button control-next" data-action="advance"><span id="advance-label">Start game</span><span aria-hidden="true">&#9654;</span></button>
     </nav>
-  </div>
-
   <section class="bonus" id="bonus" aria-labelledby="bonus-title">
-    <div class="bonus-header"><div><p class="chapter-period">OPTIONAL QUEST LOG</p><h2 id="bonus-title">Side quests</h2></div><button type="button" class="panel-close" data-action="close-panels" aria-label="Close quest log">Close</button></div>
-    <p class="story-prose">A few highlights, newest chapters first. A quick twenty-minute adventure, obviously.</p>
-    <ul class="achievement-catalog">
-      {% for achievement in story.achievements %}
-      {% if achievement.era == 'undated' and (loop.first or story.achievements[loop.index0 - 1].era != 'undated') %}<li class="catalog-era"><p class="panel-kicker">SIDE QUESTS WITHOUT A TIMESTAMP</p></li>{% endif %}
-      <li class="achievement-note" id="achievement-{{ achievement.id }}" data-achievement="{{ achievement.id }}" aria-labelledby="achievement-title-{{ achievement.id }}"><h3 id="achievement-title-{{ achievement.id }}">{{ achievement.heading }}</h3><p class="eyebrow">{{ achievement.period_label }}</p><p>{{ achievement.body }}</p>{% if achievement.links %}<ul class="project-links">{% for label, href in achievement.links.items() %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>{% endif %}</li>
+    <div class="bonus-header"><div><p class="chapter-period">THE STORY SO FAR</p><h2 id="bonus-title">Quest log</h2></div><button type="button" class="panel-close" data-action="close-panels" aria-label="Close quest log">Close</button></div>
+    <p class="quest-summary">Chapters you've read and discoveries you've found, in story order. Pick an entry to go back to that moment.</p>
+    <p class="quest-empty">Start the story to fill this in.</p>
+    <ol class="achievement-catalog">
+      {% for quest in story.quests %}
+      <li class="achievement-note" id="quest-{{ quest.id }}" data-quest="{{ quest.id }}" data-quest-kind="{{ quest.kind }}" data-target-screen="{{ quest.screen_index }}" aria-labelledby="quest-title-{{ quest.id }}">
+        <p class="quest-kind">{{ 'Discovery' if quest.kind == 'discovery' else 'Story' }} / {{ quest.period_label }}</p>
+        <h3 id="quest-title-{{ quest.id }}"><a class="quest-return" data-action="revisit" href="{{ quest.href }}" aria-label="Revisit: {{ quest.heading }}">{{ quest.heading }}<span aria-hidden="true"> &#8617;</span></a></h3>
+        <p class="quest-copy">{{ quest.summary }}</p>
+        {% if quest.links %}<ul class="project-links">{% for label, href in quest.links.items() %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>{% endif %}
+        {% for badge in quest.badges %}<p class="quest-milestone" data-quest-badge="{{ badge.id }}"><span>{{ badge.label }}</span><span class="milestone-detail">{{ badge.description }}</span></p>{% endfor %}
+      </li>
       {% endfor %}
-    </ul>
+    </ol>
   </section>
+  </div>
 </main>
 <footer class="site-footer"><p>Pranav Prem</p><p>pranavprem.com</p></footer>
 {% endblock %}

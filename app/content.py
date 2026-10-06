@@ -13,18 +13,6 @@ MAX_CONTENT_BYTES = 128 * 1024
 STAT_KEYS = ("coding", "enthusiasm", "vitality", "charisma", "experience")
 REGION_IDS = ("goa", "pune", "san-jose", "bay-area")
 MOODS = frozenset({"bright", "quiet", "fog"})
-ACHIEVEMENT_ERAS = (
-    "current",
-    "principal",
-    "agentforce",
-    "bots",
-    "chat",
-    "sjsu",
-    "hsbc",
-    "goa",
-    "school",
-    "undated",
-)
 BADGE_ART_KEYS = frozenset(
     {"spark", "flag", "leaf", "cup", "gear", "cloud", "heart", "bolt", "bot", "star"}
 )
@@ -127,7 +115,8 @@ def validate_story(document: object) -> None:
             "badges",
             "regions",
             "chapters",
-            "achievements",
+            "discoveries",
+            "epilogue_summary",
         },
         "story",
     )
@@ -167,12 +156,13 @@ def validate_story(document: object) -> None:
     badge_ids = set()
     for index, badge in enumerate(badges):
         field = f"badges[{index}]"
-        _object(badge, {"id", "label", "description", "art_key"}, field)
+        _object(badge, {"id", "label", "description", "art_key", "quest_id"}, field)
         _id(badge["id"], field + ".id")
         _require(badge["id"] not in badge_ids, field, "badge IDs must be unique")
         badge_ids.add(badge["id"])
         _text(badge["label"], 64, field + ".label")
         _text(badge["description"], 220, field + ".description")
+        _id(badge["quest_id"], field + ".quest_id")
         _id(badge["art_key"], field + ".art_key")
         _require(badge["art_key"] in BADGE_ART_KEYS, field, "choose an approved badge icon key")
 
@@ -238,6 +228,7 @@ def validate_story(document: object) -> None:
     _list(chapters, 11, 11, "chapters")
     chapter_ids, card_ids, granted = set(), set(), set()
     ordered_grants = []
+    grant_cards = {}
     experience = initial["stats"]["experience"]
     for index, chapter in enumerate(chapters):
         field = f"chapters[{index}]"
@@ -253,9 +244,10 @@ def validate_story(document: object) -> None:
         _list(chapter["cards"], count, count, field + ".cards")
         for card_index, card in enumerate(chapter["cards"]):
             card_field = f"{field}.cards[{card_index}]"
-            _object(card, {"id", "heading", "body", "facts", "source_refs", "event"}, card_field)
+            _object(card, {"id", "heading", "body", "summary", "source_refs", "event"}, card_field)
             _id(card["id"], card_field + ".id")
             _require(card["id"] not in card_ids, card_field, "card IDs must be unique")
+            _require(card["id"] != "epilogue", card_field, "epilogue is reserved for the ending")
             card_ids.add(card["id"])
             _text(card["heading"], 100, card_field + ".heading")
             _require(type(card["body"]) is str, card_field + ".body", "expected plain text")
@@ -265,9 +257,7 @@ def validate_story(document: object) -> None:
             _list(paragraphs, 1, 8, card_field + ".paragraphs")
             for paragraph in paragraphs:
                 _text(paragraph, 600, card_field + ".paragraphs")
-            _list(card["facts"], 0, 3, card_field + ".facts")
-            for fact in card["facts"]:
-                _text(fact, 220, card_field + ".facts")
+            _text(card["summary"], 350, card_field + ".summary")
             _list(card["source_refs"], 1, 4, card_field + ".source_refs")
             for source_id in card["source_refs"]:
                 _id(source_id, card_field + ".source_refs")
@@ -310,40 +300,70 @@ def validate_story(document: object) -> None:
                 )
                 granted.add(badge_id)
                 ordered_grants.append(badge_id)
+                grant_cards[badge_id] = card["id"]
     _require(
         ordered_grants == [badge["id"] for badge in badges],
         "badges",
         "order the ledger by first grant and grant every badge",
     )
 
-    achievements = document["achievements"]
-    _list(achievements, 1, 64, "achievements")
-    achievement_ids = set()
-    for achievement in achievements:
-        field = "achievements"
+    _text(document["epilogue_summary"], 350, "epilogue_summary")
+    discoveries = document["discoveries"]
+    _list(discoveries, 11, 11, "discoveries")
+    quest_targets = {card_id: card_id for card_id in card_ids | {"epilogue"}}
+    for discovery in discoveries:
+        field = "discoveries"
         _object(
-            achievement,
-            {"id", "era", "period_label", "heading", "body", "source_refs", "links"},
+            discovery,
+            {
+                "id",
+                "card_id",
+                "period_label",
+                "heading",
+                "body",
+                "summary",
+                "position",
+                "source_refs",
+                "links",
+            },
             field,
         )
-        _id(achievement["id"], field + ".id")
-        _require(achievement["id"] not in achievement_ids, field, "achievement IDs must be unique")
-        achievement_ids.add(achievement["id"])
-        _id(achievement["era"], field + ".era")
-        _require(achievement["era"] in ACHIEVEMENT_ERAS, field, "choose a documented narrative era")
-        _text(achievement["period_label"], 64, field + ".period_label")
-        _text(achievement["heading"], 100, field + ".heading")
-        _text(achievement["body"], 600, field + ".body")
-        _list(achievement["source_refs"], 1, 5, field + ".source_refs")
-        for source_id in achievement["source_refs"]:
+        _id(discovery["id"], field + ".id")
+        _require(discovery["id"] not in quest_targets, field, "quest IDs must be unique")
+        _id(discovery["card_id"], field + ".card_id")
+        _require(
+            discovery["card_id"] in card_ids | {"epilogue"},
+            field + ".card_id",
+            "choose a story card ID or epilogue for the discovery",
+        )
+        quest_targets[discovery["id"]] = discovery["card_id"]
+        _text(discovery["period_label"], 64, field + ".period_label")
+        _text(discovery["heading"], 100, field + ".heading")
+        _text(discovery["summary"], 350, field + ".summary")
+        _require(type(discovery["body"]) is str, field + ".body", "expected plain text")
+        _text(discovery["body"].replace("\n\n", "  "), 600, field + ".body")
+        paragraphs = discovery["body"].split("\n\n")
+        _list(paragraphs, 1, 8, field + ".paragraphs")
+        for paragraph in paragraphs:
+            _text(paragraph, 600, field + ".paragraphs")
+        _object(discovery["position"], {"x", "y"}, field + ".position")
+        for axis, upper in (("x", 272), ("y", 132)):
+            value = discovery["position"][axis]
+            _require(
+                type(value) in (int, float) and math.isfinite(value) and 48 <= value <= upper,
+                field + ".position",
+                "use finite coordinates with room for a 48px discovery target",
+            )
+        _list(discovery["source_refs"], 1, 5, field + ".source_refs")
+        for source_id in discovery["source_refs"]:
             _id(source_id, field + ".source_refs")
             _require(source_id in sources, field, "reference a documented source")
         _require(
-            len(set(achievement["source_refs"])) == len(achievement["source_refs"]),
+            len(set(discovery["source_refs"])) == len(discovery["source_refs"]),
             field,
             "source references must be unique",
         )
-        links = achievement["links"]
+        links = discovery["links"]
         _require(
             type(links) is dict and len(links) <= 3, field, "provide at most three project links"
         )
@@ -356,15 +376,18 @@ def validate_story(document: object) -> None:
                 "use a public owner GitHub repository, reviewed Slack URL, "
                 "or the approved cameo link",
             )
+    for badge in badges:
+        _require(
+            quest_targets.get(badge["quest_id"]) == grant_cards[badge["id"]],
+            "badges.quest_id",
+            "record each milestone with a story or discovery from its grant card",
+        )
 
 
 def prepare_story(document: dict) -> tuple[dict, dict]:
     """Preserve authored fields; add accessible snapshots and a prose-free game projection."""
     story = deepcopy(document)
-    # Narrative eras avoid inventing dates from repository creation/push timestamps.
-    story["achievements"] = sorted(
-        story["achievements"], key=lambda item: ACHIEVEMENT_ERAS.index(item["era"])
-    )
+    story["quests"] = []
     regions = {region["id"]: region for region in story["regions"]}
     badges = {badge["id"]: badge for badge in story["badges"]}
     initial = story["initial"]
@@ -383,6 +406,8 @@ def prepare_story(document: dict) -> tuple[dict, dict]:
     for chapter in story["chapters"]:
         for card in chapter["cards"]:
             card["paragraphs"] = card["body"].split("\n\n")
+            card["screen_index"] = len(game["events"]) + 1
+            card["discoveries"] = []
             event = card["event"]
             earned.extend(event["grant_badges"])
             card["stats"] = [
@@ -407,6 +432,61 @@ def prepare_story(document: dict) -> tuple[dict, dict]:
                     "badges_after": list(earned),
                 }
             )
+            story["quests"].append(
+                {
+                    "id": card["id"],
+                    "kind": "story",
+                    "screen_index": card["screen_index"],
+                    "heading": chapter["heading"]
+                    if chapter["cards"][0] is card
+                    else card["heading"],
+                    "period_label": chapter["period_label"],
+                    "summary": card["summary"],
+                    "href": "#moment-" + card["id"],
+                    "links": {},
+                }
+            )
+    screens = {event["id"]: index + 1 for index, event in enumerate(game["events"])}
+    screens["epilogue"] = len(game["events"]) + 1
+    story["quests"].append(
+        {
+            "id": "epilogue",
+            "kind": "story",
+            "screen_index": screens["epilogue"],
+            "heading": "Back in San Jose",
+            "period_label": "Now / San Jose",
+            "summary": story["epilogue_summary"],
+            "href": "#epilogue",
+            "links": {},
+        }
+    )
+    story["epilogue_discoveries"] = []
+    cards = {card["id"]: card for chapter in story["chapters"] for card in chapter["cards"]}
+    for discovery in story["discoveries"]:
+        discovery["screen_index"] = screens[discovery["card_id"]]
+        discovery["paragraphs"] = discovery["body"].split("\n\n")
+        target = (
+            story["epilogue_discoveries"]
+            if discovery["card_id"] == "epilogue"
+            else cards[discovery["card_id"]]["discoveries"]
+        )
+        target.append(discovery)
+        story["quests"].append(
+            {
+                "id": discovery["id"],
+                "kind": "discovery",
+                "screen_index": discovery["screen_index"],
+                "heading": discovery["heading"],
+                "period_label": discovery["period_label"],
+                "summary": discovery["summary"],
+                "href": "#discovery-" + discovery["id"],
+                "links": discovery["links"],
+            }
+        )
+    # Story order is explicit; never manufacture calendar dates from ages or repository activity.
+    story["quests"].sort(key=lambda quest: (quest["screen_index"], quest["kind"] == "discovery"))
+    for quest in story["quests"]:
+        quest["badges"] = [badge for badge in badges.values() if badge["quest_id"] == quest["id"]]
     return story, game
 
 

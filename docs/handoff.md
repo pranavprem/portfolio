@@ -1,117 +1,68 @@
 **Current Handoff**
-Latest working copy: the version-two story is now presented as a full-screen chapter adventure rather than a scroll essay. The redesign is implemented and locally verified but is uncommitted, has no exact-SHA hosted CI result, and is not deployed publicly.
+The current work is the chronological, revisitable Quest log revision, including the accumulated HUD, encounter, voice, and pacing changes after `7b5339e`. The owner explicitly authorized commit and push after verification. That does not authorize or establish a Portainer/public redeployment. Publication and exact-SHA CI evidence are recorded below when observed.
 
-**What Changed**
+**Current Experience**
 
-- Enhanced mode owns the usable `100dvh` viewport. The document no longer scrolls for story progression.
-- Desktop uses a landscape/dialogue split. Mobile stacks HUD, landscape, dialogue, and a fixed thumb-control row.
-- Start/Continue/Back buttons navigate paragraph-sized dialogue beats. Left/Right arrows, Enter/Space, and horizontal touch swipes provide equivalent controls.
-- Back rewinds within the current dialogue before returning to the prior event at its final beat.
-- A visible Inspect hotspot toggles optional facts and contextual project links inside the current game scene.
-- Stats and the 21-item Quest log are bounded overlays. Escape closes them and restores focus; the Quest log makes the game shell inert while open.
-- New screens move keyboard focus to their heading. Shortcuts ignore interactive/editable targets and modified keys.
-- The title uses the opening snapshot, twelve event screens use indices `0..11`, and the epilogue holds the final event snapshot.
-- Eleven inanimate chapter objects remain: controller, backpack, compass, laptop, Java mug, automation gear, books, toolkit, cloud terminal, bot console, and agent nodes. No traveler, companion, avatar, or mascot was restored.
-- Scene objects move between authored landmarks with a short stepped transition. A milestone appears on the final dialogue beat with one bounded object hop and static sparks. Reduced motion removes transitions/reactions.
-- The optional “Bender voice” cue was removed. The ending now says only “I'm 40% PLA.” beside the original generic robot.
+- The full-screen linear adventure retains eleven chapters, twelve stat checkpoints, five always-visible meters, and the final `8, 10, 8, 7, 7` sheet. Start/Continue/Back, guarded keyboard input, and horizontal swipes work without document-scroll progression.
+- College has four main beats; leadership, Zuari, and the paper are optional. Automation has two main beats; Green Belt and separate CI/CD savings are optional. The school story explicitly places computer science in 11th/12th grade and says **being house captain** introduced leadership, speaking, and debate.
+- Optional prose appears once in a scene popup and is summarized again only in the Quest log. Repeated main-scene reward paragraphs are removed. Milestones keep their decorative feedback and absolute prefix; their descriptions are in the log. No discovery changes stats or gates the route.
+- There are eleven discoveries: GEC extras; early games/CyanogenMod; Green Belt/CI-CD; Coldplay; Opportunity Hack; MS/research detail; Google tools; career titles; awards; current gaming/hobbies; local AI. Catalog-only details now have actual scene sources. Opportunity Hack is no longer repeated beside SpartanBot in the main dialogue.
+- The log is called **Quest log** and contains 24 chronological records: one summary per event card, the epilogue, and the eleven discoveries. Main entries unlock at the last dialogue beat. Discoveries unlock only when their popup is opened. In-memory reached/found sets retain the journal on Back or log jumps; reload clears it.
+- Each log heading returns to its validated story screen or reopens its original popup. It does not change the URL/history, lose journal entries, grant stats, or follow arbitrary selectors. Native internal links work in fallback HTML. External project/video links remain separate.
+- Multiple native 48px glints can share a scene. Positions are validated numeric data; tests verify alignment, separation, popup bounds, scroll access, and exact focus restoration. The log stays below the HUD and dims only the scene/dialogue area. Popups retain visible dialogue.
+- The original 1600ms mosquito and 1800ms pandemic-symbol encounters remain decorative and nonblocking. Reduced motion shows static symbols and cannot restart an encounter on preference restoration. No animation-end event is required for navigation.
+- No traveler, companion, avatar, copied franchise asset, new runtime dependency, network request, storage, or server route was added. Scene captions show only the place. The original robot and owner's PLA, retail-therapy, mosquito, opinions, academic-result, and gaming-fund jokes remain.
 
-**Fallback And Content**
+**Content Model**
+`app/content/story.json` now owns card `summary` fields, `epilogue_summary`, and eleven `discoveries` with their own body, summary, target, period, position, sources, and reviewed links. The old independent `achievements` catalog and card `facts` fields are removed. Python derives all log records, preventing orphan log-only content. Badge `quest_id` references are checked against their original grant card.
 
-The first server response still contains the complete story, all discoveries, links, per-card stat equivalents, milestone descriptions, ending, and optional catalog. JavaScript does not create prose. No-JS, invalid projection, failed script/stylesheet/art, and print modes restore the semantic document with in-flow landscapes.
+The prose-free stat projection remains version 2. Main bodies and discoveries allow at most 600 characters and eight nonempty paragraphs; summaries allow 350. No compatibility layer or persistence migration exists. Every popup, summary, stat equivalent, and milestone description remains semantic server HTML, including no-JS, invalid data, CSS/JS failure, and print modes.
 
-The story/provenance contract is otherwise unchanged:
+Coldplay retains its supplied age-22 label and appears near the Pune narrative. This is not a claim of filming in Pune or an inferred calendar year. Grouped awards and undated projects retain broad labels. The full public-safe narrative/source ledger in `docs/story.md` is preserved; the original private PDFs were not reopened.
 
-- Main dialogue remains within the 900-word editorial budget.
-- Eleven chapters and twelve stat checkpoints remain fixed; chapter 09 has two events.
-- Final stats remain Coding 8, Enthusiasm 10, Health 8, Charisma 7, Experience 7.
-- Eleven real milestones and 21 optional grouped highlights remain.
-- The detailed Einstein Bots/Copilot/Agentforce account, source qualifications, private-PDF boundary, current projects, and authorized links remain intact.
-- `docs/story.md` remains the complete public-safe source ledger; runtime JSON is only the curated selection.
+**Local Evidence**
+Environment: macOS arm64, Python 3.13.14, pytest 9.1.1, Node 24.20.0/npm 11.19.0, Playwright 1.62.0 with Chromium 151.0.7922.34, Firefox 153.0, and WebKit 26.5. Docker client/server 29.7.2 and Compose 5.5.0 are the recorded local container environment.
 
-**Local Verification**
+| Command / Check                                                                     | Observed Outcome                                                                               |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `npm run lint`                                                                      | Passed ESLint and Prettier.                                                                    |
+| `.venv/bin/ruff check .` and `.venv/bin/ruff format --check .`                      | Passed.                                                                                        |
+| `.venv/bin/pytest -m 'not browser'`                                                 | 202 passed, no selected skips.                                                                 |
+| `.venv/bin/pytest -m browser --browser chromium --browser firefox --browser webkit` | 177 passed, 59 per engine, no selected skips.                                                  |
+| Local container build/start                                                         | Rebuilt with base + local Compose and became healthy.                                          |
+| Runtime boundary                                                                    | 15 approved files, UID/GID 10001, read-only app content, writable `/tmp`; no new runtime file. |
+| Main-story word budget                                                              | 748 words in the existing rendered-copy check, below 900.                                      |
+| Public scanner self-test                                                            | Synthetic signature/path checks passed; it reports counts only.                                |
 
-Environment: macOS arm64, Python 3.13.14, pytest 9.1.1, Node 24.20.0/npm 11.19.0, Playwright 1.62.0 with Chromium 151.0.7922.34, Firefox 153.0, and WebKit 26.5. Docker client/server 29.7.2 and Compose 5.5.0 were used for the final local container check.
+Coverage includes exact absolute snapshots and badge prefixes, every main dialogue and completion point, unique discovery prose outside the log, found-only optional entries, every log return target, retained journal on backtracking, reload reset, guarded forged/invalid navigation metadata, popup reachability, target separation, no URL/history mutation, source integrity, escaped hostile text, all fallback modes, reduced motion, CSP/privacy, forced colors, 200% text enlargement, and light/dark axe checks.
 
-| Check                                                                               | Actual outcome                                                                                                       |
-| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `npm run lint`                                                                      | Passed after scoped Prettier formatting of CSS/JS.                                                                   |
-| `.venv/bin/ruff check .`                                                            | Passed.                                                                                                              |
-| `.venv/bin/ruff format --check .`                                                   | Passed after formatting the rewritten browser test.                                                                  |
-| `.venv/bin/pytest -m 'not browser'`                                                 | **177 passed**, no selected skips.                                                                                   |
-| `.venv/bin/pytest -m browser --browser chromium --browser firefox --browser webkit` | **108 passed**, 36 per engine, no selected skips.                                                                    |
-| Local Compose parsing                                                               | Base + local passed.                                                                                                 |
-| Production Compose parsing                                                          | Base + tunnel passed with an explicitly synthetic token.                                                             |
-| Local container rebuild                                                             | `portfolio-portfolio-1` rebuilt and became healthy.                                                                  |
-| Runtime boundary                                                                    | Exactly 15 approved files; UID/GID 10001; app content nonwritable; `/tmp` writable; no PDFs/secrets/env/cache files. |
-| Local health                                                                        | `http://127.0.0.1:8000/healthz` returned `{"status":"ok"}`.                                                          |
-| Local release assets                                                                | Current digest-versioned CSS/JS and strict application security headers were served.                                 |
-
-Browser coverage now exercises:
-
-- every forward event transition and exact snapshot/badge prefix
-- dialogue-beat progression and rewind behavior
-- Inspect discovery toggling
-- keyboard guards and horizontal touch swipes
-- Stats and Quest log visibility, inert state, Escape, and focus restoration
-- 320x568, 390x844, 768x1024, and 1440x1000 viewport fit
-- at least 48px game-control targets and no page/horizontal scrolling
-- no-JS and failed JS/CSS/art behavior
-- ten malformed projection cases
-- reduced motion, forced colors, text enlargement, print, and selection
-- axe WCAG A/AA checks in light/dark at mobile/desktop sizes
-- CSP, same-origin requests, empty cookies/storage, and no idle animations
+Earlier failures during this pass came from tests still expecting the removed 21-item catalog and six old popup IDs. Those tests were replaced with independent 24-record/11-discovery expectations and new behavior checks, not weakened to accept missing content. A further review made the reached/found sets authoritative for jumps rather than trusting a mutable visibility class. The pure-state browser test now imports the already-loaded versioned module so it respects real module-cache identity instead of initializing a second game instance.
 
 **Visual Review**
+Main-session Chromium captures at 390x844 and 1440x1000 dark mode covered the Coldplay popup and chronological Quest log. The updated popup header keeps its period/title beside Close to leave room for the cameo link on mobile. The journal uses short summaries, distinct Story/Discovery labels, and explicit return links. The HUD remains visible above the modal.
 
-Main-session Chromium captures were inspected at 390x844 dark mobile and 1440x1000 light desktop for the title and college scenes.
+Reproduce with the README's local container/server flow. In Playwright, navigate to `/`, use the actual advance button until `#journey[data-screen-index="6"]`, click `[data-discovery="coldplay"]`, capture with `page.screenshot()`, close with Escape, and open `[data-action="toggle-quests"]`. Click `#quest-coldplay [data-action="revisit"]` and verify the original popup reopens without a URL fragment. Screenshots are local review artifacts, not source/build inputs or proof of physical-device approval.
 
-- Mobile contains the HUD, complete landscape, current object, chapter dialogue, beat count, Back, and Continue in one screen.
-- Desktop gives the landscape and dialogue equal game-level presence rather than placing prose below decorative art.
-- The first capture exposed a startup stats-panel flash and a hidden Inspect button overridden by author CSS. Removing the close transition and enforcing `[hidden]` fixed both; recaptured title screens show neither defect.
-- College dialogue is one short beat at a time. Seven independent beats remain separate without presenting a wall of text.
-- These captures support local visual review, not physical-phone/browser-chrome approval.
+All main beats fit at tested 390x844 and desktop sizes. Short 320x568 and long optional popups use internal scrolling with tested end-of-content/control reachability. Physical iOS/Android browser chrome, native zoom, real touch feel, and screen-reader behavior remain separate manual checks.
 
-**Code And Security Review**
+**Security And Review**
+The main session performed design, implementation, testing, code/security review, conformance, and retrospective sequentially without agents. No new blocking local finding is known. Jinja escaping, inert projection data, strict CSP, exact hosts, read-only methods, static allowlisting, request limits, generic errors, and app/connector separation are unchanged.
 
-- No new server route, dependency, remote asset, secret access, storage, analytics, or CSP relaxation was added.
-- The inert projection remains prose-free and autoescaped in a quoted data attribute.
-- Runtime code does not use `innerHTML`, eval/string execution, fetch, WebSocket, beacon, cookies, or browser storage.
-- Navigation indices are bounded. Touch input uses distance and direction checks. Keyboard input ignores modified and interactive/editable targets.
-- Closed overlays are inert and assistive-hidden. The Quest log prevents background interaction while open.
-- The app remains GET/HEAD-only with exact trusted hosts, bounded requests, allowlisted static serving, generic errors, sanitized logs, deterministic asset digests, and strict application headers.
-- The Docker app remains nonroot/read-only with no secret access and no production host port.
-- Remaining risks are manual device/screen-reader validation, deployment correctness, Cloudflare redirect/HSTS sequencing, NAS network isolation, and recovery practice.
+`tools/check_public.py` was added as a reproducible release guard before new fixtures. It scans staged Git blobs and every commit in a publication range, refuses private paths before opening blobs, and does not read local PDFs or environment files. CI has full-history range coverage. Its implemented signature/path checks are not an exhaustive PII audit; the public diff must still be reviewed manually. No private-input classifier or private-PDF scan is claimed.
 
-**Architecture Conformance**
+**Publication**
 
-The final implementation matches the revised [architecture](architecture.md): full-screen linear screens, server-rendered fallback, absolute event snapshots, no persistence, guarded buttons/keyboard/swipes, optional discoveries/overlays, mobile-first viewport fit, original object-only art, reduced motion, and unchanged HTTP/security boundaries.
+- Last previously published baseline: `7b5339e94b77518afa956f7896e9b445401d6b3f`, with successful run [37338483892](https://github.com/pranavprem/portfolio/actions/runs/37338483892).
+- The current task authorizes publishing the reviewed accumulated work. Its new commit/SHA and hosted CI result are not implied by the older baseline's green run.
+- The production stack remains `portfolio`, repository `https://github.com/pranavprem/portfolio.git`, reference `refs/heads/main`, and exactly `compose.yaml` + `compose.tunnel.yaml`. Do not use `compose.local.yaml` in Portainer or expose `CLOUDFLARED_TOKEN`.
+- Public deployment was not performed in this task. Historical public checks on 2026-10-04 saw HTTP `200` rather than a redirect and a Python-user-agent edge `403`. Do not mistake those historical responses for today's deployed SHA. Keep HSTS off until the real redirect/TLS check passes.
 
-Intentional simplifications:
+**Remaining Gates**
 
-- There is no avatar movement or collision system. The user selected a chapter adventure over direct movement.
-- The current Inspect hotspot has a consistent screen position rather than authored per-scene coordinates. It still reveals scene-specific content.
-- Dialogue may internally scroll only when enlargement or viewport constraints require it; normal tested phone sizes fit the active beat.
+1. Confirm exact-SHA hosted CI for the release and pull/redeploy that revision through the existing Portainer Git stack when authorized.
+2. Verify public digest-versioned assets, chapter/discovery/log behavior, health/security headers, and absence of optional edge injection/challenges.
+3. Configure and verify HTTP-to-HTTPS redirect before enabling exactly `Strict-Transport-Security: max-age=31536000`.
+4. Check physical phones, safe areas, native zoom, screen readers, and representative performance.
+5. Verify NAS CPU/Compose behavior, connector firewall isolation, rollback/reconnection, token rotation, outage handling, and protected backups.
 
-**Repository And Deployment State**
-
-- Branch: `main`; remote: `https://github.com/pranavprem/portfolio.git`.
-- Last known pushed commit before this redesign: `714ab78dfcfb649f1ec9d9dc42107c86fde32d5c` (`feat: stack game stage above story`).
-- Exact hosted run for that older commit passed: [37175855753](https://github.com/pranavprem/portfolio/actions/runs/37175855753).
-- This chapter-adventure redesign is currently uncommitted and therefore has no hosted CI run.
-- On 2026-10-04, a browser-like HTTPS request returned `200` but still served the previous unversioned JS/CSS and masthead-era layout. It does not contain this redesign or an HSTS header. A default Python `urllib` user agent received an edge `403`, so bot/challenge behavior also needs rechecking after deployment.
-- Plain HTTP returned `200` instead of redirecting on the same check. Keep `PORTFOLIO_HSTS=0`.
-- The Portainer stack uses repository `https://github.com/pranavprem/portfolio.git`, reference `refs/heads/main`, and exactly `compose.yaml` plus `compose.tunnel.yaml`. Never add `compose.local.yaml` or expose the tunnel token.
-
-**Remaining Work**
-
-1. Obtain explicit authorization before committing/pushing this redesign; project instructions do not permit an implicit commit.
-2. Run hosted CI for the exact resulting SHA and require all four jobs to pass.
-3. Pull/redeploy that revision in the existing Portainer Git stack without changing or exposing `CLOUDFLARED_TOKEN`.
-4. Verify public HTML uses the new digest-versioned CSS/JS and that public bytes match the deployed commit.
-5. Verify public chapter navigation, mobile rendering, `/healthz`, CSP/security headers, and absence of edge-injected scripts/challenges.
-6. Configure and verify Cloudflare HTTP-to-HTTPS redirect. Only then set `PORTFOLIO_HSTS=1` and verify exactly `max-age=31536000`.
-7. Run physical iOS Safari/Android checks for safe areas/browser chrome, native zoom, touch swipes, and representative performance.
-8. Run a real screen-reader pass and rehearse rollback, connector reconnection, token rotation, egress outage, and protected backups.
-9. Verify NAS CPU/Compose behavior and connector firewall isolation, including inability to reach unrelated NAS administration.
-
-No database or app volume requires migration. `www` behavior and an open-source/art license remain intentionally unchosen.
+No database or application volume needs migration. `www` behavior and a project/art license remain unchosen.

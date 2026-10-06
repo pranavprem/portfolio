@@ -297,8 +297,9 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
     assert len(document.select("article", class_="story-card")) == 12
     assert len(document.select(class_="chapter-stats")) == 12
     assert not document.select(class_="chapter-snapshot")
-    assert len(document.select(class_="achievement-note")) == len(story_document["achievements"])
-    assert len(document.select(class_="loot")) == 11
+    assert len(document.select(class_="achievement-note")) == 24
+    assert not document.select(class_="loot")
+    assert len(document.select(class_="quest-milestone")) == 11
     assert len(document.select(class_="stat")) == 5
     assert not document.select(class_="inventory-ledger")
     assert json.loads(document.select(id="journey")[0]["data-game"]) == game
@@ -307,7 +308,7 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         assert chapter["period_label"] in document.text
         for card in chapter["cards"]:
             assert " ".join(card["body"].split()) in document.text
-            assert all(fact in document.text for fact in card["facts"])
+            assert card["summary"] in document.text
     for badge in story_document["badges"]:
         assert badge["description"] in document.text
     allowed_links = {
@@ -315,11 +316,23 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         "mailto:pranavprem93@gmail.com",
         "https://github.com/pranavprem/mediaserver",
         "https://github.com/pranavprem/homeassistant",
+        "https://github.com/pranavprem/morpheus",
+        "https://github.com/pranavprem/TasKing",
+        "https://github.com/pranavprem/Spartanbot",
+        "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem",
     }
-    for achievement in story_document["achievements"]:
-        assert achievement["heading"] in document.text
-        assert achievement["body"] in document.text
-        allowed_links.update(achievement["links"].values())
+    for discovery in story_document["discoveries"]:
+        assert discovery["heading"] in document.text
+        assert " ".join(discovery["body"].split()) in document.text
+        assert discovery["summary"] in document.text
+        allowed_links.update(discovery["links"].values())
+        allowed_links.add("#discovery-" + discovery["id"])
+    allowed_links.update(
+        "#moment-" + card["id"]
+        for chapter in story_document["chapters"]
+        for card in chapter["cards"]
+    )
+    allowed_links.add("#epilogue")
     assert {link["href"] for link in document.select("a")} == allowed_links
     slots = [attrs for _, attrs in document.elements if "data-badge" in attrs]
     assert len(slots) == 11
@@ -335,9 +348,9 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         "advance",
         "back",
         "close-panels",
+        "close-discovery",
         "inspect",
         "toggle-quests",
-        "toggle-stats",
     }
     assert all(control.get("type") == "button" for control in controls)
     for tag, attrs in document.elements:
@@ -380,7 +393,7 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
 def test_hostile_text_and_projection_remain_inert(app, story_document, parse_html):
     payload = '"><img src=x onerror=alert(1)></script><script>alert(2)</script>&{{7*7}}'
     card = story_document["chapters"][0]["cards"][0]
-    card.update(body=payload, heading=payload, facts=[payload])
+    card.update(body=payload, heading=payload, summary=payload)
     validate_story(story_document)
     story, game = prepare_story(story_document)
     # Even impossible authored IDs must be safely serialized by the template boundary.
@@ -401,7 +414,7 @@ def test_rendered_source_claims_keep_authorized_scope(client, parse_html):
     text = parse_html(client.get("/").get_data(as_text=True)).text
     assert re.search(r"I scored 110%, the maximum possible.*only student", text)
     assert re.search(r"Class 12 in the national top 0\.01% for CS", text)
-    assert re.search(r"national top ten in the 24-hour IEEE Xtreme", text)
+    assert re.search(r"national top-ten finish in the 24-hour IEEE Xtreme", text)
     assert "I joined Salesforce in 2019" in text
     assert re.search(r"Jun-Aug 2018.*Google Hardware/Nest, during my MS", text)
     for invention in (
@@ -429,16 +442,20 @@ def test_rendered_source_claims_keep_authorized_scope(client, parse_html):
 def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
     text = parse_html(client.get("/").get_data(as_text=True)).text
     for phrase in (
-        "public speaking and debate",
+        "computer science as a subject in 11th and 12th grade",
+        "Being house captain introduced me to leadership, public speaking, and debate",
+        "Growing up has just given me more money to fund it.",
+        "So I have a Formula 1-style simulator now.",
+        "public speaking, and debate",
         "seven wins in four years",
         "six months of Java training",
         "promptly made his TA",
         "placed second at PayPal's Opportunity Hack",
-        "Imposter syndrome",
+        "imposter syndrome",
         "intoxicating",
         "moved to San Francisco",
-        "Full-time work had no internship end date",
-        "new cadence of contribution",
+        "Full-time work didn't have my internship's fixed end date",
+        "During COVID, I had to find a pace I could keep up without burning myself out.",
         "Google Drive and iCloud",
         "40% PLA",
         "MakerWorld",
@@ -486,6 +503,18 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         for tag, attrs in document.elements
     )
     for rejected in (
+        "The lucky part was finding my thing early: computer science and C/C++.",
+        "Growing up has done very little to fix any of this.",
+        "House captain introduced me",
+        "found public speaking and debate",
+        "entered the BE",
+        "a culture with matching whimsy",
+        "new cadence of contribution",
+        "Useful, but not the main quest.",
+        "built Nest performance monitoring in Python/Dremel and automatic Jira issues",
+        "one small unplug",
+        "the next resident, via",
+        "spend six hours making it",
         "A SCROLL-PLAY AUTOBIOGRAPHY",
         "CHARACTER SNAPSHOT",
         "not a medical chart",
@@ -515,16 +544,47 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "youngest Rising Star nominee at 21",
         "Chat Alchemist",
         "Bender voice",
+        "Nothing hidden here. The main quest has the useful bit.",
+        "DISCOVERY LOG",
     ):
         assert rejected not in text, rejected
     assert not re.search(r"\bshit\b", text, re.I)
 
 
-def test_achievement_text_and_project_labels_are_autoescaped(app, story_document, parse_html):
+def test_hud_discoveries_and_quest_targets_are_server_rendered(
+    client, parse_html, quest_targets, discovery_positions
+):
+    document = parse_html(client.get("/").get_data(as_text=True))
+    assert not document.select(id="scene-object-label")
+    assert not document.select("button", **{"data-action": "toggle-stats"})
+    assert "aria-hidden" not in document.select(id="character-sheet")[0]
+    assert {
+        item["data-quest"]: (item["data-quest-kind"], int(item["data-target-screen"]))
+        for item in document.select(class_="achievement-note")
+    } == quest_targets
+    assert [item["data-quest"] for item in document.select(class_="achievement-note")] == list(
+        quest_targets
+    )
+    hotspots = document.select(class_="scene-hotspot")
+    assert {
+        item["data-discovery"]: (float(item["data-x"]), float(item["data-y"])) for item in hotspots
+    } == discovery_positions
+    assert all(document.select(id=item["aria-controls"]) for item in hotspots)
+    assert len(document.select(class_="discovery-panel")) == 11
+    assert {item["data-encounter"] for item in document.select(class_="scene-encounter")} == {
+        "unexpected-detour",
+        "fog-arrives",
+    }
+
+
+def test_discovery_and_log_copy_and_project_labels_are_autoescaped(app, story_document, parse_html):
     payload = '"><svg onload=alert(1)>'
-    achievement = story_document["achievements"][0]
-    achievement.update(
-        heading=payload, body=payload, links={payload: "https://github.com/pranavprem/TasKing"}
+    discovery = story_document["discoveries"][0]
+    discovery.update(
+        heading=payload,
+        body=payload,
+        summary=payload,
+        links={payload: "https://github.com/pranavprem/TasKing"},
     )
     validate_story(story_document)
     story, game = prepare_story(story_document)
