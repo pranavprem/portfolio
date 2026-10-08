@@ -42,7 +42,8 @@ def test_projection_is_prose_free_and_does_not_alias_input(story_document):
     original = deepcopy(story_document)
     story, game = prepare_story(story_document)
     assert story_document == original
-    assert set(game) == {"schema_version", "initial", "events"}
+    assert set(game) == {"schema_version", "initial", "events", "epilogue_scene"}
+    assert set(game["epilogue_scene"]) == {"region_id", "art_key", "positions"}
     assert set(game["initial"]) == {"stats", "badges", "region_id", "position", "mood"}
     regions = {region["id"]: region for region in story["regions"]}
     cards = [card for chapter in story["chapters"] for card in chapter["cards"]]
@@ -63,6 +64,9 @@ def test_projection_is_prose_free_and_does_not_alias_input(story_document):
     game["events"][1]["badges_after"].clear()
     game["events"][0]["stats_after"]["coding"] = 10
     game["initial"]["position"]["x"] = 100
+    home_before = deepcopy(story["epilogue_scene"])
+    game["epilogue_scene"]["positions"][0]["x"] = 300
+    assert story["epilogue_scene"] == home_before
     story["chapters"][0]["cards"][0]["body"] = "Synthetic edit"
     assert len(game["events"][2]["badges_after"]) == 3
     assert story_document == original
@@ -140,6 +144,18 @@ def test_invalid_discovery_targets_are_rejected(story_document, reference):
         (("chapters", 0, "cards", 0, "summary"), "x" * 351),
         (("chapters", 0, "cards", 0, "summary"), "line\nbreak"),
         (("epilogue_summary",), "x" * 351),
+        (("epilogue_scene", "region_id"), "bay-area"),
+        (("epilogue_scene", "art_key"), "../private"),
+        (("epilogue_scene", "positions"), []),
+        (("epilogue_scene", "positions"), [{"x": 100, "y": 140}] * 4),
+        (("epilogue_scene", "positions"), [{"x": 100, "y": 140}] * 6),
+        (("epilogue_scene", "positions", 0, "x"), True),
+        (("epilogue_scene", "positions", 0, "x"), "119"),
+        (("epilogue_scene", "positions", 0, "x"), 301),
+        (("epilogue_scene", "positions", 0, "y"), -1),
+        (("epilogue_scene", "positions", 0, "y"), 181),
+        (("epilogue_scene", "positions", 0, "y"), float("nan")),
+        (("epilogue_scene", "positions", 0, "y"), float("inf")),
         (("badges", 0, "quest_id"), "missing"),
         (("badges", 0, "quest_id"), "college-unlocked"),
         (("chapters", 0, "cards", 0, "source_refs"), []),
@@ -184,6 +200,8 @@ def test_stats_reject_invalid_numbers_without_clamping(story_document, value):
         ("chapters", 0, "cards", 0, "event", "stats_after"),
         ("discoveries", 0),
         ("discoveries", 0, "position"),
+        ("epilogue_scene",),
+        ("epilogue_scene", "positions", 0),
     ],
 )
 def test_unknown_and_missing_keys_are_rejected(story_document, path):
@@ -318,6 +336,7 @@ def test_static_inventory_and_original_svg_safety():
             "art/goa.svg",
             "art/pune.svg",
             "art/san-jose.svg",
+            "art/san-jose-home.svg",
             "art/bay-area.svg",
             "art/pla-robot.svg",
         }
@@ -344,11 +363,38 @@ def test_static_inventory_and_original_svg_safety():
                 assert not re.search(r"(?:https?:|javascript:|data:|//)", value, re.I)
 
 
-def test_startup_fails_if_required_asset_is_missing(app, monkeypatch):
-    assets = app.extensions["portfolio"]["assets"] - {"story.js"}
+@pytest.mark.parametrize("asset", ["story.js", "art/san-jose-home.svg"])
+def test_startup_fails_if_required_asset_is_missing(app, monkeypatch, asset):
+    assets = app.extensions["portfolio"]["assets"] - {asset}
     monkeypatch.setattr(application, "build_asset_inventory", lambda: assets)
-    with pytest.raises(ContentValidationError, match="restore required assets: story.js"):
+    with pytest.raises(
+        ContentValidationError, match=re.escape("restore required assets: " + asset)
+    ):
         application.create_app()
+
+
+def test_epilogue_has_a_home_scene_without_an_extra_stat_checkpoint(story_document, home_positions):
+    story, game = prepare_story(story_document)
+    home = game["epilogue_scene"]
+    assert home["region_id"] == "san-jose"
+    assert home["art_key"] == "san-jose-home"
+    assert [(point["x"], point["y"]) for point in home["positions"]] == home_positions
+    assert len(game["events"]) == 12 and len(story["regions"]) == 4
+    assert "stats" not in home and "badges" not in home
+    art = ElementTree.parse(content.STATIC_ROOT / "art/san-jose-home.svg").getroot()  # noqa: S314
+    assert (art.get("width"), art.get("height"), art.get("viewBox")) == (
+        "320",
+        "180",
+        "0 0 320 180",
+    )
+    assert {
+        "home",
+        "homelab",
+        "home-controls",
+        "home-hobbies",
+        "gaming-corner",
+        "printer-bench",
+    } <= {node.get("id") for node in art.iter()}
 
 
 def test_claim_provenance_and_full_source_ledger(story_document, project_root):
@@ -379,6 +425,9 @@ def test_claim_provenance_and_full_source_ledger(story_document, project_root):
         "Rising Star",
         "SPOT",
         "TMP All Star",
+        "openmemory-local",
+        "qdrant-nas",
+        "neo-services",
     ):
         assert subject in ledger
     assert re.search(r"Profile.*January 2019.*resume.*March 2019", ledger, re.I)
@@ -399,15 +448,12 @@ def test_full_discovery_inventory_and_project_evidence(story_document):
         "career-titles",
         "awards",
         "off-clock",
-        "local-ai",
+        "hobbies",
     }
     assert {item["id"] for item in story_document["discoveries"]} == expected
     links = {url for item in story_document["discoveries"] for url in item["links"].values()}
     assert "https://github.com/pranavprem/Cpp-Snake" in links
     assert "https://github.com/pranavprem/Parks-RecSanJose" in links
-    assert "https://github.com/pranavprem/openmemory-local" in links
-    assert "https://github.com/pranavprem/qdrant-nas" in links
-    assert "https://github.com/pranavprem/neo-services" in links
     assert "https://youtu.be/ogItgrO9GSg?t=221" in links
     assert not any(
         repo in link
@@ -419,6 +465,9 @@ def test_full_discovery_inventory_and_project_evidence(story_document):
             "/karmamining",
             "/ReactCalculator",
             "/Muricize",
+            "/openmemory-local",
+            "/qdrant-nas",
+            "/neo-services",
         )
         for link in links
     )
@@ -480,6 +529,7 @@ def test_discovery_links_reject_unreviewed_destinations(story_document, url):
         "too-many",
         "empty-paragraph",
         "long-summary",
+        "unknown-field",
     ],
 )
 def test_discovery_content_fails_closed(story_document, change):
@@ -498,9 +548,85 @@ def test_discovery_content_fails_closed(story_document, change):
         entries[0]["body"] = "One\n\n\n\nTwo"
     elif change == "long-summary":
         entries[0]["summary"] = "x" * 351
+    elif change == "unknown-field":
+        entries[0]["html"] = "<ul><li>Not a plain-text list</li></ul>"
     else:
         entries *= 4
     with pytest.raises(ContentValidationError):
+        validate_story(story_document)
+
+
+def test_hobby_list_is_separate_from_gaming_and_keeps_the_joke_last(story_document):
+    discoveries = {item["id"]: item for item in story_document["discoveries"]}
+    hobby = discoveries["hobbies"]
+    assert hobby["card_id"] == discoveries["off-clock"]["card_id"] == "epilogue"
+    assert hobby["body"] == "Outside work, I like:"
+    assert hobby["list_items"] == [
+        "Guitar (amateur)",
+        "Drones",
+        "Golf",
+        "Cooking",
+        "Mixology",
+        "Go-karting",
+        "Sim racing",
+        "Dog whispering",
+        "Blogging",
+        "Writing poetry",
+        "Making lists. You may have noticed.",
+    ]
+    assert hobby["source_refs"] == ["owner-brief", "profile"]
+    assert hobby["links"] == {}
+    assert "list_items" not in discoveries["off-clock"]
+    assert "guitar" not in discoveries["off-clock"]["body"]
+    assert "Formula 1-style simulator" in discoveries["off-clock"]["body"]
+    prepared, game = prepare_story(story_document)
+    assert prepared["epilogue_discoveries"][-1]["list_items"] == hobby["list_items"]
+    assert "list_items" not in json.dumps(game)
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        None,
+        True,
+        {},
+        "Not a list",
+        [],
+        [None],
+        [False],
+        [["nested"]],
+        [""],
+        [" "],
+        ["One\nTwo"],
+        ["One\tTwo"],
+        ["\x7f"],
+        ["x" * 101],
+        ["Same", "Same"],
+        [str(index) for index in range(13)],
+    ],
+)
+def test_discovery_lists_reject_malformed_or_unbounded_items(story_document, items):
+    story_document["discoveries"][-1]["list_items"] = items
+    with pytest.raises(ContentValidationError, match="list_items"):
+        validate_story(story_document)
+
+
+@pytest.mark.parametrize("count", [1, 12])
+def test_discovery_list_size_boundaries_preserve_plain_text(story_document, count):
+    items = [f"Item {index}" for index in range(count)]
+    story_document["discoveries"][-1]["list_items"] = items
+    validate_story(story_document)
+    prepared, _ = prepare_story(story_document)
+    assert prepared["epilogue_discoveries"][-1]["list_items"] == items
+
+
+def test_discovery_lists_share_the_paragraph_text_budget(story_document):
+    discovery = story_document["discoveries"][-1]
+    discovery["body"] = "a" * 500
+    discovery["list_items"] = ["b" * 100]
+    validate_story(story_document)
+    discovery["body"] += "a"
+    with pytest.raises(ContentValidationError, match="600 characters combined"):
         validate_story(story_document)
 
 
@@ -690,6 +816,7 @@ def test_owner_voice_and_corrected_hsdi_details(story_document):
         "async processing",
         "long-running turns, actions, and sessions",
         "Salesforce CRM data",
+        "For my wages, I build systems that connect",
         "work assistant and coding harness",
     ):
         assert phrase in current

@@ -389,6 +389,22 @@ h3 {
   color: var(--muted);
 }
 
+.discovery-list {
+  margin-top: 14px;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.7;
+  list-style: square;
+}
+
+.discovery-list li + li {
+  margin-top: 4px;
+}
+
+.discovery-list li::marker {
+  color: var(--rust);
+}
+
 .discovery-heading {
   display: flex;
   align-items: center;

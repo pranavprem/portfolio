@@ -9,6 +9,7 @@
 <aside class="discovery-panel" id="discovery-{{ discovery.id }}" data-discovery-panel="{{ discovery.id }}" data-screen="{{ discovery.screen_index }}" aria-labelledby="discovery-title-{{ discovery.id }}">
   <div class="discovery-heading"><div><p class="panel-kicker">{{ discovery.period_label }}</p><h3 id="discovery-title-{{ discovery.id }}">{{ discovery.heading }}</h3></div><button type="button" class="panel-close" data-action="close-discovery" aria-label="Close discovery">Close</button></div>
   {% for paragraph in discovery.paragraphs %}<p class="discovery-copy">{{ paragraph }}</p>{% endfor %}
+  {% if discovery.list_items %}<ul class="discovery-list">{% for item in discovery.list_items %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
   {% if discovery.links %}<p class="project-links">{% for label, href in discovery.links.items() %}<a href="{{ href }}">{{ label }}</a>{% endfor %}</p>{% endif %}
 </aside>
 {% endmacro %}
@@ -56,7 +57,8 @@
     <div class="scene-panel">
       <div class="scene-art">
       <svg class="overworld" id="overworld" viewBox="0 0 320 180" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
-        {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-region-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg', v=asset_versions['art/' ~ region.art_key ~ '.svg']) }}" width="320" height="180" />{% endfor %}
+        {% for region in story.regions %}<image class="region-art{% if loop.first %} current{% endif %}" data-scene-art="{{ region.id }}" href="{{ url_for('static', filename='art/' ~ region.art_key ~ '.svg', v=asset_versions['art/' ~ region.art_key ~ '.svg']) }}" width="320" height="180" />{% endfor %}
+        <image class="region-art" data-scene-art="{{ story.epilogue_scene.art_key }}" href="{{ url_for('static', filename='art/' ~ story.epilogue_scene.art_key ~ '.svg', v=asset_versions['art/' ~ story.epilogue_scene.art_key ~ '.svg']) }}" width="320" height="180" />
         <g id="journey-object-track" transform="translate(65 143)">
           <ellipse cx="0" cy="0" rx="10" ry="2" fill="#234e3d" opacity=".22" />
           <g class="journey-marker" id="journey-marker">
@@ -126,11 +128,12 @@
       {% endfor %}
 
       <section class="ending game-screen" id="epilogue" aria-labelledby="ending-title" data-screen-kind="ending">
+        <figure class="fallback-landscape"><img src="{{ url_for('static', filename='art/' ~ story.epilogue_scene.art_key ~ '.svg', v=asset_versions['art/' ~ story.epilogue_scene.art_key ~ '.svg']) }}" alt="" width="320" height="180" loading="lazy" /><figcaption>San Jose</figcaption></figure>
         <div class="dialogue-card ending-card">
           <p class="chapter-period">EPILOGUE / BACK IN SAN JOSE</p>
           <h2 id="ending-title">DevOps,<br /><em>but it's my house.</em></h2>
           <div class="dialogue-beats">
-            <p class="story-prose dialogue-beat">I'm back in San Jose, secretly cosplaying as a sysadmin and DevOpsing everything. My homelab runs <a href="https://github.com/pranavprem/homeassistant">Home Assistant</a> and a <a href="https://github.com/pranavprem/mediaserver">media server</a>. I've replaced Google Drive and iCloud. Slowly unplugging from the Matrix.</p>
+            <p class="story-prose dialogue-beat">But for fun, I build things for my house. I'm back in San Jose, secretly cosplaying as a sysadmin. My homelab runs <a href="https://github.com/pranavprem/homeassistant">Home Assistant</a> and a <a href="https://github.com/pranavprem/mediaserver">media server</a>. I've replaced Google Drive and iCloud. Slowly unplugging from the Matrix.</p>
             <p class="story-prose dialogue-beat">My OpenClaw and Hermes agents maintain each other. <a href="https://github.com/pranavprem/morpheus">Morpheus</a> is the human-in-the-loop credential layer I built for them. This site is next, with Docker and Cloudflare.</p>
             <p class="story-prose dialogue-beat">I've also got into 3D printing. MakerWorld, Bambu Studio, and Autodesk Fusion have replaced my Amazon Prime habit.</p>
             <p class="ending-note dialogue-beat">Retail therapy? Nah, I'll make my own stuff.</p>

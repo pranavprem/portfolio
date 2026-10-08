@@ -139,7 +139,7 @@ def quest_targets():
         "awards": ("discovery", 12),
         "epilogue": ("story", 13),
         "off-clock": ("discovery", 13),
-        "local-ai": ("discovery", 13),
+        "hobbies": ("discovery", 13),
     }
 
 
@@ -155,9 +155,14 @@ def discovery_positions():
         "google-tools": (208, 95.5),
         "career-titles": (69, 74),
         "awards": (158, 106.5),
-        "off-clock": (158, 106.5),
-        "local-ai": (69, 74),
+        "off-clock": (77, 100),
+        "hobbies": (264, 113),
     }
+
+
+@pytest.fixture(scope="session")
+def home_positions():
+    return [(119, 165), (236, 165), (161, 165), (161, 165), (161, 165)]
 
 
 @pytest.fixture(scope="session")

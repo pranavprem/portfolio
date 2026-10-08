@@ -23,6 +23,7 @@ app/static/art/**
 !app/static/art/goa.svg
 !app/static/art/pune.svg
 !app/static/art/san-jose.svg
+!app/static/art/san-jose-home.svg
 !app/static/art/bay-area.svg
 !app/static/art/favicon.svg
 !app/static/art/pla-robot.svg

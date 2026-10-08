@@ -493,6 +493,9 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "long-running turns, actions, and sessions",
         "Salesforce CRM data",
         "work assistant and coding harness",
+        "For my wages, I build systems that connect Salesforce CRM data to the agent platform",
+        "But for fun, I build things for my house.",
+        "secretly cosplaying as a sysadmin",
         "OpenClaw and Hermes agents maintain each other",
         "human-in-the-loop credential layer",
     ):
@@ -546,9 +549,34 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "Bender voice",
         "Nothing hidden here. The main quest has the useful bit.",
         "DISCOVERY LOG",
+        "I enjoy connecting Salesforce CRM data to the agent platform",
+        "Memory and local AI",
+        "OpenMemory",
+        "Qdrant",
+        "speech, image, and voice services locally",
     ):
         assert rejected not in text, rejected
     assert not re.search(r"\bshit\b", text, re.I)
+
+
+def test_hobby_list_and_retired_repository_removal_are_server_rendered(client, parse_html):
+    source = client.get("/").get_data(as_text=True)
+    hobby = re.search(r'<aside[^>]+id="discovery-hobbies"[^>]*>(.*?)</aside>', source, re.S)
+    assert hobby is not None
+    listing = re.search(r'<ul class="discovery-list">(.*?)</ul>', hobby[1], re.S)
+    assert listing is not None
+    document = parse_html(listing[1])
+    assert len(document.select("li")) == 11
+    assert document.text.endswith("Making lists. You may have noticed.")
+    assert "Formula 1" not in document.text
+    for retired in ("local-ai", "openmemory-local", "qdrant-nas", "neo-services"):
+        assert retired not in source
+    github_links = {
+        item["href"]
+        for item in parse_html(source).select("a")
+        if item.get("href", "").startswith("https://github.com/")
+    }
+    assert len(github_links) == 12
 
 
 def test_hud_discoveries_and_quest_targets_are_server_rendered(
@@ -558,6 +586,10 @@ def test_hud_discoveries_and_quest_targets_are_server_rendered(
     assert not document.select(id="scene-object-label")
     assert not document.select("button", **{"data-action": "toggle-stats"})
     assert "aria-hidden" not in document.select(id="character-sheet")[0]
+    home = document.select("image", **{"data-scene-art": "san-jose-home"})
+    assert len(home) == 1
+    assert home[0]["href"].startswith("/static/art/san-jose-home.svg?v=")
+    assert len(document.select(class_="fallback-landscape")) == 12
     assert {
         item["data-quest"]: (item["data-quest-kind"], int(item["data-target-screen"]))
         for item in document.select(class_="achievement-note")
@@ -584,6 +616,7 @@ def test_discovery_and_log_copy_and_project_labels_are_autoescaped(app, story_do
         heading=payload,
         body=payload,
         summary=payload,
+        list_items=[payload],
         links={payload: "https://github.com/pranavprem/TasKing"},
     )
     validate_story(story_document)
@@ -592,6 +625,7 @@ def test_discovery_and_log_copy_and_project_labels_are_autoescaped(app, story_do
         source = render_template("index.html", story=story, game=game)
     document = parse_html(source)
     assert payload in document.text and payload not in source
+    assert document.select("ul", class_="discovery-list")
     assert not any(
         name.startswith("on") for _, attributes in document.elements for name in attributes
     )

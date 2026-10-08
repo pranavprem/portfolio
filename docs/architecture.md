@@ -1,6 +1,6 @@
 **Portfolio Architecture**
 Status: approved chapter-adventure design, implemented locally; final cross-browser/public verification is recorded in [handoff.md](handoff.md).
-Prepared: 2026-09-06. Current revision: the chronological, revisitable Quest log and single-source discoveries. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
+Prepared: 2026-09-06. Current revision: separate gaming/hobby discoveries and paid-work/personal-project copy in the San Jose home ending, with the chronological Quest log retained. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
 This is a warm pixel-game autobiography, not a resume with animation beside it. The enhanced site is a full-screen, linear chapter adventure. The landscape, current chapter object, dialogue, discoveries, stats, milestones, and controls form one game scene. The complete human story, including uncertainty, illness, boredom, burnout, hobbies, and current joy, remains more important than game chrome.
@@ -20,17 +20,31 @@ The public repository is `https://github.com/pranavprem/portfolio`. The private 
 
 **Experience Contract**
 
+**Home Copy Revision**
+The owner now describes the local-AI repositories as mostly defunct/not running and asks for a separate list-form hobby easter egg. Main-session design/review: remove `local-ai` and its OpenMemory/Qdrant/Neo Services links from runtime content; preserve their qualified source history. Keep `off-clock` for gaming and add `hobbies` at an original generic guitar `(264,113)`, leaving eleven discoveries and 24 journal records. No checkpoint, state, persistence, navigation rule, or network permission changes.
+
+Add only optional discovery `list_items`: 1-12 distinct plain-text strings, each at most 100 characters, with paragraphs and list items together bounded to 600 characters. Existing paragraphs remain required. Reject invalid types, empty/duplicate items, controls, excess length, and unknown fields at startup. Jinja escapes a semantic `<ul>`/`<li>` after the paragraphs; no HTML/Markdown interpretation or client prose construction. The list remains complete in fallback and print, and its last item is "Making lists. You may have noticed." Review covers escaping, exact inventory, separate unlock/return targets, list order, mobile scrolling/focus/48px glints, enlarged text, and all engines.
+
+The paid-work passage uses "For my wages, I build systems that connect..." rather than asserting enjoyment of corporate integration. "But for fun..." introduces the existing home projects, not new invented capabilities. Preserve the Agentforce technical scope, present enthusiasm, personal-agent/Morpheus account, and five ending beats/positions. The guitar is symbolic art, not an ownership, model, or skill claim.
+
+**Home Scene Revision**
+The owner's next correction gives "DevOps, but it's my house" its own San Jose home scene instead of holding the Golden Gate/Salesforce artwork. Main-session design/review: retain the four geographic regions, all eleven chapters, twelve stat checkpoints, eleven milestones, and 24 journal records. Add one original `san-jose-home.svg` scene variant and a validated `epilogue_scene` with region `san-jose`, that fixed art key, and five absolute marker positions corresponding to the five ending beats. The marker visits the front path, homelab, then printing bench; the last three printing beats share a position. This is an explicit presentation-only exception to the old final-scene hold, not another stat checkpoint.
+
+The final stats/badges remain selected by event 11 through `deriveState()`. Rendering selects the home art, San Jose label, and authored marker position by the ending screen/beat. Back and Quest log jumps must restore the correct work/home scene while retaining the page-local journal. Existing stepped movement and reduced-motion behavior apply; add no idle animation, timer, or navigation gate. The two ending discoveries use the gaming monitor and guitar; the earlier server-rack discovery is retired by the copy revision above. Add the home illustration to no-JS/print output, startup asset requirements, the explicit Docker allowlist, and the 16-file runtime boundary.
+
+The house and equipment are original symbolic art: generic home automation, servers, a gaming/simulator corner, and a printer. They are not a real facade, floor plan, address, device model, network topology, or NAS-location disclosure. No private photograph or configuration is needed. Acceptance covers correct home entry/return, each beat's visual position, unchanged final stats, discovery geometry/focus, reduced motion, malformed scene data, missing art, fallback/print, CSP/SVG safety, mobile fit, and the rebuilt container.
+
 **Quest Log Revision**
-The latest owner correction supersedes the old 21-item, newest-first catalog and timeline-only unlock rules. The owner explicitly chose to keep scene popups, include their summaries in the Quest log, avoid repeats elsewhere in the game, provide chronological summaries of the whole main story, and make each log entry revisit its original scene. This task also explicitly authorizes commit and push after verification, not a production redeployment.
+The Quest log correction supersedes the old 21-item, newest-first catalog and timeline-only unlock rules. The owner explicitly chose to keep scene popups, include their summaries in the Quest log, avoid repeats elsewhere in the game, provide chronological summaries of the whole main story, and make each log entry revisit its original scene. That earlier task authorized its commit/push, not a production redeployment or blanket publication permission for later revisions.
 
 Main-session design and review:
 
 - Keep eleven chapters, twelve event snapshots, five stats, and the main route. Add a short `summary` to each card and an `epilogue_summary`. Derive a chronological Quest log with thirteen main-story records and eleven discovery records, rather than maintaining a separate achievement catalog. Main summaries cover the whole card and revisit its first beat. The title's identity/Goa context is covered by the current-work and childhood summaries rather than inserting a present-day entry before childhood.
 - Replace card `facts` and the old catalog with one authored `discoveries` collection. Each record owns its ID, target card (or `epilogue`), heading, period label, plain-text paragraphs, short summary, source references, reviewed links, and bounded scene position. Python prepares the popup and log from that one source. No fact may exist only in the log. The original catalog's degree, research, tool, metric, project, nomination, promotion, award, and hobby details remain in main prose or a discovery; the full ledger stays intact.
-- Discovery targets: GEC extras and early games/CyanogenMod at college; Green Belt/CI-CD and Coldplay at the Pune chapter; Opportunity Hack at SJSU; degree/research detail and concrete developer tooling during the MS/Google scene; promotions and awards at current work; gaming/hobbies and local AI at the ending. The cameo's supplied age 22 supports its narrative placement after the age-20 HSDI recollection; do not invent a calendar date or imply filming in Pune. Broad period labels remain broad. Grouped awards span the career and do not inherit the current chapter's year.
+- Discovery targets: GEC extras and early games/CyanogenMod at college; Green Belt/CI-CD and Coldplay at the Pune chapter; Opportunity Hack at SJSU; degree/research detail and concrete developer tooling during the MS/Google scene; promotions and awards at current work; gaming and a separate hobby list at the ending. The cameo's supplied age 22 supports its narrative placement after the age-20 HSDI recollection; do not invent a calendar date or imply filming in Pune. Broad period labels remain broad. Grouped awards span the career and do not inherit the current chapter's year.
 - Main summaries unlock at their card's final beat; discovery summaries unlock only when their popup is opened. Two bounded in-memory sets retain reached story cards and found discoveries for this page visit. Back/jump restores absolute stats without erasing the journal. Reload resets it; no cookie, storage, session, URL progress, or server mutation is introduced. Discoveries never gate the main route or modify stats.
 - Keep nonmodal scene popups, one open at a time, with visible dialogue, native 48px glints, Escape/Close, and exact trigger focus restoration. Multiple discoveries may share a screen; positions must not overlap at tested mobile sizes. Validated numeric positions use bounded CSSOM `left`/`top` values under the existing CSP.
-- Remove repeated narrative reward blocks from the main scene, including Green Belt's spoiler. Keep the decorative milestone response and authored snapshot prefix. Milestone descriptions belong in the Quest log with the corresponding story/discovery record. The HUD rack remains decorative and its numeric count authoritative. Opportunity Hack exists once as a popup plus its summary, not in the main SJSU beat. Gaming/hobbies likewise live in one ending discovery.
+- Remove repeated narrative reward blocks from the main scene, including Green Belt's spoiler. Keep the decorative milestone response and authored snapshot prefix. Milestone descriptions belong in the Quest log with the corresponding story/discovery record. The HUD rack remains decorative and its numeric count authoritative. Opportunity Hack exists once as a popup plus its summary, not in the main SJSU beat. Gaming and other hobbies likewise each have one ending discovery.
 - Quest log headings are internal links in fallback HTML. Enhanced activation closes the log, moves to the validated target, and focuses its heading; discovery entries reopen their original popup. Only unlocked entries may navigate. External project/video links remain separate. No whole-card click handler, URL/history update, animation wait, or arbitrary selector execution is added.
 - Retain every popup and all 24 summaries in semantic server HTML, no-JS, invalid-data, CSS/script failure, and print output. Validate exact coverage, unique IDs, known targets, safe links, finite positions, sources, and text limits. The prose-free stat projection stays version 2; the coordinated internal authoring/DOM revision needs no compatibility layer because no content API or persisted progress exists.
 - Acceptance: every prior catalog detail has a main/popup source; no repeated optional/reward prose; chronological order; found-only discoveries; main completion; jump/back/focus; retained journal on revisit; reload reset; invalid targets/positions fail safely; complete fallback/print; all browser engines, CSP, mobile target separation, and reduced motion. No new runtime dependency, route, file, or network permission is needed.
@@ -41,7 +55,7 @@ The game has fourteen screens in presentation order:
 
 1. Title screen using the opening state.
 2. Twelve event screens from eleven chapters; chapter 09 has two events.
-3. Epilogue holding the final event state.
+3. Epilogue holding the final stats/badges while returning to the San Jose home scene.
 
 Each event screen contains one or more paragraph-sized dialogue beats. Exactly one beat is visible in enhanced mode. The final beat records that story moment and gives decorative milestone feedback if applicable; it does not repeat the story in a reward paragraph. Continue advances a beat, then travels to the next event. Back rewinds a beat, then returns to the previous event at its final beat. This is bounded at the title and epilogue.
 
@@ -82,11 +96,11 @@ Approved ordinary links are curated GitHub work, LinkedIn, `mailto:pranavprem93@
 | `bot-workshop`   | San Francisco | bot console     | Einstein Bots reliability/API/migration and Copilot.                               |
 | `continuing`     | San Francisco | agent nodes     | Agentforce, Atlas/AgentScript, current capability work and enthusiasm.             |
 
-The epilogue returns narratively to San Jose for OpenClaw/Hermes/Morpheus, homelab automation, and 3D printing. It is not another stat checkpoint.
+The epilogue returns visually and narratively to San Jose for OpenClaw/Hermes/Morpheus, homelab automation, and 3D printing. Its original home scene replaces the prior Golden Gate backdrop without adding a stat checkpoint or geographic region.
 
 **Content And Provenance**
 
-`docs/story.md` is the complete public-safe ledger. `app/content/story.json` is the curated runtime selection. Source kinds remain `owner-supplied`, `supplied-document`, and catalog-only `public-repository`; none means independent institutional verification or a security audit.
+`docs/story.md` is the complete public-safe ledger. `app/content/story.json` is the curated runtime selection. Source kinds remain `owner-supplied`, `supplied-document`, and discovery-only `public-repository`; none means independent institutional verification or a security audit.
 
 The latest semantic/voice review covers every public copy surface, including templates, rewards, the catalog, metadata, and controls. Keep real grammatical subjects and distinguish roles, tools, projects, and places; do not compress source facts into ambiguous resume fragments. The public Slack connector link is inline in the Bots/API beat, not in the unrelated hobbies discovery. This editorial revision changes no schema, snapshots, unlock anchors, or source classifications.
 
@@ -97,10 +111,11 @@ The current content schema is version 2:
 - Exactly eleven chapters and twelve cards/events; only chapter 09 has two cards.
 - Exactly eleven milestones, granted once in authored order.
 - Exactly eleven discoveries and 24 derived Quest log records: twelve cards, the epilogue, and the eleven discoveries.
-- Cards own `summary` text; the root owns `epilogue_summary`. Discoveries own `id`, `card_id`, `heading`, `period_label`, `body`, `summary`, `position`, `source_refs`, and `links`. The old `facts`, `achievements`, `era`, and `unlock_after` fields are removed, not maintained as compatibility aliases.
+- Cards own `summary` text; the root owns `epilogue_summary`. Discoveries own `id`, `card_id`, `heading`, `period_label`, `body`, `summary`, `position`, `source_refs`, and `links`, with optional bounded `list_items` as defined above. The old `facts`, `achievements`, `era`, and `unlock_after` fields are removed, not maintained as compatibility aliases.
 - Each discovery target must be a card ID or `epilogue`. Each badge's `quest_id` must resolve to a story/discovery at that badge's grant card. Python derives screen indices, internal hrefs, popup paragraphs, and the ordered log. Invalid client target/position metadata restores the complete document.
 - Complete absolute `stats_after` and cumulative `badges_after` snapshots.
 - Region landmarks bounded to the shared `320 x 180` scene geometry.
+- A separate `epilogue_scene` has exactly `region_id`, `art_key`, and five `positions`. The region/art are fixed to `san-jose` / `san-jose-home`; positions reject booleans, nonfinite values, and coordinates outside x `20..300`, y `0..180`. Its five positions must match the five rendered ending beats.
 - Plain-text prose and facts only. Contextual links are selected by trusted template logic.
 
 Validation rejects unknown/missing keys, booleans as integers, nonfinite/out-of-range coordinates, duplicate JSON keys/IDs, invalid source references, wrong counts/order, decreasing Experience, duplicate badge grants, unsafe links, symlinks, missing assets, and unapproved static files. Authored errors fail startup; they are never silently repaired in the browser.
@@ -113,6 +128,7 @@ Validation rejects unknown/missing keys, booleans as integers, nonfinite/out-of-
 {
   schema_version,
   initial: {stats, badges, region_id, position, mood},
+  epilogue_scene: {region_id, art_key, positions: [{x, y}]},
   events: [{id, chapter_id, region_id, position, mood, stats_after, badges_after}]
 }
 ```
@@ -125,7 +141,7 @@ Jinja serializes it in the quoted `data-game` attribute with `tojson | forceesca
 - event screens: `0..11`
 - epilogue: event index `11`
 
-Dialogue beat position is local presentation state. It cannot change stats, badges, region, mood, or source data. Re-entering an event restores that event's exact snapshot. The DOM exposes current screen, beat, and checkpoint indices for deterministic testing, not as a public API.
+Dialogue beat position is local presentation state and never changes stats, badges, mood, or source data. Main events retain their authored region and landmark. The explicit ending exception selects the home scene/region and positions `(119,165)`, `(236,165)`, `(161,165)`, `(161,165)`, `(161,165)` for its five beats. `deriveState()` continues to supply the final stat snapshot at event 11; `renderState()` applies this visual-only route. Entering/leaving the epilogue invalidates the renderer's checkpoint cache through the existing screen-navigation path, so identical stat indices cannot leave stale art or captions behind. The DOM exposes current screen, beat, checkpoint, region, and scene-art identity for deterministic checks, not as a public API.
 
 The journal is separate, page-local presentation state: `completedScreens` records screens 1-13 at their final beat; `foundDiscoveries` records actual popup openings. Both sets survive Back and log jumps for this visit and reset on reload. Chronological DOM order is derived from target screen order, with the story record before its optional discoveries and authored order for ties. It is not calculated from repository dates or invented age/year conversions. Grouped/overlapping periods retain their supplied labels.
 
@@ -136,7 +152,7 @@ The journal is separate, page-local presentation state: `completedScreens` recor
 | SJSU                   | `opportunity-hack`             |
 | Google / during the MS | `masters`, `google-tools`      |
 | Current work           | `career-titles`, `awards`      |
-| Epilogue               | `off-clock`, `local-ai`        |
+| Epilogue               | `off-clock`, `hobbies`         |
 
 Every log entry has a validated target. Story entries revisit the first beat of their card; discovery entries reopen the original popup. Cached DOM-node identity plus the reached/found sets authorize enhanced jumps; a forged visibility class cannot unlock a destination. Jumps close the modal and restore the proper focus, without updating the URL/history. Fallback uses ordinary internal fragment links.
 
@@ -170,6 +186,7 @@ Base HTML is an ordinary complete document:
 - semantic per-card stat equivalents and milestone descriptions
 - ending and optional catalog
 - in-flow region illustrations
+- the ending's in-flow home illustration, also present without JS and in print
 
 Controls are present but hidden by base CSS. Initialization runs after the load event because WebKit can execute the module before applying CSS. Until then the full server document remains untouched, not covered by a loading gate; an image that never loads cannot hide the story. If JavaScript validates the stylesheet sentinel, projection, catalog unlock bounds, and matching DOM markers, it adds `.enhanced` and selects one game screen/beat. If parsing, validation, CSS, or initialization fails, every server-rendered section remains readable. Print overrides enhanced visibility and catalog filtering to expose all content.
 
@@ -195,6 +212,7 @@ The scene uses original landscapes and factual building labels, not logos or cop
 **Motion**
 
 - Scene object movement between authored landmarks uses a short stepped CSS transition.
+- The home marker moves only on entering the epilogue or changing its authored dialogue position. No printer/server idle loop is added; the existing transition is disabled by reduced motion.
 - A milestone's final dialogue beat uses one eight-logical-pixel object hop with static sparks, not a duplicate narrative reward block.
 - The mosquito swoop lasts 1600ms at `unexpected-detour`; the pandemic-symbol sweep lasts 1800ms at `fog-arrives`. Each has one iteration, then rests as static art. No animation-end event is needed for navigation, cleanup, or state. Leaving removes the active animation; reduced-motion changes remove animation eligibility for the rest of that entry, preventing replay when the preference is restored.
 - There is no requestAnimationFrame loop, idle movement, flashing, camera shake, sound, confetti, count-up, or queued animation.

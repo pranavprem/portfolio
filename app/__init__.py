@@ -97,9 +97,11 @@ def create_app(test_config: Mapping[str, object] | None = None) -> Flask:
 
     document = load_story()
     assets = build_asset_inventory()
-    required_assets = {"story.css", "story.js"} | {
-        f"art/{region['art_key']}.svg" for region in document["regions"]
-    }
+    required_assets = {
+        "story.css",
+        "story.js",
+        f"art/{document['epilogue_scene']['art_key']}.svg",
+    } | {f"art/{region['art_key']}.svg" for region in document["regions"]}
     missing = required_assets - assets
     if missing:
         raise ContentValidationError(

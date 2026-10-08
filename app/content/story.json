@@ -1,6 +1,17 @@
 {
   "schema_version": 2,
-  "epilogue_summary": "Back in San Jose, I run Home Assistant and a media server, and have replaced Google Drive/iCloud. OpenClaw and Hermes maintain each other; Morpheus keeps credential access human-approved. 3D printing is my retail therapy. I'm 40% PLA.",
+  "epilogue_scene": {
+    "region_id": "san-jose",
+    "art_key": "san-jose-home",
+    "positions": [
+      { "x": 119, "y": 165 },
+      { "x": 236, "y": 165 },
+      { "x": 161, "y": 165 },
+      { "x": 161, "y": 165 },
+      { "x": 161, "y": 165 }
+    ]
+  },
+  "epilogue_summary": "For fun, I build things for my house in San Jose. My homelab runs Home Assistant and a media server; I've replaced Google Drive/iCloud. OpenClaw and Hermes maintain each other; Morpheus keeps credential access human-approved. 3D printing is my retail therapy. I'm 40% PLA.",
   "sources": {
     "owner-brief": { "kind": "owner-supplied" },
     "resume": { "kind": "supplied-document" },
@@ -490,9 +501,9 @@
       "cards": [
         {
           "id": "continuing-unlocked",
-          "summary": "As a Principal engineer on Agentforce, I help customers build agents through Atlas, AgentScript, voice, memory, MCP, async work, and long-running sessions. I also build team DevOps tools. My enthusiasm, drive, and passion are at an all-time high.",
+          "summary": "For my wages, I build systems connecting Salesforce CRM data to Agentforce. I also build context-aware DevOps tools for my team. As a Principal engineer, I work on Atlas, AgentScript, and the platform's agent capabilities. My enthusiasm, drive, and passion are at an all-time high.",
           "heading": "Principal, not finished",
-          "body": "Then came Agentforce: a platform where Salesforce customers could build their own agents. Basic topics and actions grew into the Atlas Reasoning Engine and AgentScript, making agent behavior more deterministic in an LLM world.\n\nWe're adding voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nI enjoy connecting Salesforce CRM data to the agent platform. I'm learning and growing. I also build context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",
+          "body": "Then came Agentforce: a platform where Salesforce customers could build their own agents. Basic topics and actions grew into the Atlas Reasoning Engine and AgentScript, making agent behavior more deterministic in an LLM world.\n\nWe're adding voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nFor my wages, I build systems that connect Salesforce CRM data to the agent platform, plus context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -624,26 +635,35 @@
       "card_id": "epilogue",
       "period_label": "Now / outside work",
       "heading": "Still playing",
-      "body": "I still play on PC, PlayStation, and Switch. I love Pokemon. Growing up has just given me more money to fund it. So I have a Formula 1-style simulator now.\n\nOutside work, I'm an amateur guitarist and enjoy drones, golf, cooking, mixology, karting, sim racing, and dog whispering. I also blog, write poetry, and make lists. You may have noticed.",
-      "summary": "PC, PlayStation, Switch, Pokemon, and a Formula 1-style simulator. Also guitar, drones, golf, cooking, mixology, karting, dogs, blogging, poetry, and lists.",
-      "position": { "x": 158, "y": 106.5 },
+      "body": "I still play on PC, PlayStation, and Switch. I love Pokemon. Growing up has just given me more money to fund it. So I have a Formula 1-style simulator now.",
+      "summary": "PC, PlayStation, Switch, Pokemon, and a Formula 1-style simulator. Growing up gave me more money to fund the gaming.",
+      "position": { "x": 77, "y": 100 },
       "source_refs": ["owner-brief", "profile"],
       "links": {}
     },
     {
-      "id": "local-ai",
+      "id": "hobbies",
       "card_id": "epilogue",
-      "period_label": "Personal projects / current",
-      "heading": "Memory and local AI",
-      "body": "I use OpenMemory and Qdrant for my agent's persistent memory. I also run speech, image, and voice services locally on Apple Silicon.",
-      "summary": "OpenMemory and Qdrant for persistent agent memory, with local speech, image, and voice services on Apple Silicon.",
-      "position": { "x": 69, "y": 74 },
-      "source_refs": ["github"],
-      "links": {
-        "OpenMemory": "https://github.com/pranavprem/openmemory-local",
-        "Qdrant on the NAS": "https://github.com/pranavprem/qdrant-nas",
-        "Local AI services": "https://github.com/pranavprem/neo-services"
-      }
+      "period_label": "Outside work",
+      "heading": "Other things I do",
+      "body": "Outside work, I like:",
+      "list_items": [
+        "Guitar (amateur)",
+        "Drones",
+        "Golf",
+        "Cooking",
+        "Mixology",
+        "Go-karting",
+        "Sim racing",
+        "Dog whispering",
+        "Blogging",
+        "Writing poetry",
+        "Making lists. You may have noticed."
+      ],
+      "summary": "I'm an amateur guitarist. I also like drones, golf, cooking, mixology, karting, sim racing, dog whispering, blogging, poetry, and making lists.",
+      "position": { "x": 264, "y": 113 },
+      "source_refs": ["owner-brief", "profile"],
+      "links": {}
     }
   ]
 }

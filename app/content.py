@@ -117,6 +117,7 @@ def validate_story(document: object) -> None:
             "chapters",
             "discoveries",
             "epilogue_summary",
+            "epilogue_scene",
         },
         "story",
     )
@@ -224,6 +225,24 @@ def validate_story(document: object) -> None:
         initial["landmark_id"] in region_map["goa"]["landmarks"], "initial", "choose a Goa landmark"
     )
 
+    home = document["epilogue_scene"]
+    _object(home, {"region_id", "art_key", "positions"}, "epilogue_scene")
+    _require(
+        home["region_id"] == "san-jose" and home["art_key"] == "san-jose-home",
+        "epilogue_scene",
+        "use the original San Jose home scene for the ending",
+    )
+    _list(home["positions"], 5, 5, "epilogue_scene.positions")
+    for position in home["positions"]:
+        _object(position, {"x", "y"}, "epilogue_scene.position")
+        for axis, lower, upper in (("x", 20, 300), ("y", 0, 180)):
+            value = position[axis]
+            _require(
+                type(value) in (int, float) and math.isfinite(value) and lower <= value <= upper,
+                "epilogue_scene.position",
+                "use finite coordinates inside the scene with room for the marker",
+            )
+
     chapters = document["chapters"]
     _list(chapters, 11, 11, "chapters")
     chapter_ids, card_ids, granted = set(), set(), set()
@@ -313,21 +332,20 @@ def validate_story(document: object) -> None:
     quest_targets = {card_id: card_id for card_id in card_ids | {"epilogue"}}
     for discovery in discoveries:
         field = "discoveries"
-        _object(
-            discovery,
-            {
-                "id",
-                "card_id",
-                "period_label",
-                "heading",
-                "body",
-                "summary",
-                "position",
-                "source_refs",
-                "links",
-            },
-            field,
-        )
+        keys = {
+            "id",
+            "card_id",
+            "period_label",
+            "heading",
+            "body",
+            "summary",
+            "position",
+            "source_refs",
+            "links",
+        }
+        if type(discovery) is dict and "list_items" in discovery:
+            keys.add("list_items")
+        _object(discovery, keys, field)
         _id(discovery["id"], field + ".id")
         _require(discovery["id"] not in quest_targets, field, "quest IDs must be unique")
         _id(discovery["card_id"], field + ".card_id")
@@ -346,6 +364,20 @@ def validate_story(document: object) -> None:
         _list(paragraphs, 1, 8, field + ".paragraphs")
         for paragraph in paragraphs:
             _text(paragraph, 600, field + ".paragraphs")
+        if "list_items" in discovery:
+            _list(discovery["list_items"], 1, 12, field + ".list_items")
+            for item in discovery["list_items"]:
+                _text(item, 100, field + ".list_items")
+            _require(
+                len(set(discovery["list_items"])) == len(discovery["list_items"]),
+                field + ".list_items",
+                "keep list items distinct",
+            )
+            _require(
+                len(discovery["body"]) + sum(len(item) for item in discovery["list_items"]) <= 600,
+                field + ".list_items",
+                "keep discovery paragraphs and list items within 600 characters combined",
+            )
         _object(discovery["position"], {"x", "y"}, field + ".position")
         for axis, upper in (("x", 272), ("y", 132)):
             value = discovery["position"][axis]
@@ -393,6 +425,7 @@ def prepare_story(document: dict) -> tuple[dict, dict]:
     initial = story["initial"]
     game = {
         "schema_version": story["schema_version"],
+        "epilogue_scene": deepcopy(story["epilogue_scene"]),
         "initial": {
             "stats": dict(initial["stats"]),
             "badges": [],

@@ -37,7 +37,8 @@ HUD = """() => ({
   pips: Object.fromEntries([...document.querySelectorAll('[data-stat]')]
     .map(row => [row.dataset.stat, row.querySelectorAll('.stat-pips > .filled').length])),
   badges: [...document.querySelectorAll('li[data-badge].earned')].map(node => node.dataset.badge),
-  region: document.querySelector('[data-region-art].current').dataset.regionArt,
+   region: document.getElementById('overworld').dataset.region,
+   scene: document.querySelector('[data-scene-art].current').dataset.sceneArt,
   mood: document.getElementById('overworld').dataset.mood,
   object: document.querySelector('#journey-marker .object-sprite.current').dataset.objectSprite,
   transform: document.getElementById('journey-object-track').getAttribute('transform')
@@ -64,8 +65,10 @@ def assert_hud(page, expected):
     expect(page.locator("#character-sheet")).to_be_visible()
     expect(page.locator("#character-sheet")).not_to_have_attribute("aria-hidden", "true")
     actual = page.evaluate(HUD)
-    for key in ("index", "stats", "badges", "region", "mood"):
+    for key in ("index", "stats", "badges", "mood"):
         assert actual[key] == expected[key], (key, actual, expected)
+    assert actual["region"] == ("san-jose" if actual["screen"] == 13 else expected["region"])
+    assert actual["scene"] == ("san-jose-home" if actual["screen"] == 13 else expected["region"])
     assert actual["object"] == OBJECTS_BY_SNAPSHOT[expected["index"] + 1]
     assert actual["pips"] == expected["stats"]
     expect(page.locator("#badge-count")).to_have_text(f"{len(expected['badges']):02d}")
@@ -107,8 +110,15 @@ def assert_complete_story(page, story_document, snapshots, *, visible):
     for discovery in story_document["discoveries"]:
         node = page.locator(f"#discovery-{discovery['id']}")
         expect(node.locator(".discovery-copy")).to_have_text(discovery["body"].split("\n\n"))
+        expect(node.locator(".discovery-list > li")).to_have_text(discovery.get("list_items", []))
         if visible:
             expect(node).to_be_visible()
+            for item in node.locator(".discovery-list > li").all():
+                expect(item).to_be_visible()
+    home = page.locator("#epilogue .fallback-landscape img")
+    expect(home).to_have_attribute("src", re.compile(r"/static/art/san-jose-home\.svg\?v="))
+    if visible:
+        expect(home).to_be_visible()
     expect(page.locator(".achievement-note")).to_have_count(24)
     if visible:
         for item in page.locator(".achievement-note").all():
@@ -186,6 +196,54 @@ def test_buttons_play_every_chapter_and_backtrack_exactly(page, live_server, sna
         page.locator('[data-action="back"]').click()
     expect(page.locator("#journey")).to_have_attribute("data-screen-index", "12")
     assert_hud(page, snapshots[-1])
+
+
+@pytest.mark.parametrize("reduced", [False, True])
+def test_epilogue_returns_home_and_visits_its_workstations_without_changing_stats(
+    page, live_server, snapshots, home_positions, reduced
+):
+    page.emulate_media(reduced_motion="reduce" if reduced else "no-preference")
+    open_game(page, live_server)
+    go_to_event(page, 11)
+    expect(page.locator('[data-scene-art="bay-area"]')).to_be_visible()
+    assert advance_to_next_screen(page) == 13
+    expect(page.locator("#world-label")).to_have_text("San Jose")
+    expect(page.locator('[data-scene-art="san-jose-home"]')).to_be_visible()
+    expect(page.locator('[data-scene-art="bay-area"]')).to_be_hidden()
+    for beat, (x, y) in enumerate(home_positions):
+        expect(page.locator("#journey")).to_have_attribute("data-beat-index", str(beat))
+        state = assert_hud(page, snapshots[-1])
+        assert state["transform"] == f"translate({x} {y})"
+        if reduced:
+            assert (
+                page.locator("#journey-object-track").evaluate(
+                    "node => getComputedStyle(node).transitionDuration"
+                )
+                == "0s"
+            )
+        if beat < 4:
+            page.locator('[data-action="advance"]').click()
+
+    page.wait_for_timeout(500)
+    assert page.evaluate("document.getAnimations().length") == 0
+    for _ in range(5):
+        page.locator('[data-action="back"]').click()
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "12")
+    expect(page.locator("#world-label")).to_have_text("San Francisco")
+    expect(page.locator('[data-scene-art="san-jose-home"]')).to_be_hidden()
+    assert_hud(page, snapshots[-1])
+
+    page.locator('[data-action="toggle-quests"]').click()
+    page.locator('#quest-epilogue [data-action="revisit"]').click()
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "13")
+    expect(page.locator("#world-label")).to_have_text("San Jose")
+    assert assert_hud(page, snapshots[-1])["transform"] == "translate(119 165)"
+    for discovery_id in ("off-clock", "hobbies"):
+        before = page.evaluate(HUD)
+        page.locator(f'[data-discovery="{discovery_id}"]').click()
+        expect(page.locator(f"#discovery-{discovery_id}")).to_be_visible()
+        assert page.evaluate(HUD) == before
+        page.keyboard.press("Escape")
 
 
 def test_dialogue_is_part_of_play_and_scene_hotspots_reveal_discoveries(
@@ -335,13 +393,15 @@ def test_no_javascript_and_script_failure_keep_complete_readable_story(
     page.goto(live_server + "/")
     assert_complete_story(page, story_document, snapshots, visible=True)
     expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator(".fallback-landscape")).to_have_count(11)
+    expect(page.locator(".fallback-landscape")).to_have_count(12)
     expect(page.locator(".game-controls")).to_be_hidden()
     expect(page.locator(".scene-panel")).to_be_hidden()
     expect(page.locator("#character-sheet")).to_be_visible()
 
 
-@pytest.mark.parametrize("resource", ["story.js", "story.css", "art/goa.svg"])
+@pytest.mark.parametrize(
+    "resource", ["story.js", "story.css", "art/goa.svg", "art/san-jose-home.svg"]
+)
 def test_failed_local_resource_never_removes_content(
     page, live_server, story_document, snapshots, resource
 ):
@@ -367,6 +427,11 @@ def test_failed_local_resource_never_removes_content(
         "lost-experience",
         "marker-id",
         "chapter-id",
+        "home-region",
+        "home-art",
+        "home-position",
+        "home-beat-count",
+        "missing-home",
     ],
 )
 def test_invalid_projection_falls_back(page, live_server, game, story_document, snapshots, failure):
@@ -389,6 +454,16 @@ def test_invalid_projection_falls_back(page, live_server, game, story_document, 
         projection["events"][0]["id"] = "wrong-card"
     elif failure == "chapter-id":
         projection["events"][0]["chapter_id"] = "wrong-chapter"
+    elif failure == "home-region":
+        projection["epilogue_scene"]["region_id"] = "bay-area"
+    elif failure == "home-art":
+        projection["epilogue_scene"]["art_key"] = "../private"
+    elif failure == "home-position":
+        projection["epilogue_scene"]["positions"][0]["x"] = True
+    elif failure == "home-beat-count":
+        projection["epilogue_scene"]["positions"].pop()
+    elif failure == "missing-home":
+        projection.pop("epilogue_scene")
     serialized = "{" if failure == "json" else json.dumps(projection)
 
     def replace_projection(route):
@@ -423,6 +498,8 @@ def test_csp_privacy_and_idle_scene_are_clean(page, live_server, observations, s
     for index in (0, 2, 4, 6, 7, 8, 9, 10, 11):
         go_to_event(page, index)
         assert_hud(page, snapshots[index + 1])
+    advance_to_next_screen(page)
+    assert_hud(page, snapshots[-1])
     page.wait_for_timeout(500)
     idle = page.evaluate("""() => ({
       animations: document.getAnimations().length,
@@ -453,11 +530,16 @@ def test_local_axe_accessibility(page, live_server, project_root, width, scheme)
     axe_path = project_root / "node_modules/axe-core/axe.min.js"
     assert axe_path.is_file(), "Run npm ci to install the pinned local axe-core dependency"
     page.evaluate(axe_path.read_text(encoding="utf-8"))
-    for state in ("intro", "chapter", "discovery", "quests"):
+    for state in ("intro", "chapter", "discovery", "hobbies", "quests"):
         if state == "chapter":
             go_to_event(page, 6)
         elif state == "discovery":
             page.locator('[data-discovery="opportunity-hack"]').click()
+        elif state == "hobbies":
+            page.keyboard.press("Escape")
+            go_to_event(page, 11)
+            advance_to_next_screen(page)
+            page.locator('[data-discovery="hobbies"]').click()
         elif state == "quests":
             page.locator('[data-action="toggle-quests"]').click()
         violations = page.evaluate("""async () => {
@@ -475,7 +557,8 @@ def test_text_enlargement_keeps_controls_and_current_dialogue_reachable(page, li
     open_game(page, live_server)
     go_to_event(page, 3)
     page.evaluate("""() => {
-      const nodes = document.querySelectorAll('.dialogue-card *, .game-controls *, .game-hud *');
+      const nodes = document.querySelectorAll(
+        '.dialogue-card *, .game-controls *, .game-hud *, .discovery-panel *');
       const sizes = [...nodes]
         .map(node => [node, parseFloat(getComputedStyle(node).fontSize)]);
       sizes.forEach(([node, size]) => { if (size) node.style.fontSize = `${size * 2}px`; });
@@ -493,6 +576,18 @@ def test_text_enlargement_keeps_controls_and_current_dialogue_reachable(page, li
     expect(page.locator(".game-screen.is-current-screen .dialogue-card")).to_be_visible()
     for row in page.locator("[data-stat]").all():
         assert row.evaluate("node => node.scrollWidth <= node.clientWidth + 1")
+    go_to_event(page, 11)
+    advance_to_next_screen(page)
+    page.locator('[data-discovery="hobbies"]').click()
+    popup = page.locator("#discovery-hobbies")
+    expect(popup.locator("h3")).to_be_focused()
+    popup.evaluate("node => { node.scrollTop = node.scrollHeight; }")
+    expect(popup.locator(".discovery-list > li").last).to_be_in_viewport()
+    assert popup.evaluate("node => node.scrollWidth <= node.clientWidth + 1")
+    expect(page.locator('[data-action="advance"]')).to_be_in_viewport()
+    page.locator('[data-action="advance"]').click()
+    expect(popup).to_be_hidden()
+    expect(page.locator('[data-discovery="hobbies"]')).to_be_focused()
 
 
 @pytest.mark.parametrize("width,height", [(320, 568), (390, 844), (1440, 1000)])
@@ -698,6 +793,7 @@ def test_easter_eggs_follow_building_windows_and_popup_over_the_scene(
             item for item in story_document["discoveries"] if item["id"] == discovery_id
         )
         expect(popup.locator(".discovery-copy")).to_have_text(expected["body"].split("\n\n"))
+        expect(popup.locator(".discovery-list > li")).to_have_text(expected.get("list_items", []))
         assert page.evaluate(HUD) == before
         expect(page.locator(".is-current-screen .dialogue-card")).to_be_visible()
         scene = page.locator(".scene-panel").bounding_box()
@@ -707,7 +803,9 @@ def test_easter_eggs_follow_building_windows_and_popup_over_the_scene(
             scene["y"] <= box["y"] and box["y"] + box["height"] <= scene["y"] + scene["height"] + 1
         )
         popup.evaluate("node => { node.scrollTop = node.scrollHeight; }")
-        expect(popup.locator(".discovery-copy, .project-links a").last).to_be_in_viewport()
+        expect(
+            popup.locator(".discovery-copy, .discovery-list > li, .project-links a").last
+        ).to_be_in_viewport()
         if discovery_id == "gec-extras":
             expect(
                 popup.locator('a[href="https://github.com/pranavprem/ZuariSAPDetail"]')
@@ -731,6 +829,8 @@ def test_discoveries_are_unique_outside_the_quest_log(page, live_server, story_d
     for discovery in story_document["discoveries"]:
         for paragraph in discovery["body"].split("\n\n"):
             assert copy.count(paragraph) == 1, discovery["id"]
+        for item in discovery.get("list_items", []):
+            assert copy.count(item) == 1, discovery["id"]
     expect(page.locator(".loot")).to_have_count(0)
     assert (
         "Green Belt"
@@ -887,6 +987,7 @@ def test_pending_stylesheet_preserves_server_content_and_enhances_after_load(pag
 @pytest.mark.parametrize(
     "old,new",
     [
+        ('data-scene-art="san-jose-home"', 'data-scene-art="missing-home"'),
         ('data-quest-kind="story"', 'data-quest-kind="unknown"'),
         ('data-quest="school-unlocked"', 'data-quest="first-script"'),
         ('data-x="249"', 'data-x="NaN"'),

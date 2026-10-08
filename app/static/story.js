@@ -49,6 +49,19 @@ function validGame(game, markers, badgeIds) {
     game?.schema_version !== 2 ||
     !game.initial ||
     !Array.isArray(game.events) ||
+    game.epilogue_scene?.region_id !== "san-jose" ||
+    game.epilogue_scene?.art_key !== "san-jose-home" ||
+    !Array.isArray(game.epilogue_scene?.positions) ||
+    game.epilogue_scene.positions.length !== 5 ||
+    !game.epilogue_scene.positions.every(
+      (position) =>
+        Number.isFinite(position?.x) &&
+        position.x >= 20 &&
+        position.x <= 300 &&
+        Number.isFinite(position?.y) &&
+        position.y >= 0 &&
+        position.y <= 180,
+    ) ||
     game.events.length !== markers.length ||
     !markers.length
   )
@@ -114,7 +127,7 @@ function startJourney(root) {
   const markers = [...root.querySelectorAll("[data-checkpoint]")];
   const statRows = [...root.querySelectorAll("[data-stat]")];
   const badgeSlots = [...root.querySelectorAll("[data-badge]")];
-  const art = [...root.querySelectorAll("[data-region-art]")];
+  const art = [...root.querySelectorAll("[data-scene-art]")];
   const objectSprites = [...root.querySelectorAll("[data-object-sprite]")];
   const encounters = [...root.querySelectorAll("[data-encounter]")];
   const status = document.getElementById("sheet-status");
@@ -234,6 +247,16 @@ function startJourney(root) {
   }
 
   function renderState(state) {
+    // Home shares the final stats, not the final work scene.
+    const home =
+      currentScreen().dataset.screenKind === "ending"
+        ? game.epilogue_scene
+        : null;
+    const region = home ? home.region_id : state.region;
+    const scene = home ? home.art_key : state.region;
+    const position = home
+      ? home.positions[beatIndexes[screenIndex]]
+      : state.position;
     if (state.index !== lastEventIndex) {
       statRows.forEach((row) => {
         const value = state.stats[row.dataset.stat];
@@ -252,10 +275,7 @@ function startJourney(root) {
         state.badges.length,
       ).padStart(2, "0");
       art.forEach((image) =>
-        image.classList.toggle(
-          "current",
-          image.dataset.regionArt === state.region,
-        ),
+        image.classList.toggle("current", image.dataset.sceneArt === scene),
       );
       objectSprites.forEach((object) =>
         object.classList.toggle(
@@ -263,8 +283,8 @@ function startJourney(root) {
           object.dataset.objectSprite === state.object,
         ),
       );
-      document.getElementById("world-label").textContent =
-        REGIONS[state.region];
+      document.getElementById("world-label").textContent = REGIONS[region];
+      document.getElementById("overworld").dataset.region = region;
       encounters.forEach((encounter) => {
         const active =
           encounter.dataset.encounter === currentScreen().dataset.checkpoint;
@@ -280,10 +300,7 @@ function startJourney(root) {
     }
     document
       .getElementById("journey-object-track")
-      .setAttribute(
-        "transform",
-        `translate(${state.position.x} ${state.position.y})`,
-      );
+      .setAttribute("transform", `translate(${position.x} ${position.y})`);
   }
 
   function render() {
@@ -453,6 +470,13 @@ function startJourney(root) {
         .getPropertyValue("--chapter-adventure")
         .trim() !== "ready" ||
       screens.length !== markers.length + 2 ||
+      art.length !== 5 ||
+      new Set(art.map((image) => image.dataset.sceneArt)).size !== 5 ||
+      art.some(
+        (image) =>
+          !Object.hasOwn(REGIONS, image.dataset.sceneArt) &&
+          image.dataset.sceneArt !== "san-jose-home",
+      ) ||
       questEntries.length !== 24 ||
       quests.size !== 24 ||
       inspectButtons.length !== 11 ||
@@ -499,7 +523,9 @@ function startJourney(root) {
         game,
         markers,
         new Set(badgeSlots.map((slot) => slot.dataset.badge)),
-      )
+      ) ||
+      game.epilogue_scene.positions.length !==
+        screens.at(-1).querySelectorAll(".dialogue-beat").length
     )
       throw new Error("Invalid story projection");
 
