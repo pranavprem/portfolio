@@ -3,9 +3,9 @@ A life in side quests: a warm, original full-screen pixel-game autobiography for
 
 The point is to meet a person by playing through his story, not browse a resume with animations. The main story is at most 900 visible words: games in Goa, the mosquito boss fight, college, HSBC, SJSU, Google, Salesforce Bots/Copilot/Agentforce, and personal agent/homelab/printing projects back in San Jose. Paragraph-sized dialogue beats keep distinct events separate. The Quest log collects 13 main-story summaries and 11 optional discoveries in chronological story order, with links back to their scenes. The voice is direct and dryly funny, without a lesson after every event or repeated reward paragraphs.
 
-Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The Quest log implementation was published as `7f9e6fbd77530ea9570652e06c1207546769980a` and passed all four exact-SHA CI jobs. A documentation-only follow-up records that evidence in [the handoff](docs/handoff.md). Code publication is not a Portainer redeployment: public asset verification, HTTP redirect/HSTS, NAS isolation/recovery, and physical-device checks remain operator gates.
+Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The San Jose home-scene and work/home-copy revision was published as `b363059fbd75999eaaebeb1939571ef5b628b328` and passed all four exact-SHA CI jobs. A documentation-only follow-up records that evidence in [the handoff](docs/handoff.md). Code publication is not a Portainer redeployment: public asset verification, HTTP redirect/HSTS, NAS isolation/recovery, and physical-device checks remain operator gates.
 
-The later San Jose home-scene and work/home-copy revisions are local working-copy changes, not yet committed or deployed. Their checks and new 16-file runtime boundary are recorded in the handoff; the older release's hosted CI is not evidence for these changes.
+The published revision includes the home illustration, separate gaming/hobby discoveries, and the wages-versus-fun transition. Its local checks, 16-file runtime boundary, publication scans, and hosted run are recorded separately from the older Quest log release.
 
 **Read First**
 The owner explicitly requires a complete, AI-agent-ready handoff so he never has to repeat his full story. These documents have different jobs:

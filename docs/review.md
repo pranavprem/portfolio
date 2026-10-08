@@ -1,5 +1,5 @@
 **Current Review**
-Latest scope: the uncommitted San Jose home scene and its work/home-copy follow-up after `4fd0cab`. The latter replaces the stale local-AI discovery with a separate hobby list and contrasts paid Agentforce work with personal projects. The four-region geography, final stats, authored home positions, eleven discoveries, and 24 journal records remain. Earlier findings below retain their observed historical scope.
+Latest scope: the San Jose home scene and its work/home-copy follow-up, published as `b363059fbd75999eaaebeb1939571ef5b628b328`. The latter replaces the stale local-AI discovery with a separate hobby list and contrasts paid Agentforce work with personal projects. The four-region geography, final stats, authored home positions, eleven discoveries, and 24 journal records remain. Earlier findings below retain their observed historical scope.
 
 **Work And Hobbies Review**
 
@@ -10,7 +10,7 @@ Latest scope: the uncommitted San Jose home scene and its work/home-copy follow-
 - Local verification: 240 content/HTTP tests and 204 three-engine browser cases passed, including updated fallback/print, list reachability at 200% text, all log returns, geometry/focus, and light/dark axe checks. The rebuilt preview passed three-engine smoke, health, and exact 16-file/nonroot/read-only checks; the main story is 755 words. See the handoff for commands and the initial outer-command timeout, which was rerun to completion rather than reported as a pass.
 - Mobile/desktop captures support the new list layout: mobile uses internal popup scrolling with the fixed Return to story control; desktop displays all items. Physical-device behavior and subjective voice/visual approval remain unverified.
 
-The main session performed design review, implementation, testing, code/security review, conformance, and retrospective sequentially without agents. No known blocking local finding remains. Existing HTTP/static validation, strict CSP, escaping, generic errors, logging/privacy, dependency pins, and least-privilege app/connector separation are unchanged; this is an OWASP-oriented code review, not a penetration test. No new hosted CI or publication is claimed.
+The main session performed design review, implementation, testing, code/security review, conformance, and retrospective sequentially without agents. No known blocking local finding remains. Existing HTTP/static validation, strict CSP, escaping, generic errors, logging/privacy, dependency pins, and least-privilege app/connector separation are unchanged; this is an OWASP-oriented code review, not a penetration test. The authorized publication passed all four jobs in [37733550474](https://github.com/pranavprem/portfolio/actions/runs/37733550474), with zero findings in the local staged-tree and outgoing-commit scans. No production redeployment or public verification is claimed.
 
 **Home Scene Review**
 This preceding review records the home-only pass before the copy/hobby follow-up above.
