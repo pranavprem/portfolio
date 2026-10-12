@@ -819,6 +819,33 @@ def test_easter_eggs_follow_building_windows_and_popup_over_the_scene(
         assert page.evaluate(HUD) == before
 
 
+def test_coldplay_is_found_at_gec_and_the_journal_returns_there(page, live_server, snapshots):
+    open_game(page, live_server)
+    go_to_event(page, 3)
+    expect(page.locator(".scene-hotspot:visible")).to_have_count(3)
+    cameo = page.locator('[data-discovery="coldplay"]')
+    expect(page.locator("#quest-coldplay")).not_to_have_class(re.compile("is-unlocked"))
+    before = assert_hud(page, snapshots[4])
+    cameo.click()
+    popup = page.locator("#discovery-coldplay")
+    expect(popup.locator(".panel-kicker")).to_have_text("GEC / Coldplay & Oxfam")
+    expect(popup.locator("a")).to_have_attribute("href", "https://youtu.be/ogItgrO9GSg?t=221")
+    expect(page.locator("#quest-coldplay")).to_have_class(re.compile("is-unlocked"))
+    assert page.evaluate(HUD) == before
+    page.keyboard.press("Escape")
+    expect(cameo).to_be_focused()
+    go_to_event(page, 5)
+    expect(cameo).to_be_hidden()
+    expect(page.locator(".scene-hotspot:visible")).to_have_count(1)
+    page.locator('[data-action="toggle-quests"]').click()
+    page.locator('#quest-coldplay [data-action="revisit"]').click()
+    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "4")
+    expect(page.locator("#world-label")).to_have_text("Goa")
+    expect(popup).to_be_visible()
+    expect(popup.locator("h3")).to_be_focused()
+    assert_hud(page, snapshots[4])
+
+
 def test_discoveries_are_unique_outside_the_quest_log(page, live_server, story_document):
     open_game(page, live_server)
     copy = page.locator("#journey").evaluate(r"""node => {
@@ -990,8 +1017,8 @@ def test_pending_stylesheet_preserves_server_content_and_enhances_after_load(pag
         ('data-scene-art="san-jose-home"', 'data-scene-art="missing-home"'),
         ('data-quest-kind="story"', 'data-quest-kind="unknown"'),
         ('data-quest="school-unlocked"', 'data-quest="first-script"'),
-        ('data-x="249"', 'data-x="NaN"'),
-        ('data-x="249"', 'data-x="900"'),
+        ('data-x="267"', 'data-x="NaN"'),
+        ('data-x="267"', 'data-x="900"'),
         ('data-discovery="gec-extras"', 'data-discovery="unknown"'),
         ('aria-controls="discovery-gec-extras"', 'aria-controls="character-sheet"'),
         ('href="#moment-first-script"', 'href="#moment-school-unlocked"'),

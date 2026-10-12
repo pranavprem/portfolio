@@ -1,5 +1,13 @@
 **Current Review**
-Latest scope: the San Jose home scene and its work/home-copy follow-up, published as `b363059fbd75999eaaebeb1939571ef5b628b328`. The latter replaces the stale local-AI discovery with a separate hobby list and contrasts paid Agentforce work with personal projects. The four-region geography, final stats, authored home positions, eleven discoveries, and 24 journal records remain. Earlier findings below retain their observed historical scope.
+Latest scope: the local Coldplay placement correction after `67d5132`. The owner's GEC account supersedes the earlier age-based HSBC/Pune placement. This revision is not committed or publicly deployed.
+
+**GEC Cameo Review**
+The popup, period label, journal order, and return target now belong to `college-unlocked`. The exact 3:41 URL and silhouette/Gmail-picture account remain; the older Profile age claim is retained only in the ledger, without a replacement age/year or campus filming claim. Three 48px glints remain distinct at 320x568 after small original-art spacing changes. No chapter, required beat, stat, milestone, discovery count, schema, or navigation implementation changed.
+
+Main-session source/code/security/conformance review found no blocking local issue. Authored fields still pass the existing validators; SVG edits contain only local geometry, and no new external URL, dependency, active content, or privacy surface was added. All 241 non-browser tests and 207 three-engine browser cases passed, including the new explicit GEC/Pune/return regression and existing geometry, fallback/print, exact-state, CSP, and journal tests. Lint/format, rebuilt container health and the 16-file boundary, and three-engine container smoke checks passed. Mobile/desktop captures verify the rendered correction, not physical-device or owner approval. Full commands and publication limits are in the handoff.
+
+**Home Release Review**
+Previous scope: the San Jose home scene and its work/home-copy follow-up, published as `b363059fbd75999eaaebeb1939571ef5b628b328`. The latter replaces the stale local-AI discovery with a separate hobby list and contrasts paid Agentforce work with personal projects. The four-region geography, final stats, authored home positions, eleven discoveries, and 24 journal records remain. Earlier findings below retain their observed historical scope.
 
 **Work And Hobbies Review**
 

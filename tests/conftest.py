@@ -122,10 +122,10 @@ def quest_targets():
         "college-unlocked": ("story", 4),
         "gec-extras": ("discovery", 4),
         "early-projects": ("discovery", 4),
+        "coldplay": ("discovery", 4),
         "java-unlocked": ("story", 5),
         "automation-unlocked": ("story", 6),
         "green-belt": ("discovery", 6),
-        "coldplay": ("discovery", 6),
         "sjsu-unlocked": ("story", 7),
         "opportunity-hack": ("discovery", 7),
         "developer-ally-unlocked": ("story", 8),
@@ -146,10 +146,10 @@ def quest_targets():
 @pytest.fixture(scope="session")
 def discovery_positions():
     return {
-        "gec-extras": (249, 99),
+        "gec-extras": (267, 99),
         "early-projects": (114.5, 96.5),
+        "coldplay": (191, 100),
         "green-belt": (217, 102.5),
-        "coldplay": (70, 84.5),
         "opportunity-hack": (52.5, 96),
         "masters": (52.5, 96),
         "google-tools": (208, 95.5),

@@ -529,7 +529,7 @@
       "heading": "More from GEC",
       "body": "I became my department's general secretary.\n\nDuring my Zuari internship, I saw enterprise software running in an on-premise SAP data center for the first time. I built a PHP dashboard and monitoring tools with Python alerts.\n\nI presented a paper on securing voice and video calls.",
       "summary": "Department general secretary, a first look at enterprise SAP during my Zuari internship, and a paper on securing voice and video calls.",
-      "position": { "x": 249, "y": 99 },
+      "position": { "x": 267, "y": 99 },
       "source_refs": ["owner-brief", "resume", "profile", "github"],
       "links": {
         "Zuari SAP dashboard": "https://github.com/pranavprem/ZuariSAPDetail",
@@ -552,6 +552,17 @@
       }
     },
     {
+      "id": "coldplay",
+      "card_id": "college-unlocked",
+      "period_label": "GEC / Coldplay & Oxfam",
+      "heading": "The Coldplay cameo",
+      "body": "That's my silhouette at 3:41 in Coldplay's \"In My Place\" video for Oxfam. It also became my Gmail picture.",
+      "summary": "My silhouette appears at 3:41 in the Coldplay/Oxfam video for \"In My Place.\" It became my Gmail picture too.",
+      "position": { "x": 191, "y": 100 },
+      "source_refs": ["owner-brief", "profile"],
+      "links": { "My cameo at 3:41": "https://youtu.be/ogItgrO9GSg?t=221" }
+    },
+    {
       "id": "green-belt",
       "card_id": "automation-unlocked",
       "period_label": "2014-2017 / HSBC",
@@ -561,17 +572,6 @@
       "position": { "x": 217, "y": 102.5 },
       "source_refs": ["owner-brief", "resume", "supplied-documents"],
       "links": {}
-    },
-    {
-      "id": "coldplay",
-      "card_id": "automation-unlocked",
-      "period_label": "Age 22 / Coldplay & Oxfam",
-      "heading": "The Coldplay cameo",
-      "body": "That's my silhouette at 3:41 in Coldplay's \"In My Place\" video for Oxfam. It also became my Gmail picture.",
-      "summary": "My silhouette appears at 3:41 in the Coldplay/Oxfam video for \"In My Place.\" It became my Gmail picture too.",
-      "position": { "x": 70, "y": 84.5 },
-      "source_refs": ["owner-brief", "profile"],
-      "links": { "My cameo at 3:41": "https://youtu.be/ogItgrO9GSg?t=221" }
     },
     {
       "id": "opportunity-hack",

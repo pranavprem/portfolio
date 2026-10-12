@@ -497,6 +497,24 @@ def test_full_discovery_inventory_and_project_evidence(story_document):
     assert len(prepared["quests"]) == 24
 
 
+def test_coldplay_belongs_to_gec_not_hsbc(story_document):
+    cameo = next(item for item in story_document["discoveries"] if item["id"] == "coldplay")
+    assert cameo["card_id"] == "college-unlocked"
+    assert cameo["period_label"] == "GEC / Coldplay & Oxfam"
+    assert cameo["source_refs"] == ["owner-brief", "profile"]
+    assert cameo["links"] == {"My cameo at 3:41": "https://youtu.be/ogItgrO9GSg?t=221"}
+    prepared, _ = prepare_story(story_document)
+    cards = {card["id"]: card for chapter in prepared["chapters"] for card in chapter["cards"]}
+    assert [item["id"] for item in cards["college-unlocked"]["discoveries"]] == [
+        "gec-extras",
+        "early-projects",
+        "coldplay",
+    ]
+    assert [item["id"] for item in cards["automation-unlocked"]["discoveries"]] == ["green-belt"]
+    order = [item["id"] for item in prepared["quests"]]
+    assert order.index("college-unlocked") < order.index("coldplay") < order.index("java-unlocked")
+
+
 @pytest.mark.parametrize(
     "url",
     [

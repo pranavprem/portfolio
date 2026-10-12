@@ -1,6 +1,6 @@
 **Portfolio Architecture**
 Status: approved chapter-adventure design, implemented locally; final cross-browser/public verification is recorded in [handoff.md](handoff.md).
-Prepared: 2026-09-06. Current revision: separate gaming/hobby discoveries and paid-work/personal-project copy in the San Jose home ending, with the chronological Quest log retained. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
+Prepared: 2026-09-06. Current revision: the GEC cameo placement, with the San Jose home ending, chronological Quest log, and single-source discoveries retained. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
 This is a warm pixel-game autobiography, not a resume with animation beside it. The enhanced site is a full-screen, linear chapter adventure. The landscape, current chapter object, dialogue, discoveries, stats, milestones, and controls form one game scene. The complete human story, including uncertainty, illness, boredom, burnout, hobbies, and current joy, remains more important than game chrome.
@@ -19,6 +19,11 @@ The public repository is `https://github.com/pranavprem/portfolio`. The private 
 - No framework, game engine, canvas/WebGL dependency, runtime npm, CMS, analytics, remote font, embed, or remote runtime request is introduced.
 
 **Experience Contract**
+
+**Cameo Placement Correction**
+The owner explicitly places the Coldplay/Oxfam cameo during GEC, not HSBC. Main-session design/review: retarget `coldplay` to `college-unlocked` (screen 4), use `GEC / Coldplay & Oxfam`, and retain its prose, sources, and approved timestamped link. The old Profile age label remains historical evidence only; neither a replacement age/year nor a campus filming location is inferred. The existing derivation moves the journal entry before HSBC and returns to the GEC popup without new navigation logic, stats, counts, or required beats.
+
+College now has three glints. Its original west/east wings are spread slightly so the cameo window `(191,100)`, GEC-extras window `(267,99)`, and unchanged early-projects window `(114.5,96.5)` preserve distinct 48px targets at 320x568. This is symbolic art geometry, not new campus or filming evidence. Acceptance covers three-target separation, found-only unlocks, Pune absence, return/focus/stats, source history, fallback/print, and all browser engines.
 
 **Home Copy Revision**
 The owner now describes the local-AI repositories as mostly defunct/not running and asks for a separate list-form hobby easter egg. Main-session design/review: remove `local-ai` and its OpenMemory/Qdrant/Neo Services links from runtime content; preserve their qualified source history. Keep `off-clock` for gaming and add `hobbies` at an original generic guitar `(264,113)`, leaving eleven discoveries and 24 journal records. No checkpoint, state, persistence, navigation rule, or network permission changes.
@@ -41,7 +46,7 @@ Main-session design and review:
 
 - Keep eleven chapters, twelve event snapshots, five stats, and the main route. Add a short `summary` to each card and an `epilogue_summary`. Derive a chronological Quest log with thirteen main-story records and eleven discovery records, rather than maintaining a separate achievement catalog. Main summaries cover the whole card and revisit its first beat. The title's identity/Goa context is covered by the current-work and childhood summaries rather than inserting a present-day entry before childhood.
 - Replace card `facts` and the old catalog with one authored `discoveries` collection. Each record owns its ID, target card (or `epilogue`), heading, period label, plain-text paragraphs, short summary, source references, reviewed links, and bounded scene position. Python prepares the popup and log from that one source. No fact may exist only in the log. The original catalog's degree, research, tool, metric, project, nomination, promotion, award, and hobby details remain in main prose or a discovery; the full ledger stays intact.
-- Discovery targets: GEC extras and early games/CyanogenMod at college; Green Belt/CI-CD and Coldplay at the Pune chapter; Opportunity Hack at SJSU; degree/research detail and concrete developer tooling during the MS/Google scene; promotions and awards at current work; gaming and a separate hobby list at the ending. The cameo's supplied age 22 supports its narrative placement after the age-20 HSDI recollection; do not invent a calendar date or imply filming in Pune. Broad period labels remain broad. Grouped awards span the career and do not inherit the current chapter's year.
+- Discovery targets: GEC extras, early games/CyanogenMod, and Coldplay at college; Green Belt/CI-CD at the Pune chapter; Opportunity Hack at SJSU; degree/research detail and concrete developer tooling during the MS/Google scene; promotions and awards at current work; gaming and a separate hobby list at the ending. Coldplay follows the owner's GEC correction, not the earlier age-based Pune placement. Do not invent a calendar date, replacement age, or filming location. Broad period labels remain broad. Grouped awards span the career and do not inherit the current chapter's year.
 - Main summaries unlock at their card's final beat; discovery summaries unlock only when their popup is opened. Two bounded in-memory sets retain reached story cards and found discoveries for this page visit. Back/jump restores absolute stats without erasing the journal. Reload resets it; no cookie, storage, session, URL progress, or server mutation is introduced. Discoveries never gate the main route or modify stats.
 - Keep nonmodal scene popups, one open at a time, with visible dialogue, native 48px glints, Escape/Close, and exact trigger focus restoration. Multiple discoveries may share a screen; positions must not overlap at tested mobile sizes. Validated numeric positions use bounded CSSOM `left`/`top` values under the existing CSP.
 - Remove repeated narrative reward blocks from the main scene, including Green Belt's spoiler. Keep the decorative milestone response and authored snapshot prefix. Milestone descriptions belong in the Quest log with the corresponding story/discovery record. The HUD rack remains decorative and its numeric count authoritative. Opportunity Hack exists once as a popup plus its summary, not in the main SJSU beat. Gaming and other hobbies likewise each have one ending discovery.
@@ -145,14 +150,14 @@ Dialogue beat position is local presentation state and never changes stats, badg
 
 The journal is separate, page-local presentation state: `completedScreens` records screens 1-13 at their final beat; `foundDiscoveries` records actual popup openings. Both sets survive Back and log jumps for this visit and reset on reload. Chronological DOM order is derived from target screen order, with the story record before its optional discoveries and authored order for ties. It is not calculated from repository dates or invented age/year conversions. Grouped/overlapping periods retain their supplied labels.
 
-| Story Screen           | Discoveries                    |
-| ---------------------- | ------------------------------ |
-| College                | `gec-extras`, `early-projects` |
-| Automation / Pune      | `green-belt`, `coldplay`       |
-| SJSU                   | `opportunity-hack`             |
-| Google / during the MS | `masters`, `google-tools`      |
-| Current work           | `career-titles`, `awards`      |
-| Epilogue               | `off-clock`, `hobbies`         |
+| Story Screen           | Discoveries                                |
+| ---------------------- | ------------------------------------------ |
+| College                | `gec-extras`, `early-projects`, `coldplay` |
+| Automation / Pune      | `green-belt`                               |
+| SJSU                   | `opportunity-hack`                         |
+| Google / during the MS | `masters`, `google-tools`                  |
+| Current work           | `career-titles`, `awards`                  |
+| Epilogue               | `off-clock`, `hobbies`                     |
 
 Every log entry has a validated target. Story entries revisit the first beat of their card; discovery entries reopen the original popup. Cached DOM-node identity plus the reached/found sets authorize enhanced jumps; a forged visibility class cannot unlock a destination. Jumps close the modal and restore the proper focus, without updating the URL/history. Fallback uses ordinary internal fragment links.
 
