@@ -7,7 +7,7 @@ Source repository: `https://github.com/pranavprem/portfolio` (public, owner-appr
 
 The published revision includes the home illustration, separate gaming/hobby discoveries, and the wages-versus-fun transition. Its local checks, 16-file runtime boundary, publication scans, and hosted run are recorded separately from the older Quest log release.
 
-A later owner correction moves the Coldplay cameo from HSBC/Pune to the GEC chapter. That correction is a local, uncommitted change; its observed checks are in the handoff, separate from the published release's CI.
+The later Coldplay/GEC correction is published on the owner-requested `origin/master` branch as `989fc59824b91a833cab800ea76da481c0a3689d`; all four exact-SHA CI jobs passed. `origin/main` remains at `67d513219ddfca8b8550c53f0e6891f64ef78e74`. The documented Portainer stack still tracks `refs/heads/main`, so pushing `master` does not deploy this correction. Branch-specific checks and release evidence are in the handoff.
 
 **Read First**
 The owner explicitly requires a complete, AI-agent-ready handoff so he never has to repeat his full story. These documents have different jobs:
