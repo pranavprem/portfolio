@@ -765,6 +765,10 @@ def test_compact_overviews_with_wide_system_font_keep_actions_visible(page, live
     page.locator(".intro-copy, .chapter-preview, .story-prose").evaluate_all(
         "nodes => nodes.forEach(node => { node.style.fontFamily = 'Verdana, sans-serif'; })"
     )
+    # Do not let tight local heading metrics hide the extra line seen with Linux serifs.
+    page.locator(".scene-heading").evaluate_all(
+        "nodes => nodes.forEach(node => { node.style.letterSpacing = 'normal'; })"
+    )
     settle(page)
     title = page.locator(".title-card")
     expect(title.locator(".browse-button")).to_be_in_viewport()

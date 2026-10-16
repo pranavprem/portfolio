@@ -1551,9 +1551,12 @@ h3 {
     row-gap: 6px;
   }
 
-  .enhanced .title-card,
-  .enhanced .dialogue-card {
+  .enhanced .title-card {
     padding-block: 8px;
+  }
+
+  .enhanced .dialogue-card {
+    padding: 6px;
   }
 
   .enhanced .title-card .input-hint,
