@@ -1550,6 +1550,15 @@ h3 {
     grid-template-rows: auto 124px minmax(0, 1fr) auto;
   }
 
+  .enhanced .title-card {
+    padding-block: 8px;
+  }
+
+  .enhanced .title-card .input-hint,
+  .enhanced .title-card .intro-actions {
+    margin-top: 8px;
+  }
+
   .enhanced .scene-heading {
     font-size: clamp(28px, 8vw, 34px);
   }

@@ -758,6 +758,22 @@ def test_overviews_fit_and_every_optional_topic_remains_reachable(page, live_ser
             advance_to_next_screen(page)
 
 
+def test_compact_title_with_wide_system_font_keeps_actions_visible(page, live_server):
+    page.set_viewport_size({"width": 375, "height": 667})
+    open_game(page, live_server)
+    # Exercise the extra line produced by wider fallback fonts without resizing the text.
+    page.locator(".intro-copy").evaluate(
+        "node => { node.style.fontFamily = 'Verdana, sans-serif'; }"
+    )
+    settle(page)
+    title = page.locator(".title-card")
+    assert title.evaluate("node => node.scrollHeight - node.clientHeight") <= 1
+    assert page.locator(".intro-copy").evaluate("node => getComputedStyle(node).fontSize") == "16px"
+    expect(title.locator(".browse-button")).to_be_in_viewport()
+    expect(title.get_by_role("link", name="LinkedIn", exact=True)).to_be_in_viewport()
+    expect(page.locator('[data-action="advance"]')).to_be_in_viewport()
+
+
 @pytest.mark.parametrize("view", ["topic", "discovery", "map"])
 def test_print_and_no_js_keep_every_paragraph_and_snapshot(
     page, live_server, story_document, snapshots, view
