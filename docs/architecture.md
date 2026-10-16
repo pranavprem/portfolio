@@ -1,5 +1,5 @@
 **Portfolio Architecture**
-Status: approved chapter-adventure design, implemented locally; final cross-browser/public verification is recorded in [handoff.md](handoff.md).
+Status: approved chapter-adventure design, implemented and published on `master`; exact-SHA browser verification and outstanding public-deployment gates are recorded in [handoff.md](handoff.md).
 Prepared: 2026-09-06. Current revision: a short overview route with optional named topics and a chapter map. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
@@ -233,6 +233,7 @@ Normal mobile targets:
 - Controls: at least 48 CSS pixels high.
 - Landscape: approximately 21-26dvh on mobile depending on viewport height, leaving room for persistent stats and dialogue. An aspect-ratio wrapper uses container dimensions to keep the window hit targets aligned with the actual SVG rather than the letterboxed panel.
 - Story: remaining flexible space, with overview and topic choices fitting ordinary phone heights including 375x667 and 390x844. Topic rows use two-to-five columns where room permits; a full-width Back to overview control appears only after selecting a topic.
+- Compact viewports at most 700px high and 760px wide use smaller card gutters and gaps, not smaller type, line spacing, or targets. Test the whole route with wider body fonts and wrapping serif headings; a title-only or macOS-only check misses later Linux overflow. All topic labels and the optional-reading prompt remain visible.
 - Internal story scrolling is allowed for enlarged text, short screens such as 320x568, long optional topics, or overlays. The milestone count shares the location header; its decorative rack is omitted visually in enhanced mode, while all five stat bars remain visible.
 - No horizontal overflow, page scrolling, text shrinking, hidden overflow used to mask defects, or separate low-information mobile HUD.
 

@@ -3,13 +3,13 @@ A life in side quests: a warm, original full-screen pixel-game autobiography for
 
 The point is to meet a person by exploring his story, not browse a resume with animations. A short route presents thirteen overviews; optional named topics keep the complete prose available without requiring every paragraph to be a slide. The Chapters map opens the whole route immediately. Games in Goa, illness, college, HSBC, SJSU, Google, Salesforce, and personal projects back in San Jose remain intact. The full main prose stays within 900 words, with a separate 550-word cap on the short route including titles. The Quest log collects 13 visited story summaries and 11 found discoveries. The voice is direct and dryly funny, without a lesson after every event or repeated reward paragraphs.
 
-Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The San Jose home-scene and work/home-copy revision was published as `b363059fbd75999eaaebeb1939571ef5b628b328` and passed all four exact-SHA CI jobs. A documentation-only follow-up records that evidence in [the handoff](docs/handoff.md). Code publication is not a Portainer redeployment: public asset verification, HTTP redirect/HSTS, NAS isolation/recovery, and physical-device checks remain operator gates.
+Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The reader-controlled pacing redesign, optional SJSU project expansion, and combined printing topic are published on `origin/master`. The final compact-layout fix is `f513b21f95a52a1107f75c74cb3a84e11dae9ec2`; all four exact-SHA jobs passed in [38958530410](https://github.com/pranavprem/portfolio/actions/runs/38958530410). [The handoff](docs/handoff.md) records the earlier failed runs, corrections, scans, and local results.
 
-The published revision includes the home illustration, separate gaming/hobby discoveries, and the wages-versus-fun transition. Its local checks, 16-file runtime boundary, publication scans, and hosted run are recorded separately from the older Quest log release.
+This release retains the home illustration, separate gaming/hobby discoveries, wages-versus-fun transition, and GEC cameo correction. Local verification passed 255 non-browser tests and 273 browser cases; the runtime still contains exactly 16 files. System-font differences required compact-card spacing fixes, not smaller text or removed content.
 
-The later Coldplay/GEC correction is published on the owner-requested `origin/master` branch as `989fc59824b91a833cab800ea76da481c0a3689d`; all four exact-SHA CI jobs passed. `origin/main` remains at `67d513219ddfca8b8550c53f0e6891f64ef78e74`. The documented Portainer stack still tracks `refs/heads/main`, so pushing `master` does not deploy this correction. Branch-specific checks and release evidence are in the handoff.
+`origin/main` remains at `67d513219ddfca8b8550c53f0e6891f64ef78e74`. The documented Portainer stack still tracks `refs/heads/main`, so pushing `master` does not deploy these changes. No branch/deployment configuration was changed. Public asset verification, HTTP redirect/HSTS, NAS isolation/recovery, and physical-device checks remain operator gates.
 
-The later attention/pacing redesign is a local working-copy change after `ef8ce11`, not committed or deployed. It responds to the owner's report of a reader stopping after college. See the handoff for its own checks; older CI is not evidence for the new interface, and improved retention still needs another human review.
+The pacing redesign responds to the owner's report of a reader stopping after college. A shorter route and passing correctness checks are not evidence of improved retention; that still needs another human review.
 
 **Read First**
 The owner explicitly requires a complete, AI-agent-ready handoff so he never has to repeat his full story. These documents have different jobs:
@@ -375,6 +375,51 @@ npm run format
 Playwright browser installation is a development/CI download. On a Linux test runner, install the OS libraries required by the pinned Playwright version with the appropriate administrator-approved workflow; do not add them to the app image. `npm ci` installs local `axe-core` for browser accessibility audits. It is not a CDN asset or production dependency. The browser fixture starts and stops its own ephemeral loopback Flask server with access logging disabled; do not start a separate server for pytest. GitHub CI repeats the same commands on Ubuntu; local results do not substitute for its actual run status.
 
 Required verification includes absolute snapshots and badge prefixes at every threshold, down/up/random jumps, reload/history restoration, no-JS and failed-module fallback, reduced-motion changes, enforced CSP and same-origin-only requests, empty browser storage, safe static/request boundaries, and original art review. Test Chromium/Firefox/WebKit at 320, 375, 390, 768, 1024, and 1440 CSS-pixel widths, short landscape, safe areas, 200% text enlargement, and 400% zoom/reflow. Verify HUD clearance, stable slot/card geometry, readable numeric stats, and no idle animation loop. Automated axe checks do not replace keyboard/find/selection, contrast, forced colors, print, screen-reader, and real mobile Safari/Android review. The architecture contains the full test matrix and unmeasured performance budgets.
+
+**Linux Font Checks**
+macOS system fonts are not a substitute for Ubuntu's fallback fonts. The compact-overview regression stresses body wrapping and an extra heading line without changing font size; hosted CI also exercises the real Linux defaults. For a local Linux WebKit reproduction, use an isolated scratch directory outside the checkout containing only this `Dockerfile` and a `.dockerignore` with `**` followed by `!Dockerfile`:
+
+```dockerfile
+FROM mcr.microsoft.com/playwright:v1.62.0-noble@sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core=2.37-8 fonts-liberation=1:2.1.5-3 && rm -rf /var/lib/apt/lists/*
+USER pwuser
+```
+
+The base image alone did not reproduce the failure: its serif fallback differed from the hosted runner. DejaVu Serif/Sans reproduced it. This is optional developer tooling, not a new app image, production dependency, or workspace bind mount. With the local app already rebuilt on loopback port 8000:
+
+```sh
+docker build -t portfolio-layout-check /absolute/scratch/portfolio-layout-check
+docker run --rm -d --init --name portfolio-layout-check --user pwuser --cap-drop ALL --security-opt no-new-privileges:true --read-only --tmpfs /tmp:rw,exec,nosuid,size=512m --shm-size=512m --memory=2g --pids-limit=256 -e NPM_CONFIG_CACHE=/tmp/npm -e XDG_CACHE_HOME=/tmp/cache -p 127.0.0.1:3000:3000 portfolio-layout-check npx --yes playwright@1.62.0 run-server --host 0.0.0.0 --port 3000
+docker logs portfolio-layout-check
+```
+
+Wait for the server's `Listening` message before connecting; if it does not appear within 30 seconds, inspect this temporary container's status/logs rather than waiting indefinitely. The executable tmpfs is needed for the development-only npm CLI, not for the application. From the checkout root, the existing regression functions can run against that browser and the local app without copying repository files into the container:
+
+```sh
+.venv/bin/python -c '
+from playwright.sync_api import sync_playwright
+from tests.test_browser import (
+    test_overviews_fit_and_every_optional_topic_remains_reachable as check_overviews,
+    test_compact_overviews_with_wide_system_font_keep_actions_visible as check_fonts,
+)
+with sync_playwright() as p:
+    browser = p.webkit.connect("ws://127.0.0.1:3000/", expose_network="<loopback>", timeout=15000)
+    for scheme in ("light", "dark"):
+        for width, height in ((320, 568), (375, 663), (375, 667), (390, 844), (1440, 1000)):
+            page = browser.new_page(color_scheme=scheme, reduced_motion="reduce")
+            check_overviews(page, "http://127.0.0.1:8000", width, height)
+            page.close()
+        page = browser.new_page(color_scheme=scheme, reduced_motion="reduce")
+        check_fonts(page, "http://127.0.0.1:8000")
+        page.close()
+    browser.close()
+print("12 Linux WebKit layout checks passed")
+'
+docker stop portfolio-layout-check
+```
+
+Stop the temporary server even if a check fails. These targeted invocations do not replace the complete pytest suite, hosted Firefox/Chromium jobs, or physical-device review.
 
 **Security And Privacy**
 
