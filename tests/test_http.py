@@ -319,6 +319,9 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         "https://github.com/pranavprem/morpheus",
         "https://github.com/pranavprem/TasKing",
         "https://github.com/pranavprem/Spartanbot",
+        "https://github.com/pranavprem/DragonstonePizzeria",
+        "https://github.com/pranavprem/CUSR",
+        "https://github.com/pranavprem/karmamining",
         "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem",
     }
     for discovery in story_document["discoveries"]:
@@ -351,6 +354,8 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         "close-discovery",
         "inspect",
         "toggle-quests",
+        "toggle-map",
+        "topic",
     }
     assert all(control.get("type") == "button" for control in controls)
     for tag, attrs in document.elements:
@@ -394,6 +399,8 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
     payload = '"><img src=x onerror=alert(1)></script><script>alert(2)</script>&{{7*7}}'
     card = story_document["chapters"][0]["cards"][0]
     card.update(body=payload, heading=payload, summary=payload)
+    topic_payload = "<svg onload=alert(1)>"
+    story_document["chapters"][1]["cards"][0]["beat_labels"][0] = topic_payload
     validate_story(story_document)
     story, game = prepare_story(story_document)
     # Even impossible authored IDs must be safely serialized by the template boundary.
@@ -403,11 +410,30 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
     document = parse_html(source)
     assert payload in document.text
     assert payload not in source
+    assert topic_payload in document.text and topic_payload not in source
     assert json.loads(document.select(id="journey")[0]["data-game"]) == game
     script_url = f"/static/story.js?v={app.extensions['portfolio']['asset_versions']['story.js']}"
     assert document.select("script") == [{"type": "module", "src": script_url}]
     assert not document.select("img", src="x")
     assert not any(name.startswith("on") for _, attrs in document.elements for name in attrs)
+
+
+def test_overviews_topics_and_chapter_map_are_server_rendered(client, parse_html, story_document):
+    document = parse_html(client.get("/").get_data(as_text=True))
+    links = document.select("a", **{"data-action": "jump"})
+    assert [int(link["data-map-screen"]) for link in links] == list(range(1, 14))
+    assert links[0]["href"] == "#moment-first-script"
+    assert links[-1]["href"] == "#epilogue"
+    assert "hidden" in document.select(id="chapter-map")[0]
+    assert all("hidden" in node for node in document.select(class_="chapter-preview"))
+    for card in (card for chapter in story_document["chapters"] for card in chapter["cards"]):
+        count = len(card["beat_labels"])
+        for index in range(count):
+            assert document.select(id=f"beat-{card['id']}-{index}")
+        if count > 1:
+            assert document.select("button", **{"aria-controls": f"overview-{card['id']}"})
+            for index in range(count):
+                assert document.select("button", **{"aria-controls": f"beat-{card['id']}-{index}"})
 
 
 def test_rendered_source_claims_keep_authorized_scope(client, parse_html):
@@ -531,9 +557,6 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "I love my job",
         "Right where I want to be",
         "Naturally, I kept the list",
-        "Dragonstone",
-        "California Ultra Speed Rail",
-        "Karma Mining",
         "Java Topper",
         "I like making cool things",
         "Leadership came early",
@@ -576,7 +599,7 @@ def test_hobby_list_and_retired_repository_removal_are_server_rendered(client, p
         for item in parse_html(source).select("a")
         if item.get("href", "").startswith("https://github.com/")
     }
-    assert len(github_links) == 12
+    assert len(github_links) == 15
 
 
 def test_hud_discoveries_and_quest_targets_are_server_rendered(
@@ -642,3 +665,28 @@ def test_inline_project_links_cannot_execute_prose(app, story_document, parse_ht
     assert "<img src=x onerror=alert(1)>" in document.text
     assert not document.select("img", src="x")
     assert document.select("a", href="https://github.com/pranavprem/TasKing")
+
+
+def test_multiple_project_links_escape_prose_in_any_order(app, story_document, parse_html):
+    card = next(chapter for chapter in story_document["chapters"] if chapter["id"] == "sjsu")[
+        "cards"
+    ][0]
+    payload = "<img src=x onerror=alert(1)>"
+    card["body"] = f"Karma Mining {payload} Dragonstone Pizzeria, SpartanBot, and CUSR."
+    card["beat_labels"] = ["Projects"]
+    validate_story(story_document)
+    story, game = prepare_story(story_document)
+    with app.test_request_context("/"):
+        source = render_template("index.html", story=story, game=game)
+    paragraph = re.search(r'<p[^>]+id="beat-sjsu-unlocked-0"[^>]*>(.*?)</p>', source, re.S)
+    assert paragraph is not None
+    document = parse_html(paragraph[1])
+    assert document.text == card["body"]
+    assert [link["href"] for link in document.select("a")] == [
+        "https://github.com/pranavprem/karmamining",
+        "https://github.com/pranavprem/DragonstonePizzeria",
+        "https://github.com/pranavprem/Spartanbot",
+        "https://github.com/pranavprem/CUSR",
+    ]
+    assert not document.select("img")
+    assert payload not in source

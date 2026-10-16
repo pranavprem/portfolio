@@ -6,8 +6,6 @@
     "positions": [
       { "x": 119, "y": 165 },
       { "x": 236, "y": 165 },
-      { "x": 161, "y": 165 },
-      { "x": 161, "y": 165 },
       { "x": 161, "y": 165 }
     ]
   },
@@ -202,6 +200,7 @@
       "cards": [
         {
           "id": "first-script",
+          "beat_labels": ["Making games"],
           "summary": "I grew up in Goa, got hooked on PC games at seven, and started writing little games at eight.",
           "heading": "Then, making them",
           "body": "I got hooked on PC games when I was seven. By eight, I was writing little games of my own.",
@@ -229,6 +228,7 @@
       "cards": [
         {
           "id": "school-unlocked",
+          "beat_labels": ["Computer science", "Finding my voice"],
           "summary": "Computer science in 11th and 12th grade, with C/C++ as my main languages, pointed me toward computer engineering. Being house captain got me into leadership, public speaking, and debate.",
           "heading": "C, C++, and an audience",
           "body": "I had computer science as a subject in 11th and 12th grade. I was good at it, and computer engineering felt like the obvious next step.\n\nBeing house captain introduced me to leadership, public speaking, and debate, irrespective of how many people wanted to hear my opinions.",
@@ -256,6 +256,11 @@
       "cards": [
         {
           "id": "unexpected-detour",
+          "beat_labels": [
+            "The interruption",
+            "A different route",
+            "Still not friends"
+          ],
           "summary": "Dengue put me in hospital before finals. I still finished Class 12 in the national top 0.01% for CS and went to GEC, Goa University, for computer engineering.",
           "heading": "Dengue, right before finals",
           "body": "A few weeks before my Class 12 final exams, complicated dengue put me in hospital for a month.\n\nI still finished Class 12 in the national top 0.01% for CS and started my BE in Computer Engineering at Goa Engineering College, Goa University.\n\nMosquitoes and I have not reconciled.",
@@ -283,6 +288,12 @@
       "cards": [
         {
           "id": "college-unlocked",
+          "beat_labels": [
+            "On my own",
+            "Finding Python",
+            "Seven hackathons",
+            "The result"
+          ],
           "summary": "At GEC I learned to live on my own, found Python through PyCon, won seven hackathons, placed nationally in IEEE Xtreme's top ten, and finished among the top students with a 3.7 GPA.",
           "heading": "The syllabus had competition",
           "body": "College was my first time living on my own. I had a lot to figure out.\n\nI discovered Python at PyCon.\n\nHackathons became minibosses: seven wins in four years, plus a national top-ten finish in the 24-hour IEEE Xtreme.\n\nI finished among the top students in my class with a 3.7 GPA. This was becoming a bit of a trend.",
@@ -315,6 +326,7 @@
       "cards": [
         {
           "id": "java-unlocked",
+          "beat_labels": ["Learning Java", "Leading a team"],
           "summary": "I moved to Pune for HSDI, finished first in six months of Java training, and went on to lead five developers building banking utilities.",
           "heading": "A proper training program",
           "body": "I joined HSDI (HSBC Software Development India) in Pune. First came six months of Java training. I finished, you guessed it, at the top of the class.\n\nC/C++, Python, now Java. Gotta catch 'em all. I went on to lead five developers building banking utilities.",
@@ -342,6 +354,7 @@
       "cards": [
         {
           "id": "automation-unlocked",
+          "beat_labels": ["Automating chores", "Looking overseas"],
           "summary": "Banking red tape pushed me toward automating manual work and building TasKing in Java/Swing. Wanting more to learn, I looked at US universities and did well on GRE and TOEFL.",
           "heading": "Bored, not done",
           "body": "Banking red tape blocked new work, so I started automating the manual stuff and building apps like TasKing, which I wrote in Java/Swing.\n\nI wanted to learn more, so I looked at US universities, then took the GRE and TOEFL. I did really well. Again.",
@@ -369,9 +382,10 @@
       "cards": [
         {
           "id": "sjsu-unlocked",
-          "summary": "At SJSU, I was Prof. Paul's only student to score the maximum 110% and became his TA. I automated grading, built student leaderboards, and made the Alexa-powered campus chatbot SpartanBot.",
+          "beat_labels": ["The 110% story", "Becoming a TA", "Random projects"],
+          "summary": "At SJSU, I was Prof. Paul's only student to score the maximum 110% and became his TA. I automated grading, built leaderboards, and explored chatbots, pizza ordering, rail tickets, and Reddit data.",
           "heading": "Prof. Paul, 110%, and competitive homework",
-          "body": "SJSU was affordable and gave me the challenge I wanted. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nI also built SpartanBot, an Alexa-powered campus chatbot.",
+          "body": "SJSU was affordable and gave me the challenge I wanted. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nMy projects included SpartanBot, an Alexa-powered campus chatbot; Dragonstone Pizzeria, a pizza-ordering system; CUSR, a rail-ticket booking project; and Karma Mining, which scored and sorted Reddit comments.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -396,6 +410,11 @@
       "cards": [
         {
           "id": "developer-ally-unlocked",
+          "beat_labels": [
+            "The culture",
+            "Developer tools",
+            "Imposter syndrome"
+          ],
           "summary": "My Google Hardware/Nest internship, during the MS, showed me how much I enjoyed developer tools, direct feedback, and choosing the right language for the job. Imposter syndrome came with plenty to learn.",
           "heading": "Google, during my master's",
           "body": "Google Hardware/Nest felt different. Everyone wanted to build cooler products, and the culture was playful.\n\nI could pick whatever language suited the problem. I built tools and infrastructure for developers and got feedback directly from them. This was the work I wanted.\n\nI had imposter syndrome around engineers far better than me. Learning from them was intimidating, intoxicating, addictive. I left wanting more.",
@@ -423,6 +442,11 @@
       "cards": [
         {
           "id": "cloud-unlocked",
+          "beat_labels": [
+            "San Francisco",
+            "Months to minutes",
+            "Room to explore"
+          ],
           "summary": "I joined Salesforce in 2019 and moved to San Francisco. I cut Chat release prep from months to minutes and helped move its monolith to AWS, with room to explore beyond an internship's fixed end date.",
           "heading": "And room to explore",
           "body": "I joined Salesforce in 2019 and moved to San Francisco.\n\nI automated Chat release prep, cutting months of manual work down to minutes. I also helped move the monolith from data centers to AWS.\n\nFull-time work didn't have my internship's fixed end date. I had room to explore, surrounded by smart people.",
@@ -447,6 +471,7 @@
         },
         {
           "id": "fog-arrives",
+          "beat_labels": ["A sustainable pace"],
           "summary": "During COVID, I had to find a pace I could sustain without burning myself out.",
           "heading": "A pace I could keep up",
           "body": "During COVID, I had to find a pace I could keep up without burning myself out.",
@@ -474,6 +499,11 @@
       "cards": [
         {
           "id": "bots-unlocked",
+          "beat_labels": [
+            "Making Bots reliable",
+            "The Slack contribution",
+            "Then came Copilot"
+          ],
           "summary": "Bots reached 99.99% availability after CI/CD and monitoring work. I worked on its API, contributed to the Slack connector, migrated all customer traffic from Heroku to multisubstrate public cloud, and moved to Copilot's configurable agents.",
           "heading": "Reliability, APIs, then LLMs",
           "body": "On Einstein Bots, I improved CI/CD and monitoring, including Argo CD, and got the service to 99.99% availability. I also worked on its public API and seamlessly migrated 100% of customer traffic from Heroku to multisubstrate public-cloud instances.\n\nMy contribution to the public Slack connector was a small part of that API work.\n\nWhen LLMs arrived, I moved to Einstein Copilot: a platform for talking to a configurable AI agent inside Salesforce.",
@@ -501,6 +531,7 @@
       "cards": [
         {
           "id": "continuing-unlocked",
+          "beat_labels": ["Building agents", "Voice & memory", "For my wages"],
           "summary": "For my wages, I build systems connecting Salesforce CRM data to Agentforce. I also build context-aware DevOps tools for my team. As a Principal engineer, I work on Atlas, AgentScript, and the platform's agent capabilities. My enthusiasm, drive, and passion are at an all-time high.",
           "heading": "Principal, not finished",
           "body": "Then came Agentforce: a platform where Salesforce customers could build their own agents. Basic topics and actions grew into the Atlas Reasoning Engine and AgentScript, making agent behavior more deterministic in an LLM world.\n\nWe're adding voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nFor my wages, I build systems that connect Salesforce CRM data to the agent platform, plus context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",

@@ -232,7 +232,7 @@ def validate_story(document: object) -> None:
         "epilogue_scene",
         "use the original San Jose home scene for the ending",
     )
-    _list(home["positions"], 5, 5, "epilogue_scene.positions")
+    _list(home["positions"], 3, 3, "epilogue_scene.positions")
     for position in home["positions"]:
         _object(position, {"x", "y"}, "epilogue_scene.position")
         for axis, lower, upper in (("x", 20, 300), ("y", 0, 180)):
@@ -263,7 +263,11 @@ def validate_story(document: object) -> None:
         _list(chapter["cards"], count, count, field + ".cards")
         for card_index, card in enumerate(chapter["cards"]):
             card_field = f"{field}.cards[{card_index}]"
-            _object(card, {"id", "heading", "body", "summary", "source_refs", "event"}, card_field)
+            _object(
+                card,
+                {"id", "heading", "body", "summary", "beat_labels", "source_refs", "event"},
+                card_field,
+            )
             _id(card["id"], card_field + ".id")
             _require(card["id"] not in card_ids, card_field, "card IDs must be unique")
             _require(card["id"] != "epilogue", card_field, "epilogue is reserved for the ending")
@@ -276,6 +280,16 @@ def validate_story(document: object) -> None:
             _list(paragraphs, 1, 8, card_field + ".paragraphs")
             for paragraph in paragraphs:
                 _text(paragraph, 600, card_field + ".paragraphs")
+            _list(
+                card["beat_labels"], len(paragraphs), len(paragraphs), card_field + ".beat_labels"
+            )
+            for label in card["beat_labels"]:
+                _text(label, 32, card_field + ".beat_labels")
+            _require(
+                len(set(card["beat_labels"])) == len(card["beat_labels"]),
+                card_field + ".beat_labels",
+                "give each paragraph a distinct topic label",
+            )
             _text(card["summary"], 350, card_field + ".summary")
             _list(card["source_refs"], 1, 4, card_field + ".source_refs")
             for source_id in card["source_refs"]:

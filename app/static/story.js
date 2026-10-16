@@ -52,7 +52,7 @@ function validGame(game, markers, badgeIds) {
     game.epilogue_scene?.region_id !== "san-jose" ||
     game.epilogue_scene?.art_key !== "san-jose-home" ||
     !Array.isArray(game.epilogue_scene?.positions) ||
-    game.epilogue_scene.positions.length !== 5 ||
+    game.epilogue_scene.positions.length !== 3 ||
     !game.epilogue_scene.positions.every(
       (position) =>
         Number.isFinite(position?.x) &&
@@ -132,6 +132,29 @@ function startJourney(root) {
   const encounters = [...root.querySelectorAll("[data-encounter]")];
   const status = document.getElementById("sheet-status");
   const questLog = document.getElementById("bonus");
+  const chapterMap = document.getElementById("chapter-map");
+  const panels = [questLog, chapterMap].filter(Boolean);
+  const panelButtons = [
+    ...root.querySelectorAll(
+      '[data-action="toggle-map"], [data-action="toggle-quests"]',
+    ),
+  ];
+  // Navigation uses validated node identity, not attributes on subsequently inserted controls.
+  const mapLinks = new Map(
+    [...root.querySelectorAll('[data-action="jump"]')].map((link) => [
+      link,
+      Number(link.dataset.mapScreen),
+    ]),
+  );
+  const topicActions = new Map(
+    [...root.querySelectorAll('[data-action="topic"]')].map((button) => [
+      button,
+      {
+        screen: screens.indexOf(button.closest(".game-screen")),
+        beat: Number(button.dataset.beat),
+      },
+    ]),
+  );
   const questEntries = [...questLog.querySelectorAll("[data-quest]")];
   const gameSurfaces = [
     ...root.querySelectorAll(
@@ -169,14 +192,17 @@ function startJourney(root) {
   const beatProgress = document.getElementById("beat-progress");
   const chapterProgress = document.getElementById("chapter-progress-fill");
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const beatIndexes = screens.map(() => 0);
+  const beatIndexes = screens.map(() => -1);
   let game;
   let screenIndex = 0;
   let lastEventIndex = null;
   let touchStart = null;
-  let focusedHeading = null;
-  let questTrigger = questsButton;
+  let focusedContent = null;
+  let panelTrigger = questsButton;
+  let activePanel = null;
+  let topicTrigger = null;
   let activeDiscovery = null;
+  let rewardAllowed = false;
 
   function eventIndexForScreen() {
     if (screenIndex === 0) return -1;
@@ -191,34 +217,67 @@ function startJourney(root) {
     return [...currentScreen().querySelectorAll(".dialogue-beat")];
   }
 
-  function closeQuestLog(returnFocus = false) {
-    const wasOpen = questLog.classList.contains("is-open");
-    questLog.classList.remove("is-open");
-    questLog.setAttribute("aria-hidden", "true");
-    questLog.inert = true;
-    questLog.removeAttribute("role");
-    questLog.removeAttribute("aria-modal");
-    questsButton.setAttribute("aria-expanded", "false");
+  function closePanels(returnFocus = false) {
+    const wasOpen = activePanel !== null;
+    panels.forEach((panel) => {
+      panel.classList.remove("is-open");
+      panel.setAttribute("aria-hidden", "true");
+      panel.inert = true;
+      panel.removeAttribute("role");
+      panel.removeAttribute("aria-modal");
+    });
+    panelButtons.forEach((button) =>
+      button.setAttribute("aria-expanded", "false"),
+    );
+    activePanel = null;
     gameSurfaces.forEach((surface) => {
       surface.inert = false;
     });
-    if (returnFocus && wasOpen) questTrigger.focus();
+    if (returnFocus && wasOpen) panelTrigger.focus();
   }
 
-  function openQuestLog(trigger = questsButton) {
+  function openPanel(panel, trigger) {
     closeDiscovery();
-    questTrigger = trigger;
-    questLog.classList.add("is-open");
-    questLog.removeAttribute("aria-hidden");
-    questLog.inert = false;
-    questLog.setAttribute("role", "dialog");
-    questLog.setAttribute("aria-modal", "true");
-    questLog.scrollTop = 0;
-    questsButton.setAttribute("aria-expanded", "true");
+    closePanels();
+    touchStart = null;
+    panelTrigger = trigger;
+    activePanel = panel;
+    panel.classList.add("is-open");
+    panel.removeAttribute("aria-hidden");
+    panel.inert = false;
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.scrollTop = 0;
+    panel.querySelector(".overlay-body").scrollTop = 0;
+    panelButtons.forEach((button) =>
+      button.setAttribute(
+        "aria-expanded",
+        String(button.getAttribute("aria-controls") === panel.id),
+      ),
+    );
     gameSurfaces.forEach((surface) => {
       surface.inert = true;
     });
-    questLog.querySelector(".panel-close").focus();
+    panel.querySelector(".panel-close").focus();
+  }
+
+  function focusContent(node) {
+    focusedContent?.removeAttribute("tabindex");
+    focusedContent = node;
+    focusedContent?.setAttribute("tabindex", "-1");
+    focusedContent?.focus({ preventScroll: true });
+  }
+
+  function selectTopic(beat, trigger = null) {
+    closeDiscovery();
+    beatIndexes[screenIndex] = beat;
+    topicTrigger = trigger;
+    render();
+    focusContent(
+      beat < 0
+        ? currentScreen().querySelector(".chapter-preview")
+        : currentBeats()[beat],
+    );
   }
 
   function closeDiscovery(returnFocus = false) {
@@ -255,7 +314,7 @@ function startJourney(root) {
     const region = home ? home.region_id : state.region;
     const scene = home ? home.art_key : state.region;
     const position = home
-      ? home.positions[beatIndexes[screenIndex]]
+      ? home.positions[Math.max(0, beatIndexes[screenIndex])]
       : state.position;
     if (state.index !== lastEventIndex) {
       statRows.forEach((row) => {
@@ -306,7 +365,7 @@ function startJourney(root) {
   function render() {
     const screen = currentScreen();
     const beats = currentBeats();
-    const beatIndex = clamp(beatIndexes[screenIndex], 0, beats.length - 1);
+    const beatIndex = clamp(beatIndexes[screenIndex], -1, beats.length - 1);
     const dialogueChanged =
       root.dataset.screenIndex !== String(screenIndex) ||
       root.dataset.beatIndex !== String(beatIndex);
@@ -324,19 +383,33 @@ function startJourney(root) {
       chapter.setAttribute("aria-hidden", String(!current));
     });
     beats.forEach((beat, index) =>
-      beat.classList.toggle("is-current-beat", index === beatIndex),
+      beat.classList.toggle(
+        "is-current-beat",
+        index === beatIndex || (beatIndex < 0 && beats.length === 1),
+      ),
     );
+    screen.classList.toggle("is-overview", beatIndex === -1);
+    const preview = screen.querySelector(".chapter-preview");
+    if (preview) preview.hidden = beatIndex !== -1;
+    screen.querySelectorAll(".chapter-topics").forEach((node) => {
+      node.hidden = false;
+    });
+    topicActions.forEach((topic, button) => {
+      if (topic.screen === screenIndex) {
+        button.setAttribute("aria-pressed", String(topic.beat === beatIndex));
+        button.hidden = topic.beat === -1 && beatIndex === -1;
+      }
+    });
     if (dialogueChanged)
       screen.querySelector(".title-card, .dialogue-card").scrollTop = 0;
 
-    const finalBeat = beatIndex === beats.length - 1;
     document
       .getElementById("journey-marker")
       .classList.toggle(
         "is-celebrating",
-        finalBeat &&
-          screen.dataset.screenKind === "chapter" &&
+        screen.dataset.screenKind === "chapter" &&
           screen.dataset.milestone === "true" &&
+          rewardAllowed &&
           !reducedMotion.matches,
       );
 
@@ -351,10 +424,10 @@ function startJourney(root) {
     root.dataset.screenIndex = screenIndex;
     root.dataset.beatIndex = beatIndex;
     beatProgress.textContent =
-      beats.length > 1
-        ? `Dialogue ${beatIndex + 1} / ${beats.length}`
-        : status.textContent;
-    backButton.disabled = screenIndex === 0 && beatIndex === 0;
+      screenIndex === 0
+        ? "13 stops"
+        : `Stop ${screenIndex} / ${screens.length - 1}`;
+    backButton.disabled = screenIndex === 0;
     inspectButtons.forEach((button) => {
       const active =
         discoveries.get(button.dataset.discovery).screen === screenIndex;
@@ -364,7 +437,17 @@ function startJourney(root) {
         String(active && activeDiscovery === button.dataset.discovery),
       );
     });
-    if (screenIndex > 0 && finalBeat) completedScreens.add(screenIndex);
+    const discoveryCount = [...discoveries.values()].filter(
+      (discovery) => discovery.screen === screenIndex,
+    ).length;
+    document.getElementById("discovery-hint").hidden = discoveryCount === 0;
+    document.getElementById("discovery-count").textContent = discoveryCount;
+    if (screenIndex > 0) completedScreens.add(screenIndex);
+    mapLinks.forEach((target, link) => {
+      link.classList.toggle("is-visited", completedScreens.has(target));
+      if (target === screenIndex) link.setAttribute("aria-current", "step");
+      else link.removeAttribute("aria-current");
+    });
     quests.forEach((quest, id) => {
       quest.node.classList.toggle(
         "is-unlocked",
@@ -381,67 +464,52 @@ function startJourney(root) {
     if (screen.classList.contains("is-inspecting")) {
       advanceLabel.textContent = "Return to story";
     } else if (screenIndex === 0) {
-      advanceLabel.textContent = "Start game";
-    } else if (!finalBeat) {
-      advanceLabel.textContent = "Continue";
+      advanceLabel.textContent = "Start in Goa";
     } else if (screen.dataset.screenKind === "ending") {
-      advanceLabel.textContent = "Open quest log";
+      advanceLabel.textContent = "Quest log";
     } else {
-      advanceLabel.textContent = "Next";
+      advanceLabel.textContent =
+        screenIndex === screens.length - 2 ? "Head home" : "Next stop";
     }
   }
 
-  function moveToScreen(nextIndex, direction = 1) {
+  function moveToScreen(nextIndex) {
     closeDiscovery();
     const previousScreen = currentScreen();
     previousScreen.classList.remove("is-inspecting");
     screenIndex = clamp(nextIndex, 0, screens.length - 1);
-    const beats = [...screens[screenIndex].querySelectorAll(".dialogue-beat")];
-    beatIndexes[screenIndex] =
-      direction < 0 ? Math.max(0, beats.length - 1) : 0;
+    beatIndexes[screenIndex] = -1;
+    topicTrigger = null;
+    rewardAllowed = !reducedMotion.matches;
     lastEventIndex = null;
     touchStart = null;
     render();
-    focusedHeading?.removeAttribute("tabindex");
-    focusedHeading = currentScreen().querySelector("h1, h2, h3");
-    focusedHeading?.setAttribute("tabindex", "-1");
-    focusedHeading?.focus({ preventScroll: true });
+    focusContent(currentScreen().querySelector("h1, h2, h3"));
   }
 
   function advance(trigger = document.activeElement) {
-    if (questLog.classList.contains("is-open")) return;
+    if (activePanel) return;
     const screen = currentScreen();
     if (screen.classList.contains("is-inspecting")) {
       closeDiscovery(true);
-      return;
-    }
-    const beats = currentBeats();
-    if (beatIndexes[screenIndex] < beats.length - 1) {
-      beatIndexes[screenIndex] += 1;
-      render();
       return;
     }
     if (screenIndex < screens.length - 1) moveToScreen(screenIndex + 1);
-    else openQuestLog(trigger);
+    else openPanel(questLog, trigger);
   }
 
   function back() {
-    if (questLog.classList.contains("is-open")) return;
+    if (activePanel) return;
     const screen = currentScreen();
     if (screen.classList.contains("is-inspecting")) {
       closeDiscovery(true);
       return;
     }
-    if (beatIndexes[screenIndex] > 0) {
-      beatIndexes[screenIndex] -= 1;
-      render();
-      return;
-    }
-    if (screenIndex > 0) moveToScreen(screenIndex - 1, -1);
+    if (screenIndex > 0) moveToScreen(screenIndex - 1);
   }
 
   function fallback() {
-    closeQuestLog();
+    closePanels();
     html.classList.remove("enhanced");
     screens.forEach((screen) => {
       screen.classList.remove("is-current-screen", "is-inspecting");
@@ -454,6 +522,14 @@ function startJourney(root) {
     fallbackOnly.forEach((node) => node.removeAttribute("aria-hidden"));
     questLog.inert = false;
     questLog.removeAttribute("aria-hidden");
+    root
+      .querySelectorAll(
+        ".chapter-preview, .chapter-topics, .browse-button, .scene-hint",
+      )
+      .forEach((node) => {
+        node.hidden = true;
+      });
+    if (chapterMap) chapterMap.hidden = true;
     status.textContent = "Opening stats. The complete story follows.";
   }
 
@@ -468,8 +544,42 @@ function startJourney(root) {
       window
         .getComputedStyle(html)
         .getPropertyValue("--chapter-adventure")
-        .trim() !== "ready" ||
+        .trim() !== "reader-paced" ||
       screens.length !== markers.length + 2 ||
+      !chapterMap ||
+      panels.some((panel) => !panel.querySelector(".overlay-body")) ||
+      mapLinks.size !== screens.length - 1 ||
+      [...mapLinks].some(
+        ([link, target], index) =>
+          target !== index + 1 ||
+          link.dataset.mapScreen !== String(target) ||
+          !chapterMap.contains(link) ||
+          link.getAttribute("href") !== `#${screens[target].id}`,
+      ) ||
+      [...topicActions.values()].some((topic) => !validScreen(topic.screen)) ||
+      screens.some((screen, index) => {
+        const beats = [...screen.querySelectorAll(".dialogue-beat")];
+        const buttons = [...screen.querySelectorAll('[data-action="topic"]')];
+        if (beats.length === 1) return buttons.length !== 0;
+        return (
+          buttons.length !== beats.length + 1 ||
+          buttons.some((button, position) => {
+            const topic = topicActions.get(button);
+            const expectedBeat = position === beats.length ? -1 : position;
+            const controlled =
+              expectedBeat === -1
+                ? screen.querySelector(".chapter-preview")
+                : beats[expectedBeat];
+            return (
+              topic.screen !== index ||
+              topic.beat !== expectedBeat ||
+              button.dataset.beat !== String(topic.beat) ||
+              !controlled?.id ||
+              button.getAttribute("aria-controls") !== controlled.id
+            );
+          })
+        );
+      }) ||
       art.length !== 5 ||
       new Set(art.map((image) => image.dataset.sceneArt)).size !== 5 ||
       art.some(
@@ -530,20 +640,35 @@ function startJourney(root) {
       throw new Error("Invalid story projection");
 
     html.classList.add("enhanced");
+    chapterMap.hidden = false;
+    root.querySelectorAll(".browse-button").forEach((button) => {
+      button.hidden = false;
+    });
     discoveries.forEach(({ button, x, y }) => {
       button.style.left = `${(x / 320) * 100}%`;
       button.style.top = `${(y / 180) * 100}%`;
     });
     fallbackOnly.forEach((node) => node.setAttribute("aria-hidden", "true"));
-    questLog.setAttribute("aria-hidden", "true");
-    questLog.inert = true;
+    closePanels();
     render();
 
     root.addEventListener("click", (event) => {
       const trigger = event.target.closest("[data-action]");
       const action = trigger?.dataset.action;
       if (!action) return;
-      if (action === "revisit") {
+      if (action === "jump") {
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+          return;
+        event.preventDefault();
+        const target = mapLinks.get(trigger);
+        if (!Number.isInteger(target)) return;
+        closePanels();
+        moveToScreen(target);
+      } else if (action === "topic") {
+        const topic = topicActions.get(trigger);
+        if (!topic || topic.screen !== screenIndex || activePanel) return;
+        selectTopic(topic.beat, trigger);
+      } else if (action === "revisit") {
         if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
           return;
         event.preventDefault();
@@ -557,7 +682,7 @@ function startJourney(root) {
             : foundDiscoveries.has(entry.dataset.quest))
         )
           return;
-        closeQuestLog();
+        closePanels();
         moveToScreen(quest.screen);
         if (quest.kind === "discovery") openDiscovery(entry.dataset.quest);
       } else if (action === "advance") advance(trigger);
@@ -571,18 +696,31 @@ function startJourney(root) {
       } else if (action === "close-discovery") {
         closeDiscovery(true);
       } else if (action === "toggle-quests") {
-        openQuestLog(trigger);
-      } else if (action === "close-panels") closeQuestLog(true);
+        openPanel(questLog, trigger);
+      } else if (action === "toggle-map") {
+        openPanel(chapterMap, trigger);
+      } else if (action === "close-panels") closePanels(true);
     });
 
     document.addEventListener("keydown", (event) => {
       if (event.defaultPrevented || event.isComposing) return;
-      if (event.key === "Escape") {
-        if (questLog.classList.contains("is-open")) closeQuestLog(true);
-        else closeDiscovery(true);
+      if (
+        event.key === "Escape" &&
+        !event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.shiftKey
+      ) {
+        if (activePanel) closePanels(true);
+        else if (activeDiscovery) closeDiscovery(true);
+        else if (beatIndexes[screenIndex] >= 0) {
+          const trigger = topicTrigger;
+          selectTopic(-1);
+          trigger?.focus();
+        }
         return;
       }
-      if (questLog.classList.contains("is-open")) {
+      if (activePanel) {
         if (
           event.key === "Tab" &&
           !event.altKey &&
@@ -590,7 +728,7 @@ function startJourney(root) {
           !event.metaKey
         ) {
           const targets = [
-            ...questLog.querySelectorAll("button, a[href]"),
+            ...activePanel.querySelectorAll("button, a[href]"),
           ].filter((node) => node.getClientRects().length);
           const edge = event.shiftKey ? targets[0] : targets.at(-1);
           if (document.activeElement === edge) {
@@ -627,7 +765,7 @@ function startJourney(root) {
         if (
           event.pointerType === "touch" &&
           event.isPrimary &&
-          !questLog.classList.contains("is-open") &&
+          !activePanel &&
           !event.target.closest(
             "a, button, input, textarea, select, [contenteditable], .discovery-panel",
           )
@@ -666,6 +804,7 @@ function startJourney(root) {
       encounters.forEach((encounter) =>
         encounter.classList.remove("can-animate"),
       );
+      rewardAllowed = false;
       render();
     });
     window.addEventListener("pageshow", render);

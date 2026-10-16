@@ -162,7 +162,7 @@ def discovery_positions():
 
 @pytest.fixture(scope="session")
 def home_positions():
-    return [(119, 165), (236, 165), (161, 165), (161, 165), (161, 165)]
+    return [(119, 165), (236, 165), (161, 165)]
 
 
 @pytest.fixture(scope="session")

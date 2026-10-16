@@ -1,6 +1,6 @@
 **Portfolio Architecture**
 Status: approved chapter-adventure design, implemented locally; final cross-browser/public verification is recorded in [handoff.md](handoff.md).
-Prepared: 2026-09-06. Current revision: the GEC cameo placement, with the San Jose home ending, chronological Quest log, and single-source discoveries retained. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
+Prepared: 2026-09-06. Current revision: a short overview route with optional named topics and a chapter map. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
 This is a warm pixel-game autobiography, not a resume with animation beside it. The enhanced site is a full-screen, linear chapter adventure. The landscape, current chapter object, dialogue, discoveries, stats, milestones, and controls form one game scene. The complete human story, including uncertainty, illness, boredom, burnout, hobbies, and current joy, remains more important than game chrome.
@@ -12,13 +12,37 @@ The public repository is `https://github.com/pranavprem/portfolio`. The private 
 - Runtime remains Python 3.13, Flask, Jinja, Gunicorn, one local CSS file, one vanilla JavaScript module, local JSON, system fonts, and original SVG.
 - The server renders every paragraph, fact, link, stat equivalent, milestone description, and optional highlight. JavaScript changes presentation and visibility; it does not construct prose.
 - Enhanced mode owns the usable `100dvh` viewport. Document scrolling does not drive progression.
-- The story is linear. Start/Continue/Back, keyboard controls, and touch swipes change dialogue/chapter position; window discoveries and Quest log reveal optional information without changing the route. Stats remain visible throughout.
+- The authored story remains chronological, but reading is not gated. Start/Next/Back, keyboard controls, and touch swipes move between chapter overviews; a chapter map allows direct visits. Named topics and window discoveries reveal detail without changing stats.
 - Game state is selected from absolute authored snapshots. No additive XP logic, random state, URL state, cookie, local storage, session storage, database, or server mutation exists.
 - Mobile is a first-class game layout with a scene, dialogue panel, and fixed thumb controls, not a compressed desktop essay.
 - No living avatar, mascot, pet, or companion appears. Eleven original objects identify the chapters.
 - No framework, game engine, canvas/WebGL dependency, runtime npm, CMS, analytics, remote font, embed, or remote runtime request is introduced.
 
 **Experience Contract**
+
+**Optional Detail Grouping**
+The owner's follow-up broadens the SJSU project detail beyond SpartanBot and combines all printing content into one panel. Main-session design/review: keep the thirteen-stop route, three SJSU topic controls, all checkpoints, and journal/discovery counts. Rename the third SJSU topic Random projects and include brief supplied-document descriptions of SpartanBot, Dragonstone Pizzeria, CUSR, and Karma Mining. Keep the 110%-to-TA and grading-tool paragraphs unchanged, and Opportunity Hack separate. The overview summarizes the breadth without repeating the four project names. No new project date, current deployment, scale claim, or sole-authorship claim is needed.
+
+All four reviewed public project links are rendered from the template's fixed allowlist. A bounded Jinja macro partitions literal project labels in any order, recursively processing a strictly smaller trusted list and autoescaping every remaining text fragment. There is no raw HTML construction, `|safe`, Markdown parsing, new JSON link field, or client-generated prose. Tests cover multiple labels, arbitrary order, and hostile text.
+
+The epilogue has exactly three topics: My house, My agents, and 3D printing. The last groups the existing printing paragraph, retail-therapy line, and original PLA portrait/joke in one `.dialogue-beat` container. They are not separate tabs, and the quote is not repeated in the overview. The overview still uses the ending summary's first sentence; the log may summarize printing as before. Coordinate Python/JS validation, projection, template controls, and independent fixtures to exactly three positions: `(119,165)`, `(236,165)`, `(161,165)`. Reject the retired five-position shape rather than adding a compatibility path. This is presentation grouping with unchanged final stats, artwork, and the 16-file runtime boundary.
+
+**Reader-Controlled Pacing**
+The owner reports that a friend stopped after college because the experience became verbose and repetitive, and requests a more intuitive, interactive redesign while retaining the content. The measured baseline has 36 mandatory dialogue screens; its existing thirteen story summaries contain 400 words. More animation would not remove that reading obligation. This revision deliberately supersedes paragraph-by-paragraph progression, not the biography, counts, snapshots, or privacy boundary.
+
+Main-session design and review, using interaction, editorial, accessibility, and engineering lenses rather than claiming independent experts:
+
+- Keep the title, twelve event screens, and epilogue. Each opens on a short overview using its existing `summary` (or original prose for a single-paragraph card). Next/Back always move one story screen, not one paragraph; the complete quick route takes thirteen advances from title to home. No detail interaction is required to continue.
+- The initial pacing pass preserved every body/discovery; later owner-authorized content/grouping changes are documented above. Cards have `beat_labels`, one distinct plain-text label of 1-32 characters per paragraph. Named 48px buttons open those paragraphs individually; Back to overview restores the summary. These are reading choices, not biography branches. The ending's three topics use its three matching home positions, with arrival also serving the overview.
+- The short route reuses summaries rather than creating another independent claim set. The home overview uses its summary's opening sentence; all printing copy/portrait stays together in the printing topic, not the overview. Overview copies and topic controls start hidden in server HTML and are enabled only after validation. No-JS, CSS/JS/projection failure, and print expose full prose/catalog, including grouped printing content. The full-copy 900-word budget remains; separately test the short route at no more than 550 narrative/title words.
+- Add a Chapters overlay with thirteen server-rendered links derived from the existing story records. All are available immediately, including the later work and home chapters. Opening it, closing it, and following its links preserve focus and never update URL/history. A jump changes only the selected absolute snapshot; it does not record skipped chapters as visited or find their discoveries.
+- The Quest log remains a separate visited/found journal with 24 records. A story record unlocks when its overview is visited; a discovery still unlocks only when opened. Back/jumps retain the page-local sets; reload clears them. This is navigation state, not a claim that a visitor read every word.
+- Keep all five numeric/pip meters visible, but reduce HUD framing and decorative clutter. Use a more compact scene/card composition, a clear stop counter, meaningful chapter/topic labels, and a visible hint when the current landscape contains discoveries. Preserve original pixel art, cream/green/rust colors, system fonts, and reduced motion. No idle animation or fabricated mini-game is added.
+- Topic selection is a bounded integer `-1` (overview) or an existing paragraph index. Cache and validate each topic button's DOM identity, screen, index, and `aria-controls`; reject missing/duplicate/out-of-range associations before enhancement. Cache chapter-map links against the thirteen derived story destinations. The stat projection remains version 2 and prose-free; no persisted-data compatibility path is needed.
+- Chapters and Quest log share bounded modal handling below the HUD: only one is open, background surfaces are inert, Tab stays within the active overlay, Escape restores its actual trigger, and progression pauses while open. Headers/Close stay outside the scrollable `.overlay-body`, so closing never requires scrolling back to the top. Escape from a selected topic returns to its overview and topic button. Modified keys and interactive/editable targets retain normal browser behavior. Native buttons/links provide alternatives to gestures.
+- Navigation and reveals never wait for animation or a network event. Invalid metadata leaves the complete document; before load the original server content remains visible. There is no new fail-closed waiting gate. Motion remains local and bounded; selecting topics does not replay chapter encounters or award extra stats.
+
+Review acceptance: every original paragraph is reachable by a named control; thirteen advances reach home; unrestricted map jumps preserve exact stats and visit only their destination; all 24 journal targets remain correct; modal/focus/keyboard/touch behavior is consistent; all targets are at least 48px; mobile overviews fit at ordinary phone heights, while short/enlarged views can scroll internally. Verify both themes, forced colors, no-JS/failure/print, CSP, three engines, and the unchanged 16-file container boundary. A repeat human review is still needed to establish whether attention actually improves; automated correctness and a shorter route are not retention evidence.
 
 **Cameo Placement Correction**
 The owner explicitly places the Coldplay/Oxfam cameo during GEC, not HSBC. Main-session design/review: retarget `coldplay` to `college-unlocked` (screen 4), use `GEC / Coldplay & Oxfam`, and retain its prose, sources, and approved timestamped link. The old Profile age label remains historical evidence only; neither a replacement age/year nor a campus filming location is inferred. The existing derivation moves the journal entry before HSBC and returns to the GEC popup without new navigation logic, stats, counts, or required beats.
@@ -30,10 +54,10 @@ The owner now describes the local-AI repositories as mostly defunct/not running 
 
 Add only optional discovery `list_items`: 1-12 distinct plain-text strings, each at most 100 characters, with paragraphs and list items together bounded to 600 characters. Existing paragraphs remain required. Reject invalid types, empty/duplicate items, controls, excess length, and unknown fields at startup. Jinja escapes a semantic `<ul>`/`<li>` after the paragraphs; no HTML/Markdown interpretation or client prose construction. The list remains complete in fallback and print, and its last item is "Making lists. You may have noticed." Review covers escaping, exact inventory, separate unlock/return targets, list order, mobile scrolling/focus/48px glints, enlarged text, and all engines.
 
-The paid-work passage uses "For my wages, I build systems that connect..." rather than asserting enjoyment of corporate integration. "But for fun..." introduces the existing home projects, not new invented capabilities. Preserve the Agentforce technical scope, present enthusiasm, personal-agent/Morpheus account, and five ending beats/positions. The guitar is symbolic art, not an ownership, model, or skill claim.
+The paid-work passage uses "For my wages, I build systems that connect..." rather than asserting enjoyment of corporate integration. "But for fun..." introduces the existing home projects, not new invented capabilities. Preserve the Agentforce technical scope, present enthusiasm, personal-agent/Morpheus account, and complete ending prose. The guitar is symbolic art, not an ownership, model, or skill claim.
 
 **Home Scene Revision**
-The owner's next correction gives "DevOps, but it's my house" its own San Jose home scene instead of holding the Golden Gate/Salesforce artwork. Main-session design/review: retain the four geographic regions, all eleven chapters, twelve stat checkpoints, eleven milestones, and 24 journal records. Add one original `san-jose-home.svg` scene variant and a validated `epilogue_scene` with region `san-jose`, that fixed art key, and five absolute marker positions corresponding to the five ending beats. The marker visits the front path, homelab, then printing bench; the last three printing beats share a position. This is an explicit presentation-only exception to the old final-scene hold, not another stat checkpoint.
+The home revision gives "DevOps, but it's my house" a San Jose scene rather than holding the Golden Gate/Salesforce artwork. Four regions, eleven chapters, twelve checkpoints, eleven milestones, and 24 journal records remain. Original `san-jose-home.svg` and validated `epilogue_scene` now provide three positions for the three ending topics. Overview/house uses the front path, agents the homelab, and printing the printer bench. This is a presentation-only exception, not another checkpoint or a mandatory tour.
 
 The final stats/badges remain selected by event 11 through `deriveState()`. Rendering selects the home art, San Jose label, and authored marker position by the ending screen/beat. Back and Quest log jumps must restore the correct work/home scene while retaining the page-local journal. Existing stepped movement and reduced-motion behavior apply; add no idle animation, timer, or navigation gate. The two ending discoveries use the gaming monitor and guitar; the earlier server-rack discovery is retired by the copy revision above. Add the home illustration to no-JS/print output, startup asset requirements, the explicit Docker allowlist, and the 16-file runtime boundary.
 
@@ -44,13 +68,13 @@ The Quest log correction supersedes the old 21-item, newest-first catalog and ti
 
 Main-session design and review:
 
-- Keep eleven chapters, twelve event snapshots, five stats, and the main route. Add a short `summary` to each card and an `epilogue_summary`. Derive a chronological Quest log with thirteen main-story records and eleven discovery records, rather than maintaining a separate achievement catalog. Main summaries cover the whole card and revisit its first beat. The title's identity/Goa context is covered by the current-work and childhood summaries rather than inserting a present-day entry before childhood.
+- Keep eleven chapters, twelve event snapshots, five stats, and the main route. Card `summary` and `epilogue_summary` produce thirteen story records alongside eleven discoveries, instead of an independent achievement catalog. Main summaries revisit the overview. The title's identity/Goa context is covered by the current-work and childhood summaries rather than inserting a present-day entry before childhood.
 - Replace card `facts` and the old catalog with one authored `discoveries` collection. Each record owns its ID, target card (or `epilogue`), heading, period label, plain-text paragraphs, short summary, source references, reviewed links, and bounded scene position. Python prepares the popup and log from that one source. No fact may exist only in the log. The original catalog's degree, research, tool, metric, project, nomination, promotion, award, and hobby details remain in main prose or a discovery; the full ledger stays intact.
 - Discovery targets: GEC extras, early games/CyanogenMod, and Coldplay at college; Green Belt/CI-CD at the Pune chapter; Opportunity Hack at SJSU; degree/research detail and concrete developer tooling during the MS/Google scene; promotions and awards at current work; gaming and a separate hobby list at the ending. Coldplay follows the owner's GEC correction, not the earlier age-based Pune placement. Do not invent a calendar date, replacement age, or filming location. Broad period labels remain broad. Grouped awards span the career and do not inherit the current chapter's year.
-- Main summaries unlock at their card's final beat; discovery summaries unlock only when their popup is opened. Two bounded in-memory sets retain reached story cards and found discoveries for this page visit. Back/jump restores absolute stats without erasing the journal. Reload resets it; no cookie, storage, session, URL progress, or server mutation is introduced. Discoveries never gate the main route or modify stats.
+- Main summaries unlock on visiting their overview; discovery summaries unlock only when their popup is opened. Two bounded in-memory sets retain reached story cards and found discoveries for this page visit. Back/jump restores absolute stats without erasing the journal. Skipped map destinations are not marked visited. Reload resets it; no cookie, storage, session, URL progress, or server mutation is introduced. Discoveries never gate the main route or modify stats.
 - Keep nonmodal scene popups, one open at a time, with visible dialogue, native 48px glints, Escape/Close, and exact trigger focus restoration. Multiple discoveries may share a screen; positions must not overlap at tested mobile sizes. Validated numeric positions use bounded CSSOM `left`/`top` values under the existing CSP.
 - Remove repeated narrative reward blocks from the main scene, including Green Belt's spoiler. Keep the decorative milestone response and authored snapshot prefix. Milestone descriptions belong in the Quest log with the corresponding story/discovery record. The HUD rack remains decorative and its numeric count authoritative. Opportunity Hack exists once as a popup plus its summary, not in the main SJSU beat. Gaming and other hobbies likewise each have one ending discovery.
-- Quest log headings are internal links in fallback HTML. Enhanced activation closes the log, moves to the validated target, and focuses its heading; discovery entries reopen their original popup. Only unlocked entries may navigate. External project/video links remain separate. No whole-card click handler, URL/history update, animation wait, or arbitrary selector execution is added.
+- Quest log headings are internal links in fallback HTML. Enhanced activation closes the log, moves to the target overview, and focuses its heading; discovery entries reopen the original popup. Only visited/found journal entries may navigate. The separate chapter map intentionally permits every validated story destination. External links remain separate. No whole-story-card click handler, URL/history update, animation wait, or arbitrary selector execution is added.
 - Retain every popup and all 24 summaries in semantic server HTML, no-JS, invalid-data, CSS/script failure, and print output. Validate exact coverage, unique IDs, known targets, safe links, finite positions, sources, and text limits. The prose-free stat projection stays version 2; the coordinated internal authoring/DOM revision needs no compatibility layer because no content API or persisted progress exists.
 - Acceptance: every prior catalog detail has a main/popup source; no repeated optional/reward prose; chronological order; found-only discoveries; main completion; jump/back/focus; retained journal on revisit; reload reset; invalid targets/positions fail safely; complete fallback/print; all browser engines, CSP, mobile target separation, and reduced motion. No new runtime dependency, route, file, or network permission is needed.
 
@@ -62,24 +86,26 @@ The game has fourteen screens in presentation order:
 2. Twelve event screens from eleven chapters; chapter 09 has two events.
 3. Epilogue holding the final stats/badges while returning to the San Jose home scene.
 
-Each event screen contains one or more paragraph-sized dialogue beats. Exactly one beat is visible in enhanced mode. The final beat records that story moment and gives decorative milestone feedback if applicable; it does not repeat the story in a reward paragraph. Continue advances a beat, then travels to the next event. Back rewinds a beat, then returns to the previous event at its final beat. This is bounded at the title and epilogue.
+Each event screen opens at overview selection `-1`. Single-paragraph cards show their original prose; other cards show their existing summary and named optional topics. Selecting a topic shows exactly its original paragraph without changing the checkpoint. Next and Back always move one screen and reset it to the overview. Reaching a screen records that moment and gives bounded milestone feedback if applicable, without a repeated reward paragraph. Title and epilogue bound the main route; the chapter map can select any of its thirteen story destinations.
 
-College retains four main beats (independence, Python/PyCon, hackathons, academic standing). Department leadership, Zuari, and the paper are separate paragraphs in a GEC discovery. Automation retains two main beats; Green Belt and separate CI/CD detail are a discovery, not another dialogue or reward recital. Stat snapshots and milestone grant points are unchanged. Finding optional content unlocks its log record but never gates main progression or mutates stats.
+College retains four distinct detailed beats (independence, Python/PyCon, hackathons, academic standing), now optional named topics rather than required slides. Department leadership, Zuari, and the paper remain a GEC discovery. Automation retains two detail topics; Green Belt/separate CI-CD remain a discovery. Snapshots and grant points are unchanged. Details and discoveries never gate main progression or mutate stats.
 
 Each active glint opens its own discovery popup over the landscape while dialogue stays visible. Only one popup is open at a time; multiple glints on one screen retain distinct targets and focus. The five-stat HUD is always visible. Quest log shows reached story summaries and found discoveries below it. Escape closes an overlay and returns focus to the actual opener, including the epilogue's final button.
 
 Supported enhanced inputs:
 
-| Input                     | Behavior                                                                                       |
-| ------------------------- | ---------------------------------------------------------------------------------------------- |
-| Start / Continue button   | Advance dialogue, then screen; open Quest log after the final epilogue beat.                   |
-| Back button               | Rewind dialogue, then screen.                                                                  |
-| Right Arrow, Enter, Space | Same as Continue when focus is not in an interactive/editable element and no modifier is held. |
-| Left Arrow                | Same as Back under the same guard.                                                             |
-| Horizontal touch swipe    | Left advances; right rewinds after a 52px distance threshold and directional check.            |
-| Window glint              | Toggle current scene discovery; Continue returns to dialogue while the popup is open.          |
-| Quest log                 | Open a bounded overlay below the persistent HUD.                                               |
-| Escape                    | Close an open overlay and restore focus.                                                       |
+| Input                     | Behavior                                                                                     |
+| ------------------------- | -------------------------------------------------------------------------------------------- |
+| Start / Next button       | Advance one story screen; open Quest log from the home overview or any home topic.           |
+| Back button               | Return to the previous story screen at its overview.                                         |
+| Right Arrow, Enter, Space | Same as Next when focus is not in an interactive/editable element and no modifier is held.   |
+| Left Arrow                | Same as Back under the same guard.                                                           |
+| Horizontal touch swipe    | Left advances; right rewinds after a 52px distance threshold and directional check.          |
+| Named topic               | Show the selected detail and focus the reading; Back to overview restores the summary.       |
+| Chapters                  | Open the unrestricted thirteen-stop map below the HUD.                                       |
+| Window glint              | Toggle current scene discovery; the main next control returns to the story while it is open. |
+| Quest log                 | Open a bounded overlay below the persistent HUD.                                             |
+| Escape                    | Close the active overlay, or return from a topic to its overview, restoring trigger focus.   |
 
 Wheel/trackpad movement is not progression input. Do not add wheel-to-advance, scroll-jacking, drag-only input, branching choices, combat, timers, skill checks, sound, saved progress, or browser-history entries per beat.
 
@@ -95,7 +121,7 @@ Approved ordinary links are curated GitHub work, LinkedIn, `mailto:pranavprem93@
 | `college`        | Goa           | laptop          | Independent living, leadership, Python/PyCon, Zuari, paper, hackathons, academics. |
 | `java-forge`     | Pune          | Java mug        | HSDI, six-month Java training, top-of-class result, leadership.                    |
 | `automation`     | Pune          | automation gear | Boredom, TasKing, Green Belt savings, banking friction, US study.                  |
-| `sjsu`           | San Jose      | books           | MS, 110%-to-TA account, grading tools, SpartanBot.                                 |
+| `sjsu`           | San Jose      | books           | MS, 110%-to-TA account, grading tools, and optional project experiments.           |
 | `developer-ally` | San Jose      | toolkit         | Google Hardware/Nest and developer-productivity focus.                             |
 | `cloud-and-fog`  | San Francisco | cloud terminal  | Chat infrastructure, then sustainable COVID cadence.                               |
 | `bot-workshop`   | San Francisco | bot console     | Einstein Bots reliability/API/migration and Copilot.                               |
@@ -116,11 +142,11 @@ The current content schema is version 2:
 - Exactly eleven chapters and twelve cards/events; only chapter 09 has two cards.
 - Exactly eleven milestones, granted once in authored order.
 - Exactly eleven discoveries and 24 derived Quest log records: twelve cards, the epilogue, and the eleven discoveries.
-- Cards own `summary` text; the root owns `epilogue_summary`. Discoveries own `id`, `card_id`, `heading`, `period_label`, `body`, `summary`, `position`, `source_refs`, and `links`, with optional bounded `list_items` as defined above. The old `facts`, `achievements`, `era`, and `unlock_after` fields are removed, not maintained as compatibility aliases.
+- Cards own `summary` text and required `beat_labels`, one distinct 1-32-character plain-text label per paragraph; the root owns `epilogue_summary`. Discoveries own `id`, `card_id`, `heading`, `period_label`, `body`, `summary`, `position`, `source_refs`, and `links`, with optional bounded `list_items`. The old `facts`, `achievements`, `era`, and `unlock_after` fields are not compatibility aliases.
 - Each discovery target must be a card ID or `epilogue`. Each badge's `quest_id` must resolve to a story/discovery at that badge's grant card. Python derives screen indices, internal hrefs, popup paragraphs, and the ordered log. Invalid client target/position metadata restores the complete document.
 - Complete absolute `stats_after` and cumulative `badges_after` snapshots.
 - Region landmarks bounded to the shared `320 x 180` scene geometry.
-- A separate `epilogue_scene` has exactly `region_id`, `art_key`, and five `positions`. The region/art are fixed to `san-jose` / `san-jose-home`; positions reject booleans, nonfinite values, and coordinates outside x `20..300`, y `0..180`. Its five positions must match the five rendered ending beats.
+- A separate `epilogue_scene` has exactly `region_id`, `art_key`, and three `positions`. The region/art are fixed to `san-jose` / `san-jose-home`; positions reject booleans, nonfinite values, and coordinates outside x `20..300`, y `0..180`. Its three positions must match the three ending topic containers, not the number of text elements nested in printing.
 - Plain-text prose and facts only. Contextual links are selected by trusted template logic.
 
 Validation rejects unknown/missing keys, booleans as integers, nonfinite/out-of-range coordinates, duplicate JSON keys/IDs, invalid source references, wrong counts/order, decreasing Experience, duplicate badge grants, unsafe links, symlinks, missing assets, and unapproved static files. Authored errors fail startup; they are never silently repaired in the browser.
@@ -146,9 +172,9 @@ Jinja serializes it in the quoted `data-game` attribute with `tojson | forceesca
 - event screens: `0..11`
 - epilogue: event index `11`
 
-Dialogue beat position is local presentation state and never changes stats, badges, mood, or source data. Main events retain their authored region and landmark. The explicit ending exception selects the home scene/region and positions `(119,165)`, `(236,165)`, `(161,165)`, `(161,165)`, `(161,165)` for its five beats. `deriveState()` continues to supply the final stat snapshot at event 11; `renderState()` applies this visual-only route. Entering/leaving the epilogue invalidates the renderer's checkpoint cache through the existing screen-navigation path, so identical stat indices cannot leave stale art or captions behind. The DOM exposes current screen, beat, checkpoint, region, and scene-art identity for deterministic checks, not as a public API.
+Topic selection never changes stats, badges, mood, or source data. Main events retain their region and landmark. The ending selects home and positions `(119,165)`, `(236,165)`, `(161,165)` for its three topics; overview also uses the first position. `deriveState()` still supplies event 11's final snapshot, and `renderState()` applies the visual route. Entering/leaving home invalidates the existing checkpoint cache so the shared final numeric index cannot leave stale art/captions. DOM screen, topic, checkpoint, region, and art markers support deterministic tests, not a public API.
 
-The journal is separate, page-local presentation state: `completedScreens` records screens 1-13 at their final beat; `foundDiscoveries` records actual popup openings. Both sets survive Back and log jumps for this visit and reset on reload. Chronological DOM order is derived from target screen order, with the story record before its optional discoveries and authored order for ties. It is not calculated from repository dates or invented age/year conversions. Grouped/overlapping periods retain their supplied labels.
+The journal is separate, page-local presentation state: `completedScreens` records screens 1-13 on visiting their overview; the name means reached, not proof that every note was read. `foundDiscoveries` records actual popup openings. Both survive Back/map/log jumps for this visit and reset on reload; jumps add only their destination. Chronological DOM order follows target screens, with story before discoveries and authored order for ties, not repository dates or age/year conversions.
 
 | Story Screen           | Discoveries                                |
 | ---------------------- | ------------------------------------------ |
@@ -159,7 +185,7 @@ The journal is separate, page-local presentation state: `completedScreens` recor
 | Current work           | `career-titles`, `awards`                  |
 | Epilogue               | `off-clock`, `hobbies`                     |
 
-Every log entry has a validated target. Story entries revisit the first beat of their card; discovery entries reopen the original popup. Cached DOM-node identity plus the reached/found sets authorize enhanced jumps; a forged visibility class cannot unlock a destination. Jumps close the modal and restore the proper focus, without updating the URL/history. Fallback uses ordinary internal fragment links.
+Every log entry has a validated target. Story entries revisit the overview; discoveries reopen their popup. Cached identity and reached/found sets authorize journal jumps; a forged visibility class cannot unlock an entry. Map links have their own validated identities and intentionally need no prior visit. Jumps close the modal and focus the destination without updating URL/history. Fallback journal links remain ordinary internal links.
 
 The authoritative snapshots are:
 
@@ -193,7 +219,7 @@ Base HTML is an ordinary complete document:
 - in-flow region illustrations
 - the ending's in-flow home illustration, also present without JS and in print
 
-Controls are present but hidden by base CSS. Initialization runs after the load event because WebKit can execute the module before applying CSS. Until then the full server document remains untouched, not covered by a loading gate; an image that never loads cannot hide the story. If JavaScript validates the stylesheet sentinel, projection, catalog unlock bounds, and matching DOM markers, it adds `.enhanced` and selects one game screen/beat. If parsing, validation, CSS, or initialization fails, every server-rendered section remains readable. Print overrides enhanced visibility and catalog filtering to expose all content.
+Controls are present but hidden by base CSS; previews, topics, and the map also start with native `hidden`. Initialization waits for load because WebKit can run the module before stylesheet application. Before that, the full server story remains readable with no loading gate. Enhancement requires the `reader-paced` stylesheet sentinel, projection, journal destinations, all map links, and topic index/control associations. Stale/missing CSS or invalid data keeps the original document. Print explicitly resets active/inspecting card height/display, restores original headings/paragraphs, and hides overview/map/topic UI, including when printing with a topic or overlay open.
 
 JavaScript uses `textContent`, class changes, `aria-*`, `inert`, focus, and narrowly bounded SVG `transform` attributes. It does not use `innerHTML`, string-to-code evaluation, remote requests, runtime templates, or inline style strings. CSSOM writes are limited to the bounded chapter-progress width and validated numeric hotspot percentages. Discovery coordinates are within x `48..272`, y `48..132`; browser tests verify actual 48px target separation and popup bounds.
 
@@ -206,8 +232,8 @@ Normal mobile targets:
 - Minimum supported width: 320 CSS pixels.
 - Controls: at least 48 CSS pixels high.
 - Landscape: approximately 21-26dvh on mobile depending on viewport height, leaving room for persistent stats and dialogue. An aspect-ratio wrapper uses container dimensions to keep the window hit targets aligned with the actual SVG rather than the letterboxed panel.
-- Dialogue: remaining flexible space; one paragraph beat normally fits without scrolling.
-- Internal dialogue scrolling is allowed only for enlarged text, unusually short screens, or long optional overlays.
+- Story: remaining flexible space, with overview and topic choices fitting ordinary phone heights including 375x667 and 390x844. Topic rows use two-to-five columns where room permits; a full-width Back to overview control appears only after selecting a topic.
+- Internal story scrolling is allowed for enlarged text, short screens such as 320x568, long optional topics, or overlays. The milestone count shares the location header; its decorative rack is omitted visually in enhanced mode, while all five stat bars remain visible.
 - No horizontal overflow, page scrolling, text shrinking, hidden overflow used to mask defects, or separate low-information mobile HUD.
 
 The visual language remains cream paper, dark green ink, amber/rust accents, crisp pixel landscapes, system serif display type, monospace game labels, square borders, and stepped shadows. Dark mode follows `prefers-color-scheme` with no toggle/storage.
@@ -218,7 +244,7 @@ The scene uses original landscapes and factual building labels, not logos or cop
 
 - Scene object movement between authored landmarks uses a short stepped CSS transition.
 - The home marker moves only on entering the epilogue or changing its authored dialogue position. No printer/server idle loop is added; the existing transition is disabled by reduced motion.
-- A milestone's final dialogue beat uses one eight-logical-pixel object hop with static sparks, not a duplicate narrative reward block.
+- Entering a milestone screen uses one eight-logical-pixel hop on its selected object with static sparks, not a duplicate reward paragraph. Topic selection does not restart it; a motion-preference change disables reward/encounter replay for that entry.
 - The mosquito swoop lasts 1600ms at `unexpected-detour`; the pandemic-symbol sweep lasts 1800ms at `fog-arrives`. Each has one iteration, then rests as static art. No animation-end event is needed for navigation, cleanup, or state. Leaving removes the active animation; reduced-motion changes remove animation eligibility for the rest of that entry, preventing replay when the preference is restored.
 - There is no requestAnimationFrame loop, idle movement, flashing, camera shake, sound, confetti, count-up, or queued animation.
 - `prefers-reduced-motion: reduce` disables all transitions/animations immediately while preserving state and controls.
@@ -231,7 +257,7 @@ The scene uses original landscapes and factual building labels, not logos or cop
 - Scene art and object SVGs are decorative; narrative equivalents are text.
 - Numeric `n / 10` text is authoritative; pips do not carry meaning alone.
 - Dynamic HUD is `aria-live="off"`; changing screens moves focus to the new heading.
-- Closed Quest log content is inert and assistive-hidden. While open, the separate HUD, scene, story deck, and navigation surfaces are inert; the HUD remains visible above the overlay. Tab stays inside the dialog and Escape restores the actual trigger, not an assumed `activeElement`. A discovery popup is nonmodal, leaves dialogue visible, and restores focus to its window glint.
+- Closed Chapters/Quest log panels are inert and assistive-hidden. One may open at a time; background HUD, scene, story, and controls become inert while the HUD stays visible. Tab stays inside the active dialog and Escape restores its actual trigger, not an assumed `activeElement`. Opening a modal cancels a pending swipe. A discovery popup remains nonmodal, preserves story-panel geometry/reading position, and restores its glint. Topics focus the selected paragraph; Escape/Back to overview restores the summary.
 - Text selection, ordinary links, semantic headings/lists, forced colors, reduced motion, print, and no-JS reading remain supported.
 - Automated axe checks supplement rather than replace physical-device, zoom, and screen-reader review.
 
@@ -283,6 +309,6 @@ Do not call the redesign complete until:
 
 - The earlier native-scroll essay and later sticky-stage layout are superseded. Owner review found both still felt like reading a book with animation beside it.
 - The chapter adventure was selected over direct avatar movement. It provides genuine interaction and mobile parity without inventing a character, collision engine, branching biography, or inaccessible gesture-only controls.
-- Paragraph-sized dialogue preserves the approved prose while preventing a wall of text.
+- Paragraph-sized topics preserve the approved prose, but are now reader-selected rather than compulsory slides. A shorter mandatory route and an unrestricted map address the reported attention problem without adding game-like busywork.
 - Optional facts became scene discoveries; the achievement appendix became a Quest log. Neither alters canonical state.
 - Server-rendered fallback remains non-negotiable so content survives JavaScript, CSS, projection, print, accessibility, and archival failure modes.

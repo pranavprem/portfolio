@@ -147,8 +147,9 @@ def test_invalid_discovery_targets_are_rejected(story_document, reference):
         (("epilogue_scene", "region_id"), "bay-area"),
         (("epilogue_scene", "art_key"), "../private"),
         (("epilogue_scene", "positions"), []),
+        (("epilogue_scene", "positions"), [{"x": 100, "y": 140}] * 2),
         (("epilogue_scene", "positions"), [{"x": 100, "y": 140}] * 4),
-        (("epilogue_scene", "positions"), [{"x": 100, "y": 140}] * 6),
+        (("epilogue_scene", "positions"), [{"x": 100, "y": 140}] * 5),
         (("epilogue_scene", "positions", 0, "x"), True),
         (("epilogue_scene", "positions", 0, "x"), "119"),
         (("epilogue_scene", "positions", 0, "x"), 301),
@@ -685,11 +686,33 @@ def test_mini_paragraph_boundary_rejects_invalid_breaks(story_document, body):
 def test_mini_paragraphs_preserve_plain_text_and_snapshots(story_document):
     body = "First small paragraph.\n\nSecond small paragraph."
     story_document["chapters"][0]["cards"][0]["body"] = body
+    story_document["chapters"][0]["cards"][0]["beat_labels"] = ["First", "Second"]
     validate_story(story_document)
     prepared, _ = prepare_story(story_document)
     card = prepared["chapters"][0]["cards"][0]
     assert card["body"] == body
     assert card["paragraphs"] == body.split("\n\n")
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        None,
+        True,
+        "A label",
+        [],
+        ["Only one"],
+        ["Same", "Same"],
+        ["", "Other"],
+        ["x" * 33, "Other"],
+        ["Bad\nlabel", "Other"],
+        ["Valid", False],
+    ],
+)
+def test_topic_labels_are_bounded_distinct_and_match_the_paragraphs(story_document, labels):
+    story_document["chapters"][1]["cards"][0]["beat_labels"] = labels
+    with pytest.raises(ContentValidationError, match="beat_labels"):
+        validate_story(story_document)
 
 
 def test_five_stats_accumulate_experience_and_use_real_milestones(story_document):
@@ -863,3 +886,24 @@ def test_semantic_copy_keeps_roles_projects_and_metrics_distinct(story_document)
     assert cards["fog-arrives"]["body"].startswith("During COVID, I had to find a pace")
     assert "a small part of that API work" in cards["bots-unlocked"]["body"]
     assert cards["continuing-unlocked"]["body"].startswith("Then came Agentforce: a platform")
+
+
+def test_sjsu_projects_share_one_optional_topic_without_becoming_a_project_dump(story_document):
+    card = next(chapter for chapter in story_document["chapters"] if chapter["id"] == "sjsu")[
+        "cards"
+    ][0]
+    paragraphs = card["body"].split("\n\n")
+    assert card["beat_labels"] == ["The 110% story", "Becoming a TA", "Random projects"]
+    assert len(paragraphs) == 3
+    assert "110%, the maximum possible" in paragraphs[0]
+    assert "Docker/Python autograder and live student leaderboards" in paragraphs[1]
+    for project in ("SpartanBot", "Dragonstone Pizzeria", "CUSR", "Karma Mining"):
+        assert project in paragraphs[2]
+        assert project not in card["summary"]
+    assert "pizza-ordering system" in paragraphs[2]
+    assert "rail-ticket booking project" in paragraphs[2]
+    assert "scored and sorted Reddit comments" in paragraphs[2]
+    assert "Opportunity Hack" not in card["body"]
+    assert not any(
+        scale in paragraphs[2] for scale in ("2.5 billion", "40 containers", "five regions")
+    )
