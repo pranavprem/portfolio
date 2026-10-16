@@ -1548,14 +1548,19 @@ h3 {
 @media (max-height: 700px) and (max-width: 760px) {
   .enhanced .game-shell {
     grid-template-rows: auto 124px minmax(0, 1fr) auto;
+    row-gap: 6px;
   }
 
-  .enhanced .title-card {
+  .enhanced .title-card,
+  .enhanced .dialogue-card {
     padding-block: 8px;
   }
 
   .enhanced .title-card .input-hint,
-  .enhanced .title-card .intro-actions {
+  .enhanced .title-card .intro-actions,
+  .enhanced .chapter-preview,
+  .enhanced .story-prose,
+  .enhanced .chapter-topics {
     margin-top: 8px;
   }
 
