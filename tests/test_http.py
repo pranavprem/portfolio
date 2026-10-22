@@ -320,8 +320,6 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         "https://github.com/pranavprem/morpheus",
         "https://github.com/pranavprem/TasKing",
         "https://github.com/pranavprem/Spartanbot",
-        "https://github.com/pranavprem/DragonstonePizzeria",
-        "https://github.com/pranavprem/CUSR",
         "https://github.com/pranavprem/karmamining",
         "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem",
     }
@@ -478,7 +476,13 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "seven wins in four years",
         "six months of Java training",
         "promptly made his TA",
+        "Prof. Paul Nguyen's Cloud Technologies class "
+        "(Docker, Kubernetes, and the AWS public cloud)",
+        "I liked making Alexa skills and using AWS Lambda for serverless projects.",
+        "Heroku was my PaaS of choice.",
         "placed second at PayPal's Opportunity Hack",
+        "Alexa-powered project for the City of San Jose, "
+        "using AWS Lambda for serverless processing",
         "imposter syndrome",
         "intoxicating",
         "moved to San Francisco",
@@ -537,6 +541,8 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         for tag, attrs in document.elements
     )
     for rejected in (
+        "CUSR",
+        "Dragonstone Pizzeria",
         "explored chatbots, pizza ordering, rail tickets, and Reddit data",
         "The lucky part was finding my thing early: computer science and C/C++.",
         "Growing up has done very little to fix any of this.",
@@ -606,7 +612,7 @@ def test_hobby_list_and_retired_repository_removal_are_server_rendered(client, p
         if item.get("href", "").startswith("https://github.com/")
     }
     assert "https://github.com/pranavprem" in github_links
-    assert len(github_links - {"https://github.com/pranavprem"}) == 15
+    assert len(github_links - {"https://github.com/pranavprem"}) == 13
 
 
 def test_hud_discoveries_and_quest_targets_are_server_rendered(
@@ -679,7 +685,7 @@ def test_multiple_project_links_escape_prose_in_any_order(app, story_document, p
         "cards"
     ][0]
     payload = "<img src=x onerror=alert(1)>"
-    card["body"] = f"Karma Mining {payload} Dragonstone Pizzeria, SpartanBot, and CUSR."
+    card["body"] = f"Karma Mining {payload} and SpartanBot."
     card["beat_labels"] = ["Projects"]
     validate_story(story_document)
     story, game = prepare_story(story_document)
@@ -691,9 +697,7 @@ def test_multiple_project_links_escape_prose_in_any_order(app, story_document, p
     assert document.text == card["body"]
     assert [link["href"] for link in document.select("a")] == [
         "https://github.com/pranavprem/karmamining",
-        "https://github.com/pranavprem/DragonstonePizzeria",
         "https://github.com/pranavprem/Spartanbot",
-        "https://github.com/pranavprem/CUSR",
     ]
     assert not document.select("img")
     assert payload not in source

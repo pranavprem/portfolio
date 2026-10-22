@@ -433,6 +433,10 @@ def test_claim_provenance_and_full_source_ledger(story_document, project_root):
         assert subject in ledger
     assert re.search(r"Profile.*January 2019.*resume.*March 2019", ledger, re.I)
     assert re.search(r"Profile.*rank 7.*resume.*rank 8", ledger, re.I)
+    assert (
+        "The owner now identifies the 110% course as Prof. Paul Nguyen's Cloud Technologies class"
+        in ledger
+    )
     for name in ("AGENTS.md", "README.md", "docs/architecture.md", "docs/handoff.md"):
         assert (project_root / name).is_file()
 
@@ -880,10 +884,13 @@ def test_semantic_copy_keeps_roles_projects_and_metrics_distinct(story_document)
     assert "then took the GRE and TOEFL" in cards["automation-unlocked"]["body"]
     assert "SpartanBot" in cards["sjsu-unlocked"]["body"]
     assert "Opportunity Hack" not in cards["sjsu-unlocked"]["body"]
-    assert (
-        "Alexa project for the City of San Jose. We placed second"
-        in discoveries["opportunity-hack"]["body"]
-    )
+    hackathon = discoveries["opportunity-hack"]
+    assert hackathon["heading"] == "PayPal: 2nd place"
+    assert "At PayPal's Opportunity Hack" in hackathon["body"]
+    assert "Alexa-powered project for the City of San Jose" in hackathon["body"]
+    assert "AWS Lambda for serverless processing" in hackathon["body"]
+    assert hackathon["body"].endswith("We placed second.")
+    assert "AWS Lambda for serverless processing" in hackathon["summary"]
     assert "tooling to create Jira issues when tests failed" in discoveries["google-tools"]["body"]
     assert "Green Belt project saved over 2,000 hours" in discoveries["green-belt"]["body"]
     assert "Separate CI/CD work cut time to market by 25%" in discoveries["green-belt"]["body"]
@@ -906,14 +913,22 @@ def test_sjsu_projects_share_one_optional_topic_without_becoming_a_project_dump(
         "with some data mining on the side"
     )
     assert card["summary"].startswith(f"At SJSU, I majored in {focus}.")
-    assert paragraphs[2].startswith(f"I studied {focus}. My projects included")
+    course = "Prof. Paul Nguyen's Cloud Technologies class"
+    assert course in card["summary"]
+    assert f"{course} (Docker, Kubernetes, and the AWS public cloud)" in paragraphs[0]
+    assert "was his only student to do it" in paragraphs[0]
+    assert paragraphs[2].startswith(
+        "I liked making Alexa skills and using AWS Lambda for serverless projects."
+    )
+    assert "Heroku was my PaaS of choice." in paragraphs[2]
     assert "explored chatbots, pizza ordering, rail tickets, and Reddit data" not in card["summary"]
-    for project in ("SpartanBot", "Dragonstone Pizzeria", "CUSR", "Karma Mining"):
+    for project in ("SpartanBot", "Karma Mining"):
         assert project in paragraphs[2]
         assert project not in card["summary"]
-    assert "pizza-ordering system" in paragraphs[2]
-    assert "rail-ticket booking project" in paragraphs[2]
+    assert "Alexa-powered campus chatbot" in paragraphs[2]
     assert "scored and sorted Reddit comments" in paragraphs[2]
+    for omitted in ("CUSR", "Dragonstone Pizzeria"):
+        assert omitted not in card["body"] + card["summary"]
     assert "Opportunity Hack" not in card["body"]
     assert not any(
         scale in paragraphs[2] for scale in ("2.5 billion", "40 containers", "five regions")

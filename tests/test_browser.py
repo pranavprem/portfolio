@@ -1056,6 +1056,7 @@ def test_coldplay_is_found_at_gec_and_the_journal_returns_there(page, live_serve
 
 
 def test_sjsu_projects_are_optional_and_keep_their_public_links(page, live_server, snapshots):
+    page.set_viewport_size({"width": 375, "height": 667})
     open_game(page, live_server)
     go_to_event(page, 6)
     screen = page.locator(".is-current-screen")
@@ -1067,14 +1068,27 @@ def test_sjsu_projects_are_optional_and_keep_their_public_links(page, live_serve
     expect(projects).to_be_hidden()
     screen.get_by_role("button", name="Random projects", exact=True).click()
     expect(projects).to_be_visible()
-    expect(projects.locator("a")).to_have_text(
-        ["SpartanBot", "Dragonstone Pizzeria", "CUSR", "Karma Mining"]
-    )
+    expect(projects.locator("a")).to_have_text(["SpartanBot", "Karma Mining"])
+    expect(projects).to_contain_text("Alexa skills and using AWS Lambda for serverless projects")
+    expect(projects).to_contain_text("Heroku was my PaaS of choice.")
     assert_hud(page, snapshots[7])
     expect(projects).not_to_contain_text("Opportunity Hack")
     page.keyboard.press("Escape")
     expect(screen.locator(".chapter-preview")).to_be_visible()
     expect(screen.get_by_role("button", name="Random projects", exact=True)).to_be_focused()
+    page.locator('[data-discovery="opportunity-hack"]').click()
+    popup = page.locator("#discovery-opportunity-hack")
+    expect(popup.locator("h3")).to_have_text("PayPal: 2nd place")
+    assert popup.evaluate("""node => {
+      const copy = node.querySelector('.discovery-copy');
+      return copy.getBoundingClientRect().top + parseFloat(getComputedStyle(copy).fontSize)
+        <= node.getBoundingClientRect().bottom - 2;
+    }""")
+    expect(popup).to_contain_text("AWS Lambda for serverless processing. We placed second.")
+    expect(popup.get_by_role("link", name="Opportunity Hack project")).to_have_attribute(
+        "href", "https://github.com/pranavprem/Parks-RecSanJose"
+    )
+    assert_hud(page, snapshots[7])
 
 
 def test_discoveries_are_unique_outside_the_quest_log(page, live_server, story_document):

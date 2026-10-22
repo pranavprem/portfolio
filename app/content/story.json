@@ -383,9 +383,9 @@
         {
           "id": "sjsu-unlocked",
           "beat_labels": ["The 110% story", "Becoming a TA", "Random projects"],
-          "summary": "At SJSU, I majored in enterprise software, cloud technologies, and virtualization, with some data mining on the side. I scored the maximum 110% in Prof. Paul's class and became his TA.",
+          "summary": "At SJSU, I majored in enterprise software, cloud technologies, and virtualization, with some data mining on the side. I scored 110% in Prof. Paul Nguyen's Cloud Technologies class and became his TA.",
           "heading": "Prof. Paul, 110%, and competitive homework",
-          "body": "SJSU was affordable and gave me the challenge I wanted. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nI studied enterprise software, cloud technologies, and virtualization, with some data mining on the side. My projects included SpartanBot, an Alexa-powered campus chatbot; Dragonstone Pizzeria, a pizza-ordering system; CUSR, a rail-ticket booking project; and Karma Mining, which scored and sorted Reddit comments.",
+          "body": "SJSU was affordable and gave me the challenge I wanted. In Prof. Paul Nguyen's Cloud Technologies class (Docker, Kubernetes, and the AWS public cloud), I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nI liked making Alexa skills and using AWS Lambda for serverless projects. My projects included SpartanBot, an Alexa-powered campus chatbot, and Karma Mining, which scored and sorted Reddit comments. Heroku was my PaaS of choice.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -608,9 +608,9 @@
       "id": "opportunity-hack",
       "card_id": "sjsu-unlocked",
       "period_label": "SJSU / Opportunity Hack",
-      "heading": "Opportunity Hack",
-      "body": "At PayPal's Opportunity Hack, I worked on an Alexa project for the City of San Jose. We placed second.",
-      "summary": "I placed second at PayPal's Opportunity Hack with an Alexa project for the City of San Jose.",
+      "heading": "PayPal: 2nd place",
+      "body": "At PayPal's Opportunity Hack, I worked on an Alexa-powered project for the City of San Jose, using AWS Lambda for serverless processing. We placed second.",
+      "summary": "We placed second at PayPal's Opportunity Hack with an Alexa-powered City of San Jose project using AWS Lambda for serverless processing.",
       "position": { "x": 52.5, "y": 96 },
       "source_refs": ["owner-brief", "resume", "github"],
       "links": {
