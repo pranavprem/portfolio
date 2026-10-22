@@ -1,5 +1,5 @@
 **Portfolio Architecture**
-Status: approved chapter-adventure design, implemented and published on `master`; exact-SHA browser verification and outstanding public-deployment gates are recorded in [handoff.md](handoff.md).
+Status: approved chapter-adventure design with a published `master` baseline; current local copy follow-ups, exact-SHA browser verification, and outstanding public-deployment gates are recorded in [handoff.md](handoff.md).
 Prepared: 2026-09-06. Current revision: a short overview route with optional named topics and a chapter map. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
@@ -21,7 +21,9 @@ The public repository is `https://github.com/pranavprem/portfolio`. The private 
 **Experience Contract**
 
 **Optional Detail Grouping**
-The owner's follow-up broadens the SJSU project detail beyond SpartanBot and combines all printing content into one panel. Main-session design/review: keep the thirteen-stop route, three SJSU topic controls, all checkpoints, and journal/discovery counts. Rename the third SJSU topic Random projects and include brief supplied-document descriptions of SpartanBot, Dragonstone Pizzeria, CUSR, and Karma Mining. Keep the 110%-to-TA and grading-tool paragraphs unchanged, and Opportunity Hack separate. The overview summarizes the breadth without repeating the four project names. No new project date, current deployment, scale claim, or sole-authorship claim is needed.
+The owner's follow-up broadens the SJSU project detail beyond SpartanBot and combines all printing content into one panel. Main-session design/review: keep the thirteen-stop route, three SJSU topic controls, all checkpoints, and journal/discovery counts. The third SJSU topic is Random projects and includes brief supplied-document descriptions of SpartanBot, Dragonstone Pizzeria, CUSR, and Karma Mining. Keep the 110%-to-TA and grading-tool paragraphs unchanged, and Opportunity Hack separate. The latest correction puts the actual study focus in the overview and before the project examples: enterprise software, cloud technologies, and virtualization, with data mining on the side. Project application domains are not substitutes for academic subjects. No new project date, current deployment, scale claim, or sole-authorship claim is needed.
+
+Current-work prose explicitly says the owner works on Atlas, the reasoning engine behind Agentforce, while preserving AgentScript, the capability list, team tooling, and wages-versus-fun transition. His requested GitHub profile uses fixed ordinary anchors on the opening/ending screens. These are content/link corrections within the existing server-rendered model, not new topic controls, schema fields, remote requests, or security permissions.
 
 All four reviewed public project links are rendered from the template's fixed allowlist. A bounded Jinja macro partitions literal project labels in any order, recursively processing a strictly smaller trusted list and autoescaping every remaining text fragment. There is no raw HTML construction, `|safe`, Markdown parsing, new JSON link field, or client-generated prose. Tests cover multiple labels, arbitrary order, and hostile text.
 
@@ -109,7 +111,7 @@ Supported enhanced inputs:
 
 Wheel/trackpad movement is not progression input. Do not add wheel-to-advance, scroll-jacking, drag-only input, branching choices, combat, timers, skill checks, sound, saved progress, or browser-history entries per beat.
 
-Approved ordinary links are curated GitHub work, LinkedIn, `mailto:pranavprem93@gmail.com`, and the timestamped Coldplay/Oxfam cameo. Links remain links, not whole-card targets or remote previews. Keyboard shortcuts yield while a link, button, form control, or editable element has focus.
+Approved ordinary links are the GitHub profile at `https://github.com/pranavprem`, curated GitHub work, LinkedIn, `mailto:pranavprem93@gmail.com`, and the timestamped Coldplay/Oxfam cameo. Links remain links, not whole-card targets or remote previews. Keyboard shortcuts yield while a link, button, form control, or editable element has focus.
 
 **Story Map**
 

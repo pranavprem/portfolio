@@ -849,7 +849,7 @@ def test_owner_voice_and_corrected_hsdi_details(story_document):
     current = cards["continuing-unlocked"]["body"]
     for phrase in (
         "Salesforce customers could build their own agents",
-        "Atlas Reasoning Engine",
+        "I work on its Atlas Reasoning Engine",
         "AgentScript",
         "more deterministic in an LLM world",
         "voice, MCP, native context, memory",
@@ -861,6 +861,10 @@ def test_owner_voice_and_corrected_hsdi_details(story_document):
         "work assistant and coding harness",
     ):
         assert phrase in current
+    assert (
+        "I work on Atlas, the reasoning engine behind Agentforce"
+        in cards["continuing-unlocked"]["summary"]
+    )
 
     assert "Morpheus keeps credential access human-approved" in story_document["epilogue_summary"]
 
@@ -897,6 +901,13 @@ def test_sjsu_projects_share_one_optional_topic_without_becoming_a_project_dump(
     assert len(paragraphs) == 3
     assert "110%, the maximum possible" in paragraphs[0]
     assert "Docker/Python autograder and live student leaderboards" in paragraphs[1]
+    focus = (
+        "enterprise software, cloud technologies, and virtualization, "
+        "with some data mining on the side"
+    )
+    assert card["summary"].startswith(f"At SJSU, I majored in {focus}.")
+    assert paragraphs[2].startswith(f"I studied {focus}. My projects included")
+    assert "explored chatbots, pizza ordering, rail tickets, and Reddit data" not in card["summary"]
     for project in ("SpartanBot", "Dragonstone Pizzeria", "CUSR", "Karma Mining"):
         assert project in paragraphs[2]
         assert project not in card["summary"]

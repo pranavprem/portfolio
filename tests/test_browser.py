@@ -133,6 +133,11 @@ def assert_complete_story(page, story_document, snapshots, *, visible):
         for item in page.locator(".achievement-note").all():
             expect(item).to_be_visible()
     expect(page.locator(".loot")).to_have_count(0)
+    profile_links = page.locator('a[href="https://github.com/pranavprem"]')
+    expect(profile_links).to_have_count(2)
+    if visible:
+        for link in profile_links.all():
+            expect(link).to_be_visible()
     for badge in story_document["badges"]:
         expect(page.locator(f'[data-quest-badge="{badge["id"]}"] .milestone-detail')).to_have_text(
             badge["description"]
@@ -773,6 +778,7 @@ def test_compact_overviews_with_wide_system_font_keep_actions_visible(page, live
     title = page.locator(".title-card")
     expect(title.locator(".browse-button")).to_be_in_viewport()
     expect(title.get_by_role("link", name="LinkedIn", exact=True)).to_be_in_viewport()
+    expect(title.get_by_role("link", name="GitHub", exact=True)).to_be_in_viewport(ratio=1)
     for target in range(14):
         screen = page.locator(".is-current-screen")
         panel = screen.locator(".title-card, .dialogue-card")
@@ -849,6 +855,12 @@ def test_story_budget_links_and_game_surface(page, live_server, story_document):
     expect(page.locator("#bonus .achievement-note")).to_have_count(24)
     assert page.locator('a[href="mailto:pranavprem93@gmail.com"]').count() == 1
     expect(page.locator(".pla-meme")).to_have_text("I'm 40% PLA.")
+    expect(page.locator('.intro-actions a[href="https://github.com/pranavprem"]')).to_have_text(
+        "GitHub"
+    )
+    expect(page.locator('.contact-links a[href="https://github.com/pranavprem"]')).to_have_text(
+        "GitHub"
+    )
     slack_link = (
         "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/"
         "?author=pranavprem"
@@ -861,6 +873,10 @@ def test_story_budget_links_and_game_surface(page, live_server, story_document):
     overview_words = 0
     for target in range(14):
         screen = page.locator(".is-current-screen")
+        if target == 12:
+            expect(screen.locator(".chapter-preview")).to_contain_text(
+                "I work on Atlas, the reasoning engine behind Agentforce"
+            )
         overview_words += screen.locator("h1, .scene-heading, #ending-title").evaluate_all(
             r"nodes => nodes.map(node => node.textContent).join(' ').trim().split(/\s+/).length"
         )
@@ -1044,6 +1060,10 @@ def test_sjsu_projects_are_optional_and_keep_their_public_links(page, live_serve
     go_to_event(page, 6)
     screen = page.locator(".is-current-screen")
     projects = screen.locator("#beat-sjsu-unlocked-2")
+    expect(screen.locator(".chapter-preview")).to_contain_text(
+        "enterprise software, cloud technologies, and virtualization, "
+        "with some data mining on the side"
+    )
     expect(projects).to_be_hidden()
     screen.get_by_role("button", name="Random projects", exact=True).click()
     expect(projects).to_be_visible()

@@ -313,6 +313,7 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
         assert badge["description"] in document.text
     allowed_links = {
         "https://www.linkedin.com/in/pranavprem/",
+        "https://github.com/pranavprem",
         "mailto:pranavprem93@gmail.com",
         "https://github.com/pranavprem/mediaserver",
         "https://github.com/pranavprem/homeassistant",
@@ -337,6 +338,7 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
     )
     allowed_links.add("#epilogue")
     assert {link["href"] for link in document.select("a")} == allowed_links
+    assert len(document.select("a", href="https://github.com/pranavprem")) == 2
     slots = [attrs for _, attrs in document.elements if "data-badge" in attrs]
     assert len(slots) == 11
     assert all(attrs.get("aria-hidden") == "true" and "aria-label" not in attrs for attrs in slots)
@@ -511,6 +513,9 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "Einstein Copilot",
         "configurable AI agent",
         "Atlas Reasoning Engine",
+        "I work on Atlas, the reasoning engine behind Agentforce",
+        "enterprise software, cloud technologies, and virtualization",
+        "with some data mining on the side",
         "AgentScript",
         "more deterministic in an LLM world",
         "voice, MCP, native context, memory",
@@ -532,6 +537,7 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         for tag, attrs in document.elements
     )
     for rejected in (
+        "explored chatbots, pizza ordering, rail tickets, and Reddit data",
         "The lucky part was finding my thing early: computer science and C/C++.",
         "Growing up has done very little to fix any of this.",
         "House captain introduced me",
@@ -599,7 +605,8 @@ def test_hobby_list_and_retired_repository_removal_are_server_rendered(client, p
         for item in parse_html(source).select("a")
         if item.get("href", "").startswith("https://github.com/")
     }
-    assert len(github_links) == 15
+    assert "https://github.com/pranavprem" in github_links
+    assert len(github_links - {"https://github.com/pranavprem"}) == 15
 
 
 def test_hud_discoveries_and_quest_targets_are_server_rendered(

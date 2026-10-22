@@ -383,9 +383,9 @@
         {
           "id": "sjsu-unlocked",
           "beat_labels": ["The 110% story", "Becoming a TA", "Random projects"],
-          "summary": "At SJSU, I was Prof. Paul's only student to score the maximum 110% and became his TA. I automated grading, built leaderboards, and explored chatbots, pizza ordering, rail tickets, and Reddit data.",
+          "summary": "At SJSU, I majored in enterprise software, cloud technologies, and virtualization, with some data mining on the side. I scored the maximum 110% in Prof. Paul's class and became his TA.",
           "heading": "Prof. Paul, 110%, and competitive homework",
-          "body": "SJSU was affordable and gave me the challenge I wanted. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nMy projects included SpartanBot, an Alexa-powered campus chatbot; Dragonstone Pizzeria, a pizza-ordering system; CUSR, a rail-ticket booking project; and Karma Mining, which scored and sorted Reddit comments.",
+          "body": "SJSU was affordable and gave me the challenge I wanted. In Professor Paul Nguyen's class, I scored 110%, the maximum possible, and was his only student to do it.\n\nI was promptly made his TA. I built a Docker/Python autograder and live student leaderboards.\n\nI studied enterprise software, cloud technologies, and virtualization, with some data mining on the side. My projects included SpartanBot, an Alexa-powered campus chatbot; Dragonstone Pizzeria, a pizza-ordering system; CUSR, a rail-ticket booking project; and Karma Mining, which scored and sorted Reddit comments.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
@@ -532,9 +532,9 @@
         {
           "id": "continuing-unlocked",
           "beat_labels": ["Building agents", "Voice & memory", "For my wages"],
-          "summary": "For my wages, I build systems connecting Salesforce CRM data to Agentforce. I also build context-aware DevOps tools for my team. As a Principal engineer, I work on Atlas, AgentScript, and the platform's agent capabilities. My enthusiasm, drive, and passion are at an all-time high.",
+          "summary": "For my wages, I build systems connecting Salesforce CRM data to Agentforce. I work on Atlas, the reasoning engine behind Agentforce, and build context-aware DevOps tools for my team. My enthusiasm, drive, and passion are at an all-time high.",
           "heading": "Principal, not finished",
-          "body": "Then came Agentforce: a platform where Salesforce customers could build their own agents. Basic topics and actions grew into the Atlas Reasoning Engine and AgentScript, making agent behavior more deterministic in an LLM world.\n\nWe're adding voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nFor my wages, I build systems that connect Salesforce CRM data to the agent platform, plus context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",
+          "body": "Then came Agentforce: a platform where Salesforce customers could build their own agents. I work on its Atlas Reasoning Engine. Basic topics and actions grew into Atlas and AgentScript, making behavior more deterministic in an LLM world.\n\nWe're adding voice, MCP, native context, memory, an agentic runtime, async processing, and long-running turns, actions, and sessions.\n\nFor my wages, I build systems that connect Salesforce CRM data to the agent platform, plus context-aware DevOps tools for my team: a work assistant and coding harness. My enthusiasm, drive, and passion are at an all-time high.",
           "source_refs": ["owner-brief", "supplied-documents"],
           "event": {
             "stats_after": {
