@@ -3,7 +3,7 @@ A life in side quests: a warm, original full-screen pixel-game autobiography for
 
 The point is to meet a person by exploring his story, not browse a resume with animations. A short route presents thirteen overviews; optional named topics keep the complete prose available without requiring every paragraph to be a slide. The Chapters map opens the whole route immediately. Games in Goa, illness, college, HSBC, SJSU, Google, Salesforce, and personal projects back in San Jose remain intact. The full main prose stays within 900 words, with a separate 550-word cap on the short route including titles. The Quest log collects 13 visited story summaries and 11 found discoveries. The voice is direct and dryly funny, without a lesson after every event or repeated reward paragraphs.
 
-Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The latest published copy/link revision is `6104181ef31e612a80a46de7c6ad5a7c6d684baa` on `origin/master`; all four exact-SHA jobs passed in [39741725786](https://github.com/pranavprem/portfolio/actions/runs/39741725786). It includes the SJSU study-focus correction, explicit Atlas work, and GitHub profile links alongside the reader-controlled pacing and grouped printing topic. [The handoff](docs/handoff.md) records release scans, local checks, and the earlier font/layout recovery.
+Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The latest published SJSU revision is `86039d2aebbc61eb9f0f1e0fd1388ca51cab6457` on `origin/master`; all four exact-SHA jobs passed in [39749040932](https://github.com/pranavprem/portfolio/actions/runs/39749040932). It retains the earlier study-focus correction, explicit Atlas work, GitHub profile links, reader-controlled pacing, and grouped printing topic. [The handoff](docs/handoff.md) records release scans, local checks, and the earlier font/layout recovery.
 
 This release retains the home illustration, separate gaming/hobby discoveries, wages-versus-fun transition, and GEC cameo correction. Local verification passed 255 non-browser tests and 273 browser cases; the runtime still contains exactly 16 files. System-font differences required compact-card spacing fixes, not smaller text or removed content.
 
@@ -11,7 +11,7 @@ This release retains the home illustration, separate gaming/hobby discoveries, w
 
 The pacing redesign responds to the owner's report of a reader stopping after college. A shorter route and passing correctness checks are not evidence of improved retention; that still needs another human review.
 
-The current SJSU follow-up names Prof. Paul Nguyen's Cloud Technologies class, features Alexa skills/AWS Lambda and Heroku, removes CUSR/Dragonstone Pizzeria from the featured list, and makes the second-place PayPal discovery's serverless work explicit. Its verification/publication status is recorded separately in the handoff; the previous release's CI is not evidence for these later edits.
+The published SJSU follow-up names Prof. Paul Nguyen's Cloud Technologies class, features Alexa skills/AWS Lambda and Heroku, removes CUSR/Dragonstone Pizzeria from the featured list, and makes the second-place PayPal discovery's serverless work explicit. Its own verification/publication evidence is recorded in the handoff; omitted projects remain in the complete source ledger.
 
 **Read First**
 The owner explicitly requires a complete, AI-agent-ready handoff so he never has to repeat his full story. These documents have different jobs:

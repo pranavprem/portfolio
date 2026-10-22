@@ -1,5 +1,5 @@
 **Portfolio Architecture**
-Status: approved chapter-adventure design with a published `master` baseline; current local copy follow-ups, exact-SHA browser verification, and outstanding public-deployment gates are recorded in [handoff.md](handoff.md).
+Status: approved chapter-adventure design and current copy refinements published on `master`; exact-SHA browser verification and outstanding public-deployment gates are recorded in [handoff.md](handoff.md).
 Prepared: 2026-09-06. Current revision: a short overview route with optional named topics and a chapter map. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
