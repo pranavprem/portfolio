@@ -11,6 +11,14 @@
     "eslint": "10.10.0",
     "prettier": "3.9.6"
   },
+  "overrides": {
+    "eslint": {
+      "minimatch": "^11.0.1",
+      "@eslint/config-array": {
+        "minimatch": "^11.0.1"
+      }
+    }
+  },
   "engines": {
     "node": ">=24"
   }
