@@ -228,3 +228,6 @@ The 2026-11-18 redesign replaced the click-through chapter adventure with a scro
 - Unity and the other optional tooling were evaluated and declined. Being handed tools is not a reason to use them.
 
 Not established by this pass: that readers stay longer. That needs people, not tests.
+
+**Hosted CI Still Finds What Local Runs Miss**
+The redesign passed 165 local browser cases and then failed hosted Chromium on Ubuntu fonts, the same class of miss as the earlier font recovery. The earlier lesson was recorded but not applied: the new suite had no wide-font stress until CI failed. The stress variant is now part of the enlargement test. Separately, a one-in-three local failure was first dismissed as a flake after one green rerun; running the suite twice more showed it was a real race between the module and the stylesheet that readers on a slow link would have hit. An unexplained intermittent failure is a defect until proven otherwise. The background CI watcher also exited 0 on a failed run because its output was piped through `tail`; the job results were read directly instead.

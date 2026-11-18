@@ -56,6 +56,8 @@ body {
   background: var(--page);
   color: var(--ink);
   font: 1rem/1.5 var(--body);
+  /* Wider fallback fonts and enlarged text must wrap, never widen the page. */
+  overflow-wrap: break-word;
 }
 
 a {
@@ -122,12 +124,17 @@ p {
 
 .route {
   position: relative;
+  max-width: 100%;
+  /* Stay on the right edge even when large text wraps the bar onto two rows,
+     so the menu below never opens off-screen. */
+  margin-left: auto;
 }
 
 .route summary {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0 0.5rem;
   min-height: 48px;
   padding: 0 0.875rem;
   border: 2px solid var(--line);
@@ -185,7 +192,7 @@ p {
 
 .route a {
   display: grid;
-  grid-template-columns: 2rem 1fr;
+  grid-template-columns: 2rem minmax(0, 1fr);
   align-items: baseline;
   min-height: 48px;
   padding: 0.625rem 0.875rem;
@@ -243,6 +250,8 @@ p {
   max-width: 42rem;
   margin: 0 auto;
   padding: 0 1rem 3rem;
+  /* The tilted stamp's corners may poke past the column; clip, don't scroll. */
+  overflow-x: clip;
 }
 
 .stop {
@@ -320,6 +329,7 @@ p {
 /* A milestone reads as an inked stamp, not another paragraph. */
 .stamp {
   display: inline-block;
+  max-width: 100%;
   padding: 0.25rem 0.625rem;
   border: 2px dashed var(--accent);
   color: var(--accent);
@@ -415,7 +425,7 @@ p {
 .extra-list {
   margin-bottom: 0;
   padding-left: 1.25rem;
-  columns: 2;
+  columns: 9rem 2;
 }
 
 .project-links {

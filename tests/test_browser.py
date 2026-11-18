@@ -604,6 +604,21 @@ def test_stale_stylesheet_restores_full_reading(page, live_server, story_documen
     assert_linear(page, story_document, snapshots)
 
 
+def test_slow_stylesheet_still_enhances_once_it_arrives(page, live_server, snapshots):
+    def delayed(route):
+        response = route.fetch()
+        page.wait_for_timeout(700)
+        route.fulfill(response=response)
+
+    page.route("**/static/story.css*", delayed)
+    page.goto(live_server + "/", wait_until="commit")
+    # Until the styles arrive the server document is simply readable.
+    expect(page.locator("#beat-college-unlocked-3")).to_be_attached()
+    expect(page.locator("html")).to_have_class("is-world")
+    go_to_stop(page, "moment-college-unlocked")
+    assert_state(page, expected_states(snapshots)[4])
+
+
 def test_print_shows_the_linear_document_with_extras_open(
     page, live_server, story_document, snapshots
 ):
@@ -685,22 +700,34 @@ def test_local_axe_accessibility(page, live_server, project_root, width, scheme)
         assert violations == [], (state, json.dumps(violations, indent=2))
 
 
-def test_text_enlargement_keeps_everything_reachable(page, live_server, story_document):
+@pytest.mark.parametrize("spacing", ["normal", "0.08em"])
+def test_text_enlargement_keeps_everything_reachable(page, live_server, story_document, spacing):
+    # Extra letter spacing stands in for wider fallback fonts: Ubuntu's defaults
+    # overflowed here in hosted CI while macOS system fonts fitted.
     page.set_viewport_size({"width": 320, "height": 700})
     page.add_init_script(
         "document.addEventListener('readystatechange', () => {"
-        " document.documentElement.style.fontSize = '200%'; });"
+        " const style = document.documentElement.style;"
+        f" style.fontSize = '200%'; style.letterSpacing = '{spacing}'; }});"
     )
     open_world(page, live_server)
     for card, paragraphs in paragraphs_of(story_document):
         go_to_stop(page, f"moment-{card['id']}")
         section = page.locator(f"#moment-{card['id']}")
-        if section.locator("details.more").count():
-            section.locator("details.more > summary").click()
+        for summary in section.locator("details.more > summary, details.extra > summary").all():
+            summary.click()
         last = section.locator(f"#beat-{card['id']}-{len(paragraphs) - 1}")
         last.scroll_into_view_if_needed()
         expect(last).to_be_in_viewport()
-        assert page.evaluate("document.documentElement.scrollWidth") <= 320
+        assert page.evaluate("document.documentElement.scrollWidth") <= 320, card["id"]
+    go_to_stop(page, "epilogue")
+    for summary in page.locator("#epilogue details > summary").all():
+        summary.click()
+    assert page.evaluate("document.documentElement.scrollWidth") <= 320
+    page.locator("#route > summary").click()
+    menu = page.locator("#route nav").bounding_box()
+    assert menu["x"] >= 0 and menu["x"] + menu["width"] <= 320
+    assert page.evaluate("document.documentElement.scrollWidth") <= 320
 
 
 def test_forced_colors_keep_the_sheet_and_extras_usable(page, live_server, snapshots):

@@ -140,6 +140,13 @@ function readGame(journey) {
   }
 }
 
+function stylesheetReady() {
+  const value = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue("--ui");
+  return value.trim() === "world";
+}
+
 function start() {
   const root = document.documentElement;
   const journey = document.getElementById("journey");
@@ -160,8 +167,7 @@ function start() {
   )
     return;
   // A stale or missing stylesheet cannot lay out the world; stay linear.
-  if (window.getComputedStyle(root).getPropertyValue("--ui").trim() !== "world")
-    return;
+  if (!stylesheetReady()) return;
 
   const game = readGame(journey);
   if (!game) return;
@@ -438,4 +444,13 @@ function start() {
   render();
 }
 
-if (typeof document !== "undefined") start();
+if (typeof document !== "undefined") {
+  if (stylesheetReady() || document.readyState === "complete") {
+    start();
+  } else {
+    // The module can run before a slow stylesheet arrives. `load` fires once
+    // every resource has settled, success or failure, so this wait is bounded;
+    // if the stylesheet never loads, start() leaves the linear document.
+    window.addEventListener("load", start, { once: true });
+  }
+}
