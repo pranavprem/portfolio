@@ -213,3 +213,18 @@ Visual review found that a two-line result heading left the short-phone popup sh
 Final local verification passed 255 non-browser tests, 273 browser cases, twelve targeted Ubuntu WebKit layout checks, lint/format, and a healthy rebuilt container with the unchanged 16-file/nonroot/read-only boundary. The route measures 444 overview words and 794 full-copy words. Two lint failures were overlong assertion strings and were corrected without relaxing their checks. Publication evidence for this refinement is recorded only after its own scan and hosted run, separately from `6104181` above.
 
 The refinement was then published as `86039d2aebbc61eb9f0f1e0fd1388ca51cab6457`. All four jobs passed in [39749040932](https://github.com/pranavprem/portfolio/actions/runs/39749040932). Staged and outgoing scans each covered one tree/43 blobs; the additional main-range scan covered nine trees/387 blobs, all with zero findings. This documentation-only follow-up records completed checks rather than projecting success from the previous release. Publication remains separate from a main-branch merge or production redeployment.
+
+**Replacing The Interface**
+The 2026-11-18 redesign replaced the click-through chapter adventure with a scrolling world. Evidence is in the handoff's current table.
+
+- The earlier pacing work treated drop-off as a text-length problem and cut required clicks from 35 to 13. The owner still found it text-heavy and generic. The lesson is that the interaction model was the defect: thirteen paragraph screens behind a button is a slideshow however short each one is. Counting words did not reveal that.
+- A word budget still needs measuring, not assuming. The first version of the new layout showed 567 default-visible words, more than the 444 it replaced, because headings, period labels, disclosure labels, and stamps add up. Moving two paragraph breaks and using a plain More label brought it to 465. The claim "less text" was only true after it was counted.
+- Keeping the validated schema and backend untouched kept 248 of 255 server tests passing through a full UI rewrite and confined risk to three files. The cost is unrendered fields left in the JSON, recorded as a follow-up rather than hidden.
+- A sentence the owner had specifically requested lived only in a summary field. Dropping a rendering path can silently drop content; the phrase-level regression test caught it. It was reported for a decision rather than papered over with new wording.
+- Contracts written as mechanisms ("topic", "popup", "Quest log") had to be retired wholesale when the mechanism changed, while contracts written as outcomes ("every paragraph reachable", "complete without JavaScript") carried over unchanged. Future rules should prefer the second form.
+- The in-app browser's screenshots went stale during review and showed a closed menu that was in fact open. Reading DOM state, then capturing with Playwright, resolved it. A screenshot is evidence only if it is known to be current.
+- A Firefox-only failure looked like a product bug (a scroll being undone). Probing showed it needed `scrollIntoView` followed by `scrollTo` and did not occur with wheel input or without the site's script. An `overflow-anchor` rule added on a wrong first hypothesis was removed rather than left in as superstition.
+- The owner read "in your voice" as a voiceover. Writing-tone jargon should be said plainly; the no-audio rule is now in the contributor contract.
+- Unity and the other optional tooling were evaluated and declined. Being handed tools is not a reason to use them.
+
+Not established by this pass: that readers stay longer. That needs people, not tests.

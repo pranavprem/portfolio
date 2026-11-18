@@ -1,6 +1,6 @@
 **Portfolio Architecture**
-Status: approved chapter-adventure design and current copy refinements published on `master`; exact-SHA browser verification and outstanding public-deployment gates are recorded in [handoff.md](handoff.md).
-Prepared: 2026-09-06. Current revision: a short overview route with optional named topics and a chapter map. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
+Status: the scrolling-world redesign of 2026-11-18 is the current design, implemented and locally verified but not committed or deployed; see [handoff.md](handoff.md). Sections below it that describe screens, topics, the Chapters overlay, the Quest log, popups, or a fixed viewport are the retired chapter-adventure design, kept as history and rationale.
+Prepared: 2026-09-06. Current revision: one scrolling pixel world with collapsed stops. Owner: Pranav Prem. Canonical origin: `https://pranavprem.com`.
 
 **Purpose**
 This is a warm pixel-game autobiography, not a resume with animation beside it. The enhanced site is a full-screen, linear chapter adventure. The landscape, current chapter object, dialogue, discoveries, stats, milestones, and controls form one game scene. The complete human story, including uncertainty, illness, boredom, burnout, hobbies, and current joy, remains more important than game chrome.
@@ -17,6 +17,30 @@ The public repository is `https://github.com/pranavprem/portfolio`. The private 
 - Mobile is a first-class game layout with a scene, dialogue panel, and fixed thumb controls, not a compressed desktop essay.
 - No living avatar, mascot, pet, or companion appears. Eleven original objects identify the chapters.
 - No framework, game engine, canvas/WebGL dependency, runtime npm, CMS, analytics, remote font, embed, or remote runtime request is introduced.
+
+**Scrolling World**
+The owner asked for a new UI: the chapter adventure looked like generic generated work, had too much text, and did not hold attention. He left tooling to the implementer and later ruled out any audio. Main-session design, implementation, and review; no agents.
+
+Diagnosis. The original pixel landscapes were the only distinctive element, yet they sat in a small box surrounded by a stat dashboard, counters, two overlay buttons, topic buttons, hints, and Back/Next. Reading meant thirteen clicks through paragraphs. The default text was a résumé-style summary while the lines in the owner's own tone sat behind optional buttons.
+
+Approaches considered.
+
+- Reskin the existing screens. Cheapest, but keeps the click-through slideshow that readers abandoned.
+- A plain editorial timeline. Clean, but discards the pixel world, the one thing that is his.
+- Unity WebGL. Rejected: a build of tens of megabytes served from a NAS through a tunnel, slow on phones, and incompatible with server-rendered text, no-JS reading, and the strict CSP. The problem was pacing and chrome, not rendering power.
+- **Chosen: one continuous world driven by ordinary scrolling.** Scrolling needs no instruction, the art becomes the largest thing on screen, and text becomes short captions over it.
+
+Design.
+
+- Document structure: a top bar (wordmark, Stops `<details>`), a sticky stage, then fourteen `section.stop` elements in normal flow. The stage holds a strip of five scene images with 8-unit gutters, the chapter object, two decorative encounters, eleven extra buttons, a veil, and the stat sheet. Scene coordinates are in 320 x 180 art units; `--u` (CSS px per unit) is set from the stage height so one scene fills the height.
+- Scroll mapping (`locate`): the stop whose top has crossed the middle of the reading area is active. The last 45% of each stop's height is the walk to the next stop, eased with smoothstep; before that the scene holds still for reading. State is a pure function of scroll position, so jumps, reloads, and reverse scrolling land on identical values.
+- Camera: one position per stop, computed on resize. It centres the span of the object and that stop's extras in the free area (right of the placard on wide screens), then guarantees extras stay on screen when the span fits, then guarantees the object is on screen, then clamps to the strip. Positions between stops are linear in walk progress.
+- Stat state (`deriveStop`): index 0 is the opening snapshot, 1..12 the authored `stats_after`, 13 the ending holding the final snapshot with the home scene. Snapshots are absolute, never summed.
+- Text budget: a stop's lead is its first authored paragraph, unchanged. Two paragraph breaks were moved (SJSU, Bots) and the ending's first paragraph was split in the template so leads are one or two sentences. No sentence was added, removed, or reworded.
+- Failure model: the script enhances only if the stylesheet sentinel, the projection shape, the stop ids and order, five tiles, five sheet rows, and thirteen route links all match. Any mismatch leaves the linear document. There is no fail-closed gate and nothing waits on an event, so there is no liveness bound to state.
+- Security: no new route, input, dependency, remote resource, storage, or CSP change. Positions are applied through CSSOM transforms and one custom property, which the enforced `style-src-attr 'none'` policy permits. The runtime image still holds the same 16 files.
+
+Deviations from the previously approved contract, all owner-authorized by the redesign request: the fixed-viewport game, Start/Next/Back, swipe handling, the Chapters overlay, the 24-record Quest log and its visited/found journal, scene popups, named topics, per-topic home marker positions, and milestone descriptions are retired. Summaries, beat labels, and badge descriptions remain in validated JSON but are not rendered.
 
 **Experience Contract**
 

@@ -1,4 +1,4 @@
-"""Real-engine checks for the chapter-adventure enhancement and readable fallback."""
+"""Real-engine checks for the scrolling-world enhancement and its readable fallback."""
 
 import html
 import json
@@ -12,7 +12,8 @@ from playwright.sync_api import expect
 
 pytestmark = pytest.mark.browser
 
-OBJECTS_BY_SNAPSHOT = [
+# Independent oracle: one traveller object per chapter, held through the ending.
+OBJECTS = [
     "controller",
     "controller",
     "backpack",
@@ -26,122 +27,154 @@ OBJECTS_BY_SNAPSHOT = [
     "cloud-terminal",
     "bot-console",
     "agent-nodes",
+    "agent-nodes",
 ]
+PLACES = {"goa": "Goa", "pune": "Pune", "san-jose": "San Jose", "bay-area": "San Francisco"}
+VIEWPORTS = [(320, 568), (375, 667), (390, 844), (1440, 1000)]
 
-HUD = """() => ({
-  index: Number(document.getElementById('journey').dataset.checkpointIndex),
-  screen: Number(document.getElementById('journey').dataset.screenIndex),
-  beat: Number(document.getElementById('journey').dataset.beatIndex),
-  stats: Object.fromEntries([...document.querySelectorAll('[data-stat]')]
-    .map(row => [row.dataset.stat, Number(row.querySelector('.stat-value').textContent)])),
-  pips: Object.fromEntries([...document.querySelectorAll('[data-stat]')]
-    .map(row => [row.dataset.stat, row.querySelectorAll('.stat-pips > .filled').length])),
-  badges: [...document.querySelectorAll('li[data-badge].earned')].map(node => node.dataset.badge),
-   region: document.getElementById('overworld').dataset.region,
-   scene: document.querySelector('[data-scene-art].current').dataset.sceneArt,
-  mood: document.getElementById('overworld').dataset.mood,
-  object: document.querySelector('#journey-marker .object-sprite.current').dataset.objectSprite,
-  transform: document.getElementById('journey-object-track').getAttribute('transform')
-})"""
+STATE = """() => {
+  const stage = document.getElementById('stage');
+  const rows = [...stage.querySelectorAll('[data-stat]')];
+  return {
+    stop: stage.dataset.stop,
+    mood: stage.dataset.mood,
+    stats: Object.fromEntries(rows.map(row =>
+      [row.dataset.stat, Number(row.querySelector('.stat-value').textContent)])),
+    pips: Object.fromEntries(rows.map(row =>
+      [row.dataset.stat, row.querySelectorAll('.stat-pips > .on').length])),
+    deltas: Object.fromEntries(rows.map(row =>
+      [row.dataset.stat, row.querySelector('.stat-delta').textContent])),
+    object: document.querySelector('#marker .object-sprite.current').dataset.objectSprite,
+    place: document.getElementById('place').textContent,
+    count: document.getElementById('route-count').textContent,
+    current: [...document.querySelectorAll('#route a[aria-current="true"]')]
+      .map(link => link.getAttribute('href')),
+  };
+}"""
+
+GEOMETRY = """() => {
+  const box = node => {
+    const {left, right, top, bottom, width, height} = node.getBoundingClientRect();
+    return {left, right, top, bottom, width, height};
+  };
+  return {
+    viewport: box(document.querySelector('.viewport')),
+    marker: box(document.getElementById('marker')),
+    world: box(document.getElementById('world')),
+    hotspots: [...document.querySelectorAll('.hotspot:not([hidden])')].map(node =>
+      ({id: node.dataset.extraTarget, ...box(node)})),
+  };
+}"""
 
 
 def settle(page):
     page.evaluate("""async () => {
       await document.fonts.ready;
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      for (let i = 0; i < 4; i += 1) await new Promise(resolve => requestAnimationFrame(resolve));
     }""")
 
 
-def open_game(page, live_server):
+def open_world(page, live_server):
     response = page.goto(live_server + "/")
     assert response.status == 200
-    expect(page.locator("html")).to_have_class("enhanced")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-    expect(page.locator('.game-screen[data-screen-kind="intro"]')).to_be_visible()
+    expect(page.locator("html")).to_have_class("is-world")
+    expect(page.locator("#stage")).to_have_attribute("data-stop", "title")
     settle(page)
 
 
-def assert_hud(page, expected):
-    expect(page.locator("#character-sheet")).to_be_visible()
-    expect(page.locator("#character-sheet")).not_to_have_attribute("aria-hidden", "true")
-    actual = page.evaluate(HUD)
-    for key in ("index", "stats", "badges", "mood"):
-        assert actual[key] == expected[key], (key, actual, expected)
-    assert actual["region"] == ("san-jose" if actual["screen"] == 13 else expected["region"])
-    assert actual["scene"] == ("san-jose-home" if actual["screen"] == 13 else expected["region"])
-    assert actual["object"] == OBJECTS_BY_SNAPSHOT[expected["index"] + 1]
-    assert actual["pips"] == expected["stats"]
-    expect(page.locator("#badge-count")).to_have_text(f"{len(expected['badges']):02d}")
+def section_ids(snapshots):
+    return ["top", *(f"moment-{item['id']}" for item in snapshots[1:]), "epilogue"]
+
+
+def go_to_stop(page, section_id):
+    # An instant anchor-style jump: the state must not depend on the route taken.
+    page.evaluate("id => document.getElementById(id).scrollIntoView()", section_id)
+    settle(page)
+
+
+def expected_states(snapshots):
+    """Title, twelve authored checkpoints, then the ending holding the final sheet."""
+    states = []
+    for index, item in enumerate([*snapshots, snapshots[-1]]):
+        ending = index == len(snapshots)
+        states.append(
+            {
+                "stop": "epilogue" if ending else item["id"] or "title",
+                "mood": item["mood"],
+                "stats": item["stats"],
+                "pips": item["stats"],
+                "object": OBJECTS[index],
+                "place": "San Jose" if ending else PLACES[item["region"]],
+                "count": "" if index == 0 else f"{index} / 13",
+            }
+        )
+    return states
+
+
+def assert_state(page, expected):
+    actual = page.evaluate(STATE)
+    for key, value in expected.items():
+        assert actual[key] == value, (key, actual, expected)
     return actual
 
 
-def advance_to_next_screen(page):
-    before = int(page.locator("#journey").get_attribute("data-screen-index"))
-    page.locator('[data-action="advance"]').click()
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", str(before + 1))
-    settle(page)
-    return before + 1
-
-
-def go_to_event(page, index):
-    target_screen = index + 1
-    while int(page.locator("#journey").get_attribute("data-screen-index")) < target_screen:
-        advance_to_next_screen(page)
-    expect(page.locator("#journey")).to_have_attribute("data-checkpoint-index", str(index))
+def paragraphs_of(story_document):
+    for chapter in story_document["chapters"]:
+        for card in chapter["cards"]:
+            yield card, card["body"].split("\n\n")
 
 
 def assert_complete_story(page, story_document, snapshots, *, visible):
-    expect(page.locator(".chapter")).to_have_count(11)
-    cards = page.locator(".story-card[data-checkpoint]")
-    expect(cards).to_have_count(12)
-    for card in [card for chapter in story_document["chapters"] for card in chapter["cards"]]:
-        node = page.locator(f'[data-checkpoint="{card["id"]}"]')
-        expect(node.locator(".story-prose")).to_have_text(card["body"].split("\n\n"))
-        if visible:
-            expect(node.locator(".dialogue-card > h3")).to_be_visible()
-            for paragraph in node.locator(".story-prose").all():
-                expect(paragraph).to_be_visible()
+    expect(page.locator("section.stop")).to_have_count(14)
+    for card, paragraphs in paragraphs_of(story_document):
+        for index, paragraph in enumerate(paragraphs):
+            node = page.locator(f"#beat-{card['id']}-{index}")
+            expect(node).to_have_text(paragraph)
+            if visible:
+                expect(node).to_be_visible()
     for index, expected in enumerate(snapshots[1:]):
-        expect(cards.nth(index).locator(".chapter-stats dd")).to_have_text(
+        expect(page.locator(".chapter-stats").nth(index).locator("dd")).to_have_text(
             [f"{value}/10" for value in expected["stats"].values()]
         )
     for discovery in story_document["discoveries"]:
         node = page.locator(f"#discovery-{discovery['id']}")
-        expect(node.locator(".discovery-copy")).to_have_text(discovery["body"].split("\n\n"))
-        expect(node.locator(".discovery-list > li")).to_have_text(discovery.get("list_items", []))
+        expect(node.locator(":scope > p:not(.project-links)")).to_have_text(
+            discovery["body"].split("\n\n")
+        )
+        expect(node.locator(".extra-list > li")).to_have_text(discovery.get("list_items", []))
+        expect(node.locator(".project-links a")).to_have_count(len(discovery["links"]))
         if visible:
-            expect(node).to_be_visible()
-            for item in node.locator(".discovery-list > li").all():
-                expect(item).to_be_visible()
-    home = page.locator("#epilogue .fallback-landscape img")
-    expect(home).to_have_attribute("src", re.compile(r"/static/art/san-jose-home\.svg\?v="))
-    if visible:
-        expect(home).to_be_visible()
-    printing = page.locator("#beat-epilogue-2")
-    expect(printing.locator(".story-prose")).to_contain_text(
-        "MakerWorld, Bambu Studio, and Autodesk Fusion"
-    )
-    expect(printing.locator(".ending-note")).to_have_text(
-        "Retail therapy? Nah, I'll make my own stuff."
-    )
+            expect(node.locator(":scope > p").first).to_be_visible()
+    printing = page.locator("#beat-epilogue-3")
+    expect(printing).to_contain_text("MakerWorld, Bambu Studio, and Autodesk Fusion")
+    expect(printing).to_contain_text("Retail therapy? Nah, I'll make my own stuff.")
     expect(printing.locator(".pla-meme")).to_have_text("I'm 40% PLA.")
     if visible:
-        for piece in printing.locator(".story-prose, .ending-note, .pla-meme").all():
-            expect(piece).to_be_visible()
-    expect(page.locator(".achievement-note")).to_have_count(24)
-    if visible:
-        for item in page.locator(".achievement-note").all():
-            expect(item).to_be_visible()
-    expect(page.locator(".loot")).to_have_count(0)
-    profile_links = page.locator('a[href="https://github.com/pranavprem"]')
-    expect(profile_links).to_have_count(2)
-    if visible:
-        for link in profile_links.all():
-            expect(link).to_be_visible()
-    for badge in story_document["badges"]:
-        expect(page.locator(f'[data-quest-badge="{badge["id"]}"] .milestone-detail')).to_have_text(
-            badge["description"]
+        expect(printing.locator(".pla-meme")).to_be_visible()
+        expect(page.locator(".postcard img")).to_have_count(13)
+        expect(page.locator(".postcard img").first).to_be_visible()
+    expect(page.locator('a[href="mailto:pranavprem93@gmail.com"]')).to_have_count(1)
+
+
+def assert_linear(page, story_document, snapshots):
+    expect(page.locator("html")).not_to_have_class("is-world")
+    expect(page.locator("#stage")).to_be_hidden()
+    assert_complete_story(page, story_document, snapshots, visible=True)
+
+
+def serve_with_game(page, live_server, projection):
+    def replace(route):
+        response = route.fetch()
+        source = response.text()
+        attribute = re.search(r'data-game="([^"]*)"', source)
+        assert attribute is not None
+        value = projection if isinstance(projection, str) else json.dumps(projection)
+        route.fulfill(
+            response=response, body=source.replace(attribute[1], html.escape(value, quote=True))
         )
+
+    page.route(live_server + "/", replace)
+    page.goto(live_server + "/")
 
 
 @pytest.fixture
@@ -159,356 +192,321 @@ def observations(page):
     return result
 
 
-def test_pure_chapter_state_is_absolute_and_order_independent(page, live_server, game, snapshots):
-    open_game(page, live_server)
-    indexes = list(range(-4, 17)) * 3
-    random.Random(20261004).shuffle(indexes)  # noqa: S311 - deterministic test order
+def test_pure_stop_state_is_absolute_and_order_independent(page, live_server, game, snapshots):
+    open_world(page, live_server)
+    # Import the already-loaded versioned module so the page is not enhanced twice.
     result = page.evaluate(
-        """async ({game, indexes}) => {
-          const {deriveState} = await import(document.querySelector('script[type="module"]').src);
-          const before = JSON.stringify(game);
-          return {states: indexes.map(index => deriveState(game, index)),
-            unchanged: JSON.stringify(game) === before};
+        """async ({game, order}) => {
+          const src = document.querySelector('script[type="module"]').src;
+          const {deriveStop, worldX, locate, isValidGame} = await import(src);
+          return {
+            valid: isValidGame(game),
+            stops: order.map(index => [index, deriveStop(game, index)]),
+            clamped: [deriveStop(game, -5).id, deriveStop(game, 99).id, deriveStop(game, NaN).id],
+            tiles: ['goa', 'pune', 'san-jose', 'bay-area', 'san-jose-home']
+              .map(tile => worldX(tile, 0)),
+            held: locate([0, 1000, 2000], 3000, 500),
+            walking: locate([0, 1000, 2000], 3000, 900),
+            arrived: locate([0, 1000, 2000], 3000, 1000),
+            last: locate([0, 1000, 2000], 3000, 2990),
+          };
         }""",
-        {"game": game, "indexes": indexes},
+        {"game": game, "order": random.Random(7).sample(range(14), 14)},  # noqa: S311
     )
-    assert result["unchanged"]
-    seen = {}
-    for requested, state in zip(indexes, result["states"], strict=True):
-        index = max(-1, min(requested, 11))
-        expected = snapshots[index + 1]
-        for key in ("index", "stats", "badges", "region", "mood"):
-            assert state[key] == expected[key]
-        assert state["object"] == OBJECTS_BY_SNAPSHOT[index + 1]
-        assert 20 <= state["position"]["x"] <= 300
-        assert 0 <= state["position"]["y"] <= 180
-        if requested in seen:
-            assert state == seen[requested]
-        seen[requested] = state
+    assert result["valid"] is True
+    assert result["clamped"] == ["title", "epilogue", "title"]
+    assert result["tiles"] == [0, 328, 656, 984, 1312]
+    for index, stop in result["stops"]:
+        expected = snapshots[min(index, 12)]
+        assert stop["stats"] == expected["stats"], index
+        assert stop["mood"] == expected["mood"], index
+        assert stop["tile"] == ("san-jose-home" if index == 13 else expected["region"]), index
+    assert result["held"] == {"index": 0, "travel": 0}
+    assert result["walking"]["index"] == 0 and 0 < result["walking"]["travel"] < 1
+    assert result["arrived"] == {"index": 1, "travel": 0}
+    assert result["last"] == {"index": 2, "travel": 0}
 
 
-def test_buttons_play_every_chapter_and_backtrack_exactly(page, live_server, snapshots):
-    open_game(page, live_server)
-    assert_hud(page, snapshots[0])
-    for index in range(12):
-        assert advance_to_next_screen(page) == index + 1
-        state = assert_hud(page, snapshots[index + 1])
-        expect(page.locator(".game-screen.is-current-screen")).to_have_attribute(
-            "data-checkpoint", snapshots[index + 1]["id"]
-        )
-        expect(page.locator("#sheet-status")).to_contain_text("Chapter")
-        assert state["screen"] == index + 1
-
-    assert advance_to_next_screen(page) == 13
-    expect(page.locator('.game-screen[data-screen-kind="ending"]')).to_be_visible()
-    assert_hud(page, snapshots[-1])
-
-    # The overview route is one action per stop, with exact absolute state on Back.
-    for target in range(12, -1, -1):
-        page.locator('[data-action="back"]').click()
-        expect(page.locator("#journey")).to_have_attribute("data-screen-index", str(target))
-        expect(page.locator("#journey")).to_have_attribute("data-beat-index", "-1")
-        assert_hud(page, snapshots[target])
-
-
-@pytest.mark.parametrize("reduced", [False, True])
-def test_epilogue_returns_home_and_visits_its_workstations_without_changing_stats(
-    page, live_server, snapshots, home_positions, reduced
-):
-    page.emulate_media(reduced_motion="reduce" if reduced else "no-preference")
-    open_game(page, live_server)
-    go_to_event(page, 11)
-    expect(page.locator('[data-scene-art="bay-area"]')).to_be_visible()
-    assert advance_to_next_screen(page) == 13
-    expect(page.locator("#world-label")).to_have_text("San Jose")
-    expect(page.locator('[data-scene-art="san-jose-home"]')).to_be_visible()
-    expect(page.locator('[data-scene-art="bay-area"]')).to_be_hidden()
-    for beat, (x, y) in enumerate(home_positions):
-        page.locator(f'#epilogue [data-action="topic"][data-beat="{beat}"]').click()
-        expect(page.locator("#journey")).to_have_attribute("data-beat-index", str(beat))
-        state = assert_hud(page, snapshots[-1])
-        assert state["transform"] == f"translate({x} {y})"
-        if reduced:
-            assert (
-                page.locator("#journey-object-track").evaluate(
-                    "node => getComputedStyle(node).transitionDuration"
-                )
-                == "0s"
-            )
-
-    page.wait_for_timeout(500)
-    assert page.evaluate("document.getAnimations().length") == 0
-    page.locator('[data-action="back"]').click()
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "12")
-    expect(page.locator("#world-label")).to_have_text("San Francisco")
-    expect(page.locator('[data-scene-art="san-jose-home"]')).to_be_hidden()
-    assert_hud(page, snapshots[-1])
-
-    page.locator('[data-action="toggle-quests"]').click()
-    page.locator('#quest-epilogue [data-action="revisit"]').click()
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "13")
-    expect(page.locator("#world-label")).to_have_text("San Jose")
-    assert assert_hud(page, snapshots[-1])["transform"] == "translate(119 165)"
-    for discovery_id in ("off-clock", "hobbies"):
-        before = page.evaluate(HUD)
-        page.locator(f'[data-discovery="{discovery_id}"]').click()
-        expect(page.locator(f"#discovery-{discovery_id}")).to_be_visible()
-        assert page.evaluate(HUD) == before
-        page.keyboard.press("Escape")
-
-
-def test_dialogue_is_part_of_play_and_scene_hotspots_reveal_discoveries(
-    page, live_server, story_document
-):
-    open_game(page, live_server)
-    go_to_event(page, 1)
-    beats = page.locator(".game-screen.is-current-screen .dialogue-beat")
-    expect(beats).to_have_count(2)
-    expect(beats.nth(0)).to_be_hidden()
-    expect(beats.nth(1)).to_be_hidden()
-    expect(page.locator(".is-current-screen .chapter-preview")).to_be_visible()
-    expect(page.locator(".scene-hotspot:visible")).to_have_count(0)
-    topic = page.locator('.is-current-screen [data-action="topic"][data-beat="1"]')
-    topic.click()
-    expect(beats.nth(0)).to_be_hidden()
-    expect(beats.nth(1)).to_be_visible()
-    expect(beats.nth(1)).to_be_focused()
-    page.keyboard.press("Escape")
-    expect(page.locator(".is-current-screen .chapter-preview")).to_be_visible()
-    expect(topic).to_be_focused()
-    expect(page.locator("#quest-school-unlocked")).to_have_class(re.compile("is-unlocked"))
-    go_to_event(page, 3)
-    screen = page.locator(".game-screen.is-current-screen")
-    beats = screen.locator(".dialogue-beat")
-    expect(beats).to_have_count(4)
-    expect(beats.nth(0)).to_be_hidden()
-    hotspot = page.locator('[data-discovery="gec-extras"]')
-    expect(hotspot).to_be_visible()
-    hotspot.click()
-    expect(screen.locator(".dialogue-card")).to_be_visible()
-    popup = page.locator("#discovery-gec-extras")
-    expect(popup).to_be_visible()
-    expect(popup.locator("h3")).to_be_focused()
-    expect(popup.locator(".discovery-copy")).to_have_text(
-        story_document["discoveries"][0]["body"].split("\n\n")
-    )
-    expect(page.locator("#discovery-early-projects")).to_be_hidden()
-    expect(page.locator("#quest-gec-extras")).to_have_class(re.compile("is-unlocked"))
-    expect(page.locator("#quest-early-projects")).not_to_have_class(re.compile("is-unlocked"))
-    expect(page.locator("#advance-label")).to_have_text("Return to story")
-    page.locator('[data-action="advance"]').click()
-    expect(screen.locator(".dialogue-card")).to_be_visible()
-    expect(popup).to_be_hidden()
-    expect(hotspot).to_be_focused()
-
-    expect(page.locator("#journey")).to_have_attribute("data-beat-index", "-1")
-
-
-def test_printing_tools_and_both_jokes_share_one_optional_topic(page, live_server, snapshots):
-    open_game(page, live_server)
-    page.locator("#chapters-button").click()
-    page.locator('#chapter-map [data-map-screen="13"]').click()
-    screen = page.locator("#epilogue")
-    expect(screen.locator('.topic-button:not([data-beat="-1"])')).to_have_text(
-        ["My house", "My agents", "3D printing"]
-    )
-    expect(screen.locator(".chapter-preview")).not_to_contain_text("PLA")
-    expect(screen.locator(".dialogue-beat")).to_have_count(3)
-    printing = screen.locator("#beat-epilogue-2")
-    expect(printing).to_be_hidden()
-    screen.get_by_role("button", name="3D printing", exact=True).click()
-    for piece in printing.locator(".story-prose, .ending-note, .pla-meme").all():
-        expect(piece).to_be_visible()
-    expect(printing.locator(".pla-meme img")).to_be_visible()
-    assert assert_hud(page, snapshots[-1])["transform"] == "translate(161 165)"
-    assert screen.text_content().count("I'm 40% PLA.") == 1
-    page.keyboard.press("Escape")
-    expect(screen.locator(".chapter-preview")).to_be_visible()
-    expect(screen.get_by_role("button", name="3D printing", exact=True)).to_be_focused()
-
-
-def test_keyboard_and_touch_swipe_are_complete_game_controls(page, live_server):
-    open_game(page, live_server)
-    page.keyboard.press("ArrowRight")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "1")
-    page.keyboard.press("ArrowLeft")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-
-    page.evaluate("""() => {
-      const shell = document.querySelector('.game-shell');
-      shell.dispatchEvent(new PointerEvent('pointerdown', {
-        pointerType: 'touch', isPrimary: true, clientX: 300, clientY: 300, bubbles: true
-      }));
-      shell.dispatchEvent(new PointerEvent('pointerup', {
-        pointerType: 'touch', isPrimary: true, clientX: 210, clientY: 305, bubbles: true
-      }));
-    }""")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "1")
-    page.evaluate("""() => {
-      const shell = document.querySelector('.game-shell');
-      shell.dispatchEvent(new PointerEvent('pointerdown', {
-        pointerType: 'touch', isPrimary: true, clientX: 120, clientY: 300, bubbles: true
-      }));
-      shell.dispatchEvent(new PointerEvent('pointerup', {
-        pointerType: 'touch', isPrimary: true, clientX: 220, clientY: 304, bubbles: true
-      }));
-    }""")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-    page.locator('[data-action="toggle-quests"]').focus()
-    page.keyboard.press("ArrowRight")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-
-
-@pytest.mark.parametrize("width,height", [(320, 568), (375, 667), (390, 844), (1440, 1000)])
-def test_chapter_map_is_available_from_the_start_and_only_records_visited_stops(
+@pytest.mark.parametrize("width,height", [(390, 844), (1440, 1000)])
+def test_every_stop_shows_its_absolute_sheet_in_any_order(
     page, live_server, snapshots, width, height
 ):
     page.set_viewport_size({"width": width, "height": height})
-    open_game(page, live_server)
-    initial_url = page.url
-    history_length = page.evaluate("history.length")
-    opener = page.locator(".browse-button")
-    opener.click()
-    panel = page.locator("#chapter-map")
-    expect(panel).to_be_visible()
-    expect(panel).to_have_attribute("aria-modal", "true")
-    expect(panel.locator(".route-link")).to_have_count(13)
-    expect(page.locator("#bonus")).to_be_hidden()
-    assert page.locator(".game-controls").get_attribute("inert") is not None
-    page.keyboard.press("Shift+Tab")
-    expect(panel.locator(".route-link").last).to_be_focused()
-    expect(panel.locator(".panel-close")).to_be_in_viewport()
-    page.keyboard.press("Tab")
-    expect(panel.locator(".panel-close")).to_be_focused()
-    page.keyboard.press("ArrowRight")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-    page.keyboard.press("Escape")
-    expect(opener).to_be_focused()
-    page.locator("#chapters-button").click()
-    expect(panel.locator(".route-link").first).to_be_in_viewport()
-    panel.locator('[data-map-screen="12"]').click()
-    expect(panel).to_be_hidden()
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "12")
-    expect(page.locator(".is-current-screen h2")).to_be_focused()
-    assert_hud(page, snapshots[-1])
-    expect(page.locator(".achievement-note.is-unlocked")).to_have_count(1)
-    expect(page.locator("#quest-continuing-unlocked")).to_have_class(re.compile("is-unlocked"))
-    page.locator("#chapters-button").click()
-    expect(panel.locator('[data-map-screen="12"]')).to_have_attribute("aria-current", "step")
-    panel.locator('[data-map-screen="13"]').click()
-    expect(page.locator("#world-label")).to_have_text("San Jose")
-    assert_hud(page, snapshots[-1])
-    expect(page.locator(".achievement-note.is-unlocked")).to_have_count(2)
-    expect(page.locator('[data-quest-kind="discovery"].is-unlocked')).to_have_count(0)
-    assert page.url == initial_url
-    assert page.evaluate("history.length") == history_length
-    page.reload()
-    expect(page.locator(".achievement-note.is-unlocked")).to_have_count(0)
+    open_world(page, live_server)
+    ids = section_ids(snapshots)
+    states = expected_states(snapshots)
+    order = list(range(14)) + random.Random(11).sample(range(14), 14)  # noqa: S311
+    for index in order:
+        go_to_stop(page, ids[index])
+        actual = assert_state(page, states[index])
+        assert actual["current"] == ([] if index == 0 else ["#" + ids[index]])
+    go_to_stop(page, "moment-unexpected-detour")
+    # Arrows carry the direction; the change is relative to the previous stop in the story.
+    assert page.evaluate(STATE)["deltas"] == {
+        "coding": "",
+        "enthusiasm": "▼3",
+        "vitality": "▼5",
+        "charisma": "",
+        "experience": "",
+    }
 
 
-def test_topics_preserve_state_and_reject_forged_controls(
-    page, live_server, snapshots, observations
+@pytest.mark.parametrize("width,height", VIEWPORTS)
+def test_camera_keeps_traveller_and_current_extras_in_the_scene(
+    page, live_server, snapshots, quest_targets, width, height
 ):
-    open_game(page, live_server)
-    go_to_event(page, 3)
-    page.locator('.is-current-screen [data-action="topic"][data-beat="3"]').click()
-    assert_hud(page, snapshots[4])
-    before = page.evaluate(HUD)
-    page.evaluate("""() => {
-      const source = document.querySelector('.is-current-screen [data-action="topic"]');
-      const fake = source.cloneNode(true);
-      fake.dataset.beat = '900';
-      source.parentElement.append(fake);
-      fake.click();
-      fake.remove();
-    }""")
-    assert page.evaluate(HUD) == before
-    assert observations["pageerrors"] == []
-    page.keyboard.press("Escape")
-    expect(page.locator("#journey")).to_have_attribute("data-beat-index", "-1")
-    assert_hud(page, snapshots[4])
-
-
-@pytest.mark.parametrize(
-    "width,height", [(320, 568), (375, 667), (390, 844), (768, 1024), (1440, 1000)]
-)
-def test_mobile_first_game_fills_viewport_without_page_scrolling(page, live_server, width, height):
     page.set_viewport_size({"width": width, "height": height})
-    open_game(page, live_server)
-    go_to_event(page, 3)
-    layout = page.evaluate("""() => {
-      const shell = document.querySelector('.game-shell').getBoundingClientRect();
-      const scene = document.querySelector('.scene-panel').getBoundingClientRect();
-      const story = document.querySelector('.game-screen.is-current-screen')
-        .getBoundingClientRect();
-      const controls = document.querySelector('.game-controls').getBoundingClientRect();
-      return {
-        innerWidth, innerHeight, scrollWidth: document.documentElement.scrollWidth,
-        scrollHeight: document.documentElement.scrollHeight,
-        shell: {top: shell.top, bottom: shell.bottom, left: shell.left, right: shell.right},
-        scene: {top: scene.top, bottom: scene.bottom, left: scene.left, right: scene.right},
-        story: {top: story.top, bottom: story.bottom, left: story.left, right: story.right},
-        controls: {top: controls.top, bottom: controls.bottom},
-        buttons: [...document.querySelectorAll('.game-controls button')]
-          .map(node => node.getBoundingClientRect().height)
-      };
-    }""")
-    assert layout["scrollWidth"] <= width + 1
-    assert layout["scrollHeight"] <= height + 1
-    assert 0 <= layout["shell"]["top"] < layout["shell"]["bottom"] <= height + 1
-    if width <= 760:
-        assert layout["scene"]["bottom"] <= layout["story"]["top"] + 1
-    assert layout["controls"]["bottom"] <= height + 1
-    assert min(layout["buttons"]) >= 48
-    expect(page.locator(".scene-panel")).to_be_visible()
-    expect(page.locator(".game-screen.is-current-screen")).to_be_visible()
-
-    expect(page.locator("#character-sheet")).to_be_visible()
-    stats = page.locator("#character-sheet").bounding_box()
-    assert 0 <= stats["x"] and stats["x"] + stats["width"] <= width + 1
-    assert 0 <= stats["y"] and stats["y"] + stats["height"] <= height + 1
-    assert stats["y"] + stats["height"] <= layout["scene"]["top"]
-    for stat in page.locator("[data-stat]").all():
-        expect(stat.locator(".stat-value")).to_be_visible()
-        expect(stat.locator(".stat-pips")).to_be_visible()
-    page.locator('[data-action="toggle-quests"]').click()
-    overlay = page.locator("#bonus").bounding_box()
-    assert overlay["y"] >= stats["y"] + stats["height"]
+    open_world(page, live_server)
+    extras_by_screen = {}
+    for quest, (kind, screen) in quest_targets.items():
+        if kind == "discovery":
+            extras_by_screen.setdefault(screen, set()).add(quest)
+    seen_offsets = set()
+    for index, section_id in enumerate(section_ids(snapshots)):
+        go_to_stop(page, section_id)
+        geometry = page.evaluate(GEOMETRY)
+        view, marker = geometry["viewport"], geometry["marker"]
+        assert view["left"] <= marker["left"] and marker["right"] <= view["right"], section_id
+        assert view["top"] <= marker["top"] and marker["bottom"] <= view["bottom"] + 1, section_id
+        # The strip always covers the scene: no blank edge at either end of the world.
+        assert geometry["world"]["left"] <= view["left"] + 0.5
+        assert geometry["world"]["right"] >= view["right"] - 0.5
+        assert {spot["id"] for spot in geometry["hotspots"]} == extras_by_screen.get(index, set())
+        offscreen = []
+        for spot in geometry["hotspots"]:
+            assert spot["width"] >= 47.999 and spot["height"] >= 47.999
+            centre = (spot["left"] + spot["right"]) / 2
+            if not view["left"] < centre < view["right"]:
+                offscreen.append(spot["id"])
+        # One scene is wider than a tall phone can show at once: the traveller stands
+        # 196 scene units from the far window. That extra stays reachable under More.
+        too_wide = section_id == "moment-continuing-unlocked" and width < 400 < height
+        assert offscreen == (["career-titles"] if too_wide and offscreen else []), section_id
+        spots = geometry["hotspots"]
+        for first in spots:
+            for second in spots:
+                if first["id"] < second["id"]:
+                    apart = max(
+                        abs(first["left"] - second["left"]), abs(first["top"] - second["top"])
+                    )
+                    assert apart >= 47.999, (first["id"], second["id"])
+        seen_offsets.add(round(geometry["world"]["left"]))
+    # The scene really travels: Goa, Pune, San Jose, San Francisco and home differ.
+    assert len(seen_offsets) >= 5
 
 
-def test_quest_log_is_optional_overlay_and_restores_focus(page, live_server, story_document):
-    open_game(page, live_server)
-    button = page.locator('[data-action="toggle-quests"]')
-    button.click()
-    expect(page.locator("#bonus")).to_be_visible()
-    expect(button).to_have_attribute("aria-expanded", "true")
-    expect(page.locator("#bonus .achievement-note")).to_have_count(24)
-    expect(page.locator("#bonus-title")).to_have_text("Quest log")
-    expect(page.locator("#bonus .achievement-note:visible")).to_have_count(0)
-    expect(page.locator(".quest-empty")).to_be_visible()
-    assert page.locator(".story-deck").get_attribute("inert") is not None
-    assert page.locator(".game-controls").get_attribute("inert") is not None
-    page.keyboard.press("Tab")
-    expect(page.locator('#bonus [data-action="close-panels"]')).to_be_focused()
-    page.keyboard.press("ArrowRight")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
+def test_scrolling_walks_between_stops_and_reduced_motion_steps(page, live_server):
+    page.set_viewport_size({"width": 390, "height": 844})
+    open_world(page, live_server)
+
+    def offsets():
+        return page.evaluate("""async () => {
+          // Firefox delivers the scroll event a frame later than the other engines.
+          const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+          const settle = async () => { for (let i = 0; i < 4; i += 1) await frame(); };
+          const world = document.getElementById('world');
+          const from = document.getElementById('moment-college-unlocked');
+          const to = document.getElementById('moment-java-unlocked');
+          const left = () => world.getBoundingClientRect().left;
+          const stage = document.getElementById('stage');
+          const pinned = stage.clientHeight >= innerHeight - 1 ? 0 : stage.clientHeight;
+          // Plain scrollTo throughout: Firefox re-applies a scrollIntoView target on
+          // the next frame, which would undo the programmatic scroll that follows.
+          scrollTo(0, from.getBoundingClientRect().top + scrollY - pinned); await settle();
+          const start = left();
+          // Two thirds of the way through the reading area's approach to the next stop.
+          const reading = innerHeight - document.getElementById('stage').clientHeight;
+          scrollTo(0, to.getBoundingClientRect().top + scrollY - innerHeight + reading * 0.25);
+          await settle();
+          const middle = left();
+          const stop = document.getElementById('stage').dataset.stop;
+          scrollTo(0, to.getBoundingClientRect().top + scrollY - pinned); await settle();
+          return {start, middle, stop, end: left()};
+        }""")
+
+    walking = offsets()
+    assert walking["stop"] == "college-unlocked"
+    assert walking["end"] < walking["middle"] < walking["start"]
+    page.emulate_media(reduced_motion="reduce")
+    stepped = offsets()
+    assert stepped["middle"] == stepped["start"] and stepped["end"] == walking["end"]
+    assert page.evaluate("document.getAnimations().length") == 0
+
+
+def test_disclosures_start_closed_and_reveal_every_paragraph(page, live_server, story_document):
+    open_world(page, live_server)
+    expect(page.locator("details[open]")).to_have_count(0)
+    for card, paragraphs in paragraphs_of(story_document):
+        go_to_stop(page, f"moment-{card['id']}")
+        section = page.locator(f"#moment-{card['id']}")
+        expect(section.locator(".lead")).to_have_text(paragraphs[0])
+        expect(section.locator(".lead")).to_be_visible()
+        expect(section.locator("h2")).to_be_in_viewport()
+        if len(paragraphs) == 1 and section.locator("details.more").count() == 0:
+            continue
+        expect(section.locator(f"#beat-{card['id']}-1")).to_be_hidden()
+        section.locator("details.more > summary").click()
+        for index in range(1, len(paragraphs)):
+            expect(section.locator(f"#beat-{card['id']}-{index}")).to_be_visible()
+        section.locator("details.more > summary").click()
+        expect(section.locator("details.more")).not_to_have_attribute("open", "")
+
+
+@pytest.mark.parametrize("width,height", [(375, 667), (1440, 1000)])
+def test_scene_hotspots_open_and_focus_their_extras(
+    page, live_server, story_document, quest_targets, snapshots, width, height
+):
+    page.set_viewport_size({"width": width, "height": height})
+    open_world(page, live_server)
+    ids = section_ids(snapshots)
+    for discovery in story_document["discoveries"]:
+        go_to_stop(page, ids[quest_targets[discovery["id"]][1]])
+        hotspot = page.locator(f'.hotspot[data-extra-target="{discovery["id"]}"]')
+        extra = page.locator(f"#discovery-{discovery['id']}")
+        expect(hotspot).to_have_attribute("aria-expanded", "false")
+        expect(extra.locator(":scope > p").first).to_be_hidden()
+        # Some wide-layout windows sit behind the placard; the control must still work.
+        hotspot.dispatch_event("click")
+        expect(hotspot).to_have_attribute("aria-expanded", "true")
+        expect(extra.locator("summary")).to_be_focused()
+        expect(extra.locator(":scope > p").first).to_be_visible()
+        expect(extra.locator("summary")).to_be_in_viewport()
+        extra.locator("summary").click()
+        expect(hotspot).to_have_attribute("aria-expanded", "false")
+
+
+def test_coldplay_cameo_is_a_gec_extra_with_the_exact_link(page, live_server):
+    open_world(page, live_server)
+    go_to_stop(page, "moment-college-unlocked")
+    page.locator('.hotspot[data-extra-target="coldplay"]').dispatch_event("click")
+    extra = page.locator("#moment-college-unlocked #discovery-coldplay")
+    expect(extra).to_contain_text("That's my silhouette at 3:41")
+    expect(extra.locator("a")).to_have_attribute("href", "https://youtu.be/ogItgrO9GSg?t=221")
+
+
+@pytest.mark.parametrize("width,height", [(375, 667), (1440, 1000)])
+def test_route_menu_jumps_anywhere_and_restores_focus(page, live_server, snapshots, width, height):
+    page.set_viewport_size({"width": width, "height": height})
+    page.emulate_media(reduced_motion="reduce")
+    open_world(page, live_server)
+    summary = page.locator("#route > summary")
+    links = page.locator("#route a")
+    expect(links).to_have_count(13)
+    summary.click()
+    expect(links.first).to_be_visible()
+    box = links.nth(6).bounding_box()
+    assert box["height"] >= 47.999
     page.keyboard.press("Escape")
-    expect(page.locator("#bonus")).to_be_hidden()
-    expect(button).to_be_focused()
-    expect(button).to_have_attribute("aria-expanded", "false")
+    expect(links.first).to_be_hidden()
+    expect(summary).to_be_focused()
+    summary.click()
+    links.nth(6).click()
+    expect(links.first).to_be_hidden()
+    expect(page.locator("#stage")).to_have_attribute("data-stop", "sjsu-unlocked")
+    assert_state(page, expected_states(snapshots)[7])
+    summary.click()
+    links.nth(12).click()
+    expect(page.locator("#stage")).to_have_attribute("data-stop", "epilogue")
 
 
-def test_no_javascript_and_script_failure_keep_complete_readable_story(
+def test_arrow_keys_step_between_stops_without_stealing_other_input(page, live_server):
+    page.emulate_media(reduced_motion="reduce")
+    open_world(page, live_server)
+    stage = page.locator("#stage")
+    page.keyboard.press("ArrowRight")
+    expect(stage).to_have_attribute("data-stop", "first-script")
+    page.keyboard.press("ArrowRight")
+    expect(stage).to_have_attribute("data-stop", "school-unlocked")
+    page.keyboard.press("ArrowLeft")
+    expect(stage).to_have_attribute("data-stop", "first-script")
+    for chord in ("Alt+ArrowRight", "Shift+ArrowRight", "Control+ArrowRight"):
+        page.keyboard.press(chord)
+    settle(page)
+    expect(stage).to_have_attribute("data-stop", "first-script")
+    page.locator("#route > summary").focus()
+    page.keyboard.press("ArrowRight")
+    settle(page)
+    expect(stage).to_have_attribute("data-stop", "first-script")
+    page.locator("#top").evaluate("node => node.scrollIntoView()")
+    page.locator("body").evaluate("() => document.activeElement.blur()")
+    page.keyboard.press("ArrowLeft")
+    settle(page)
+    expect(stage).to_have_attribute("data-stop", "title")
+
+
+@pytest.mark.parametrize("width,height", VIEWPORTS)
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_layout_fits_without_sideways_scrolling(
+    page, live_server, snapshots, width, height, scheme
+):
+    page.emulate_media(color_scheme=scheme)
+    page.set_viewport_size({"width": width, "height": height})
+    open_world(page, live_server)
+    for section_id in section_ids(snapshots):
+        go_to_stop(page, section_id)
+        layout = page.evaluate(
+            """id => {
+              const section = document.getElementById(id);
+              const box = node => node.getBoundingClientRect();
+              const stage = box(document.getElementById('stage'));
+              const overlay = stage.height >= innerHeight - 1;
+              return {
+                scrollWidth: document.documentElement.scrollWidth,
+                heading: box(section.querySelector('h1, h2')),
+                lead: box(section.querySelector('.lead')),
+                readingTop: overlay ? 0 : stage.bottom,
+                fontSize: parseFloat(getComputedStyle(section.querySelector('.lead')).fontSize),
+              };
+            }""",
+            section_id,
+        )
+        assert layout["scrollWidth"] <= width, section_id
+        assert layout["fontSize"] >= 16
+        # After a jump the heading is readable at once, clear of the pinned scene.
+        assert layout["heading"]["top"] >= layout["readingTop"] - 0.5, section_id
+        assert layout["heading"]["bottom"] <= height, section_id
+        assert layout["lead"]["left"] >= 0 and layout["lead"]["right"] <= width, section_id
+    for control in page.locator(".wordmark, #route > summary").all():
+        assert control.bounding_box()["height"] >= 47.999
+
+
+def test_default_route_is_short_and_links_are_the_reviewed_set(page, live_server, story_document):
+    open_world(page, live_server)
+    words = page.evaluate("""() => [...document.querySelectorAll('.stop .card > *')]
+      .filter(node => !node.matches('.chapter-stats'))
+      .reduce((total, node) => total + node.innerText.trim().split(/\\s+/).length, 0)
+      - [...document.querySelectorAll('.stop .visually-hidden')]
+      .reduce((total, node) => total + node.textContent.trim().split(/\\s+/).length, 0)""")
+    print("collapsed words:", words)
+    # Collapsed, the whole life is a few minutes of reading; detail is opt-in.
+    assert words <= 480, words
+    hrefs = set(page.locator("a").evaluate_all("nodes => nodes.map(node => node.href)"))
+    external = {href for href in hrefs if not href.startswith(page.url.split("#")[0])}
+    expected = {
+        "https://www.linkedin.com/in/pranavprem/",
+        "https://github.com/pranavprem",
+        "mailto:pranavprem93@gmail.com",
+        "https://github.com/pranavprem/mediaserver",
+        "https://github.com/pranavprem/homeassistant",
+        "https://github.com/pranavprem/morpheus",
+        "https://github.com/pranavprem/TasKing",
+        "https://github.com/pranavprem/Spartanbot",
+        "https://github.com/pranavprem/karmamining",
+        "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/?author=pranavprem",
+    }
+    for discovery in story_document["discoveries"]:
+        expected.update(discovery["links"].values())
+    assert external == expected
+    assert page.locator("audio, video, iframe, canvas, form, input").count() == 0
+
+
+def test_no_javascript_keeps_the_complete_linear_story(
     new_context, live_server, story_document, snapshots
 ):
     page = new_context(java_script_enabled=False).new_page()
     page.goto(live_server + "/")
-    assert_complete_story(page, story_document, snapshots, visible=True)
-    expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator(".fallback-landscape")).to_have_count(12)
-    expect(page.locator(".game-controls")).to_be_hidden()
-    expect(page.locator(".scene-panel")).to_be_hidden()
-    expect(page.locator("#character-sheet")).to_be_visible()
+    assert_linear(page, story_document, snapshots)
+    expect(page.locator("#route a")).to_have_count(13)
 
 
 @pytest.mark.parametrize(
@@ -519,11 +517,13 @@ def test_failed_local_resource_never_removes_content(
 ):
     page.route(f"**/static/{resource}*", lambda route: route.abort())
     page.goto(live_server + "/")
-    assert_complete_story(
-        page, story_document, snapshots, visible=resource in {"story.js", "story.css"}
-    )
     if resource in {"story.js", "story.css"}:
-        expect(page.locator("html")).not_to_have_class("enhanced")
+        expect(page.locator("html")).not_to_have_class("is-world")
+        assert_complete_story(page, story_document, snapshots, visible=resource == "story.js")
+    else:
+        # Missing art leaves a gap in the strip, never a missing sentence.
+        expect(page.locator("html")).to_have_class("is-world")
+        assert_complete_story(page, story_document, snapshots, visible=False)
 
 
 @pytest.mark.parametrize(
@@ -532,111 +532,115 @@ def test_failed_local_resource_never_removes_content(
         "json",
         "version",
         "boolean-stat",
+        "stat-range",
         "position",
         "empty-events",
-        "duplicate-badge",
-        "future-badge",
-        "lost-experience",
-        "marker-id",
-        "chapter-id",
-        "home-region",
+        "missing-event",
+        "extra-event",
+        "event-id",
+        "region",
         "home-art",
         "home-position",
-        "home-beat-count",
         "missing-home",
     ],
 )
 def test_invalid_projection_falls_back(page, live_server, game, story_document, snapshots, failure):
     projection = deepcopy(game)
-    if failure == "version":
+    if failure == "json":
+        projection = "{not json"
+    elif failure == "version":
         projection["schema_version"] = 1
     elif failure == "boolean-stat":
         projection["events"][0]["stats_after"]["coding"] = True
+    elif failure == "stat-range":
+        projection["events"][3]["stats_after"]["vitality"] = 11
     elif failure == "position":
-        projection["events"][0]["position"]["x"] = 301
+        projection["events"][0]["position"]["x"] = None
     elif failure == "empty-events":
         projection["events"] = []
-    elif failure == "duplicate-badge":
-        projection["events"][0]["badges_after"] *= 2
-    elif failure == "future-badge":
-        projection["events"][0]["badges_after"] = [projection["events"][-1]["badges_after"][-1]]
-    elif failure == "lost-experience":
-        projection["events"][2]["stats_after"]["experience"] = 0
-    elif failure == "marker-id":
-        projection["events"][0]["id"] = "wrong-card"
-    elif failure == "chapter-id":
-        projection["events"][0]["chapter_id"] = "wrong-chapter"
-    elif failure == "home-region":
-        projection["epilogue_scene"]["region_id"] = "bay-area"
+    elif failure == "missing-event":
+        projection["events"].pop()
+    elif failure == "extra-event":
+        projection["events"].append(deepcopy(projection["events"][-1]))
+    elif failure == "event-id":
+        projection["events"][4]["id"] = "somewhere-else"
+    elif failure == "region":
+        projection["events"][2]["region_id"] = "atlantis"
     elif failure == "home-art":
-        projection["epilogue_scene"]["art_key"] = "../private"
+        projection["epilogue_scene"]["art_key"] = "moon-base"
     elif failure == "home-position":
-        projection["epilogue_scene"]["positions"][0]["x"] = True
-    elif failure == "home-beat-count":
-        projection["epilogue_scene"]["positions"].pop()
+        projection["epilogue_scene"]["positions"] = []
     elif failure == "missing-home":
-        projection.pop("epilogue_scene")
-    serialized = "{" if failure == "json" else json.dumps(projection)
+        del projection["epilogue_scene"]
+    serve_with_game(page, live_server, projection)
+    assert_linear(page, story_document, snapshots)
 
-    def replace_projection(route):
-        response = route.fetch()
-        source = re.sub(
-            r'data-game="[^"]*"',
-            lambda _: f'data-game="{html.escape(serialized, quote=True)}"',
-            response.text(),
-            count=1,
-        )
-        route.fulfill(response=response, body=source)
 
-    page.route(live_server + "/", replace_projection)
+@pytest.mark.parametrize("damage", ["stop", "tile", "sheet", "route"])
+def test_unexpected_markup_falls_back(page, live_server, story_document, snapshots, damage):
+    script = {
+        "stop": "document.getElementById('moment-java-unlocked').dataset.stop = 'forged'",
+        "tile": "document.querySelector('.tile').dataset.tile = 'forged'",
+        "sheet": "document.querySelector('[data-stat=\"charisma\"]').remove()",
+        "route": "document.querySelector('#route li').remove()",
+    }[damage]
+    # Runs after parsing but before the deferred module, like a mismatched deploy.
+    page.add_init_script(f"document.addEventListener('readystatechange', () => {{ {script} }});")
     page.goto(live_server + "/")
-    expect(page.locator("html")).not_to_have_class("enhanced")
-    expect(page.locator("#sheet-status")).to_have_text("Opening stats. The complete story follows.")
-    assert_complete_story(page, story_document, snapshots, visible=True)
+    expect(page.locator("html")).not_to_have_class("is-world")
+    expect(page.locator("#stage")).to_be_hidden()
+    expect(page.locator("#beat-college-unlocked-3")).to_be_visible()
 
 
 def test_stale_stylesheet_restores_full_reading(page, live_server, story_document, snapshots):
     def old_stylesheet(route):
         response = route.fetch()
         source = response.text()
-        assert "--chapter-adventure: reader-paced" in source
-        route.fulfill(
-            response=response,
-            body=source.replace("--chapter-adventure: reader-paced", "--chapter-adventure: ready"),
-        )
+        assert "--ui: world" in source
+        route.fulfill(response=response, body=source.replace("--ui: world", "--ui: adventure"))
 
     page.route("**/static/story.css*", old_stylesheet)
     page.goto(live_server + "/")
-    expect(page.locator("html")).not_to_have_class("enhanced")
+    assert_linear(page, story_document, snapshots)
+
+
+def test_print_shows_the_linear_document_with_extras_open(
+    page, live_server, story_document, snapshots
+):
+    open_world(page, live_server)
+    go_to_stop(page, "moment-sjsu-unlocked")
+    page.locator("#moment-sjsu-unlocked details.more > summary").click()
+    page.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+    page.emulate_media(media="print")
+    expect(page.locator("#stage")).to_be_hidden()
+    expect(page.locator(".topbar")).to_be_hidden()
     assert_complete_story(page, story_document, snapshots, visible=True)
+    expect(page.locator(".chapter-stats").first).to_be_visible()
+    page.emulate_media(media="screen")
+    page.evaluate("window.dispatchEvent(new Event('afterprint'))")
+    # The reader's own open panel survives; everything else closes again.
+    expect(page.locator("details[open]")).to_have_count(1)
+    expect(page.locator("#moment-sjsu-unlocked details.more")).to_have_attribute("open", "")
 
 
-def test_reduced_motion_disables_reactions_but_keeps_game_state(page, live_server, snapshots):
-    page.emulate_media(reduced_motion="reduce")
-    open_game(page, live_server)
-    go_to_event(page, 1)
-    page.locator('.is-current-screen [data-action="topic"][data-beat="1"]').click()
-    expect(page.locator("#journey-marker")).not_to_have_class(re.compile("is-celebrating"))
-    assert page.locator("#journey-marker").evaluate("node => node.getAnimations().length") == 0
-    assert_hud(page, snapshots[2])
-
-
-def test_csp_privacy_and_idle_scene_are_clean(page, live_server, observations, snapshots):
-    open_game(page, live_server)
-    for index in (0, 2, 4, 6, 7, 8, 9, 10, 11):
-        go_to_event(page, index)
-        assert_hud(page, snapshots[index + 1])
-    advance_to_next_screen(page)
-    assert_hud(page, snapshots[-1])
-    page.wait_for_timeout(500)
+def test_csp_privacy_and_bounded_motion(page, live_server, observations, snapshots):
+    open_world(page, live_server)
+    for section_id in section_ids(snapshots):
+        go_to_stop(page, section_id)
+    page.locator('.hotspot[data-extra-target="hobbies"]').dispatch_event("click")
+    go_to_stop(page, "moment-unexpected-detour")
+    # The mosquito is a one-shot flourish, not a loop: it is over within two seconds.
+    page.wait_for_timeout(2100)
+    encounter_animations = page.evaluate("""() => document.getAnimations()
+      .filter(animation => animation.effect.target.closest('.encounter')).length""")
+    assert encounter_animations == 0
     idle = page.evaluate("""() => ({
-      animations: document.getAnimations().length,
       local: localStorage.length,
       session: sessionStorage.length,
       cookies: document.cookie,
-      scrollY: window.scrollY
+      hash: location.hash,
     })""")
-    assert idle == {"animations": 0, "local": 0, "session": 0, "cookies": "", "scrollY": 0}
+    assert idle == {"local": 0, "session": 0, "cookies": "", "hash": ""}
     assert page.context.cookies() == []
     assert observations["pageerrors"] == []
     assert not [message for kind, message in observations["console"] if kind == "error"]
@@ -652,27 +656,25 @@ def test_csp_privacy_and_idle_scene_are_clean(page, live_server, observations, s
 @pytest.mark.parametrize("width", [390, 1440])
 @pytest.mark.parametrize("scheme", ["light", "dark"])
 def test_local_axe_accessibility(page, live_server, project_root, width, scheme):
-    page.emulate_media(color_scheme=scheme)
+    page.emulate_media(color_scheme=scheme, reduced_motion="reduce")
     page.set_viewport_size({"width": width, "height": 900})
-    open_game(page, live_server)
+    open_world(page, live_server)
     axe_path = project_root / "node_modules/axe-core/axe.min.js"
     assert axe_path.is_file(), "Run npm ci to install the pinned local axe-core dependency"
     page.evaluate(axe_path.read_text(encoding="utf-8"))
-    for state in ("intro", "map", "chapter", "discovery", "hobbies", "quests"):
-        if state == "map":
-            page.locator("#chapters-button").click()
-        if state == "chapter":
+    for state in ("title", "route", "quiet", "extra", "hobbies"):
+        if state == "route":
+            page.locator("#route > summary").click()
+        elif state == "quiet":
             page.keyboard.press("Escape")
-            go_to_event(page, 6)
-        elif state == "discovery":
-            page.locator('[data-discovery="opportunity-hack"]').click()
+            go_to_stop(page, "moment-unexpected-detour")
+        elif state == "extra":
+            go_to_stop(page, "moment-sjsu-unlocked")
+            page.locator('.hotspot[data-extra-target="opportunity-hack"]').dispatch_event("click")
         elif state == "hobbies":
-            page.keyboard.press("Escape")
-            go_to_event(page, 11)
-            advance_to_next_screen(page)
-            page.locator('[data-discovery="hobbies"]').click()
-        elif state == "quests":
-            page.locator('[data-action="toggle-quests"]').click()
+            go_to_stop(page, "epilogue")
+            page.locator('.hotspot[data-extra-target="hobbies"]').dispatch_event("click")
+        settle(page)
         violations = page.evaluate("""async () => {
           const result = await axe.run(document, {runOnly: {
             type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
@@ -680,612 +682,36 @@ def test_local_axe_accessibility(page, live_server, project_root, width, scheme)
           return result.violations.map(({id, impact, nodes}) => ({id, impact,
             nodes: nodes.map(({target, failureSummary}) => ({target, failureSummary}))}));
         }""")
-        assert violations == [], json.dumps(violations, indent=2)
+        assert violations == [], (state, json.dumps(violations, indent=2))
 
 
-def test_text_enlargement_keeps_controls_and_current_dialogue_reachable(page, live_server):
+def test_text_enlargement_keeps_everything_reachable(page, live_server, story_document):
     page.set_viewport_size({"width": 320, "height": 700})
-    open_game(page, live_server)
-    go_to_event(page, 3)
-    page.evaluate("""() => {
-      const nodes = document.querySelectorAll(
-        '.dialogue-card *, .game-controls *, .game-hud *, .discovery-panel *');
-      const sizes = [...nodes]
-        .map(node => [node, parseFloat(getComputedStyle(node).fontSize)]);
-      sizes.forEach(([node, size]) => { if (size) node.style.fontSize = `${size * 2}px`; });
-    }""")
-    settle(page)
-    layout = page.evaluate("""() => ({
-      width: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-      next: document.querySelector('[data-action=advance]').getBoundingClientRect(),
-      story: document.querySelector('.game-screen.is-current-screen').getBoundingClientRect()
-    })""")
-    assert layout["scrollWidth"] <= layout["width"] + 1
-    assert 0 <= layout["next"]["top"] < layout["next"]["bottom"] <= 700
-    assert layout["story"]["height"] > 0
-    expect(page.locator(".game-screen.is-current-screen .dialogue-card")).to_be_visible()
-    for row in page.locator("[data-stat]").all():
-        assert row.evaluate("node => node.scrollWidth <= node.clientWidth + 1")
-    go_to_event(page, 11)
-    advance_to_next_screen(page)
-    page.locator('[data-discovery="hobbies"]').click()
-    popup = page.locator("#discovery-hobbies")
-    expect(popup.locator("h3")).to_be_focused()
-    popup.evaluate("node => { node.scrollTop = node.scrollHeight; }")
-    expect(popup.locator(".discovery-list > li").last).to_be_in_viewport()
-    assert popup.evaluate("node => node.scrollWidth <= node.clientWidth + 1")
-    expect(page.locator('[data-action="advance"]')).to_be_in_viewport()
-    page.locator('[data-action="advance"]').click()
-    expect(popup).to_be_hidden()
-    expect(page.locator('[data-discovery="hobbies"]')).to_be_focused()
-
-
-@pytest.mark.parametrize("width,height", [(320, 568), (375, 667), (390, 844), (1440, 1000)])
-def test_overviews_fit_and_every_optional_topic_remains_reachable(page, live_server, width, height):
-    page.set_viewport_size({"width": width, "height": height})
-    open_game(page, live_server)
-    for target in range(14):
-        data = page.evaluate("""() => {
-          const screen = document.querySelector('.is-current-screen');
-          const panel = screen.querySelector('.title-card, .dialogue-card');
-          const beat = screen.querySelector('.chapter-preview:not([hidden]), .is-current-beat');
-          const bounds = panel.getBoundingClientRect();
-          return {screen: document.querySelector('#journey').dataset.screenIndex,
-            beat: document.querySelector('#journey').dataset.beatIndex,
-            top: beat.getBoundingClientRect().top, panelTop: bounds.top, panelHeight: bounds.height,
-            overflow: panel.scrollHeight - panel.clientHeight, scrollTop: panel.scrollTop};
-        }""")
-        assert data["panelHeight"] > 0 and data["top"] >= data["panelTop"]
-        assert data["scrollTop"] == 0
-        if width > 320:
-            assert data["overflow"] <= 1, data
-        else:
-            panel = page.locator(
-                ".is-current-screen .title-card, .is-current-screen .dialogue-card"
-            )
-            panel.evaluate("node => { node.scrollTop = node.scrollHeight; }")
-            panel.evaluate("node => { node.scrollTop = 0; }")
-        screen = page.locator(".is-current-screen")
-        for button in screen.locator('[data-action="topic"]').all():
-            button.scroll_into_view_if_needed()
-            rect = button.bounding_box()
-            # Firefox DOMRect rounding can put an exact 48px target just below 48.
-            assert rect["height"] >= 48 - 0.001 and rect["width"] >= 48 - 0.001
-            button.click()
-            current = screen.locator(".chapter-preview:visible, .is-current-beat")
-            expect(current).to_be_visible()
-            panel = screen.locator(".dialogue-card")
-            current.scroll_into_view_if_needed()
-            assert panel.evaluate("node => node.scrollWidth <= node.clientWidth + 1")
-            expect(button).to_have_attribute("aria-pressed", "true")
-        if target < 13:
-            advance_to_next_screen(page)
-
-
-def test_compact_overviews_with_wide_system_font_keep_actions_visible(page, live_server):
-    page.set_viewport_size({"width": 375, "height": 667})
-    open_game(page, live_server)
-    # Wider system fonts can wrap differently from the development machine's defaults.
-    page.locator(".intro-copy, .chapter-preview, .story-prose").evaluate_all(
-        "nodes => nodes.forEach(node => { node.style.fontFamily = 'Verdana, sans-serif'; })"
-    )
-    # Do not let tight local heading metrics hide the extra line seen with Linux serifs.
-    page.locator(".scene-heading").evaluate_all(
-        "nodes => nodes.forEach(node => { node.style.letterSpacing = 'normal'; })"
-    )
-    settle(page)
-    title = page.locator(".title-card")
-    expect(title.locator(".browse-button")).to_be_in_viewport()
-    expect(title.get_by_role("link", name="LinkedIn", exact=True)).to_be_in_viewport()
-    expect(title.get_by_role("link", name="GitHub", exact=True)).to_be_in_viewport(ratio=1)
-    for target in range(14):
-        screen = page.locator(".is-current-screen")
-        panel = screen.locator(".title-card, .dialogue-card")
-        overflow = panel.evaluate("node => node.scrollHeight - node.clientHeight")
-        assert overflow <= 1, (target, overflow)
-        prose = screen.locator(".chapter-preview:visible, .is-current-beat")
-        expect(prose).to_have_css("font-size", "16px")
-        expect(prose).to_have_css("line-height", "24px")
-        for button in screen.locator('[data-action="topic"]:visible').all():
-            expect(button).to_be_in_viewport(ratio=1)
-            rect = button.bounding_box()
-            assert rect["height"] >= 48 - 0.001 and rect["width"] >= 48 - 0.001
-        expect(page.locator('[data-action="advance"]')).to_be_in_viewport(ratio=1)
-        assert page.evaluate("window.scrollY") == 0
-        if target < 13:
-            advance_to_next_screen(page)
-
-
-@pytest.mark.parametrize("view", ["topic", "discovery", "map"])
-def test_print_and_no_js_keep_every_paragraph_and_snapshot(
-    page, live_server, story_document, snapshots, view
-):
-    open_game(page, live_server)
-    go_to_event(page, 3)
-    if view == "topic":
-        page.locator('.is-current-screen [data-action="topic"][data-beat="2"]').click()
-    elif view == "discovery":
-        page.locator('[data-discovery="gec-extras"]').click()
-    else:
-        page.locator("#chapters-button").click()
-    page.emulate_media(media="print")
-    assert_complete_story(page, story_document, snapshots, visible=True)
-    expect(page.locator(".game-hud")).to_be_hidden()
-    expect(page.locator(".scene-panel")).to_be_hidden()
-    expect(page.locator(".ending")).to_be_visible()
-    expect(page.locator("#chapter-map")).to_be_hidden()
-    for panel in page.locator(".dialogue-card, .discovery-panel").all():
-        assert panel.evaluate("node => getComputedStyle(node).maxHeight") == "none"
-
-
-def test_forced_colors_selection_and_findable_text(page, live_server):
-    page.emulate_media(forced_colors="active")
-    open_game(page, live_server)
-    go_to_event(page, 9)
-    selected = page.evaluate("""() => {
-      const paragraph = document.querySelector('[data-checkpoint="fog-arrives"] .story-prose');
-      const range = document.createRange();
-      range.selectNodeContents(paragraph);
-      const selection = window.getSelection();
-      selection.removeAllRanges(); selection.addRange(range);
-      return selection.toString();
-    }""")
-    assert "find a pace I could keep up without burning myself out" in selected
-    expect(page.locator('[data-action="advance"]')).to_be_visible()
-
-
-def test_story_budget_links_and_game_surface(page, live_server, story_document):
-    open_game(page, live_server)
-    words = page.locator("#main-story").evaluate(r"""node => {
-      const copy = node.cloneNode(true);
-      copy.querySelectorAll(
-        '.chapter-header, .chapter-stats, .scene-period, .scene-heading, ' +
-        '.story-card h3, .discovery-panel, .loot, .input-hint, .project-links, ' +
-        '.chapter-preview, .chapter-topics, .intro-actions'
-      )
-        .forEach(element => element.remove());
-      return copy.textContent.trim().split(/\s+/).length;
-    }""")
-    assert words <= 900, f"Main story is {words} words"
-    expect(page.locator("[data-stat]")).to_have_count(5)
-    expect(page.locator(".scene-hotspot")).to_have_count(11)
-    expect(page.locator("#scene-object-label")).to_have_count(0)
-    expect(page.locator(".game-controls button")).to_have_count(2)
-    expect(page.locator("#bonus .achievement-note")).to_have_count(24)
-    assert page.locator('a[href="mailto:pranavprem93@gmail.com"]').count() == 1
-    expect(page.locator(".pla-meme")).to_have_text("I'm 40% PLA.")
-    expect(page.locator('.intro-actions a[href="https://github.com/pranavprem"]')).to_have_text(
-        "GitHub"
-    )
-    expect(page.locator('.contact-links a[href="https://github.com/pranavprem"]')).to_have_text(
-        "GitHub"
-    )
-    slack_link = (
-        "https://github.com/forcedotcom/einstein-bot-channel-connector/commits/master/"
-        "?author=pranavprem"
-    )
-    expect(
-        page.locator(f'[data-checkpoint="bots-unlocked"] .story-prose a[href="{slack_link}"]')
-    ).to_have_text("public Slack connector")
-    expect(page.locator(f'.discovery-panel a[href="{slack_link}"]')).to_have_count(0)
-    assert page.locator("iframe, video, canvas").count() == 0
-    overview_words = 0
-    for target in range(14):
-        screen = page.locator(".is-current-screen")
-        if target == 12:
-            expect(screen.locator(".chapter-preview")).to_contain_text(
-                "I work on Atlas, the reasoning engine behind Agentforce"
-            )
-        overview_words += screen.locator("h1, .scene-heading, #ending-title").evaluate_all(
-            r"nodes => nodes.map(node => node.textContent).join(' ').trim().split(/\s+/).length"
-        )
-        overview_words += screen.locator(".chapter-preview:visible, .is-current-beat").evaluate_all(
-            r"nodes => nodes.map(node => node.textContent).join(' ').trim().split(/\s+/).length"
-        )
-        if target < 13:
-            advance_to_next_screen(page)
-    assert overview_words <= 550, f"The overview route is {overview_words} words"
-
-
-@pytest.mark.parametrize("width", [390, 1440])
-def test_dark_mode_does_not_reset_game(page, live_server, snapshots, width):
-    page.set_viewport_size({"width": width, "height": 900})
-    page.emulate_media(color_scheme="light")
-    open_game(page, live_server)
-    go_to_event(page, 8)
-    before = page.evaluate(HUD)
-    page.emulate_media(color_scheme="dark")
-    settle(page)
-    assert page.evaluate(HUD) == before
-    assert_hud(page, snapshots[9])
-    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
-
-
-def test_scene_change_moves_focus_and_has_no_avatar_or_companion(page, live_server):
-    open_game(page, live_server)
-    page.locator('[data-action="advance"]').click()
-    heading = page.locator(".game-screen.is-current-screen h2")
-    expect(heading).to_be_focused()
-    expect(page.locator("#traveler, #companion")).to_have_count(0)
-    expect(page.locator("#journey-marker .object-sprite.current")).to_have_count(1)
-    expect(page.locator("#world-label")).to_have_text("Goa")
-
-
-def test_story_log_records_completed_chapters_and_survives_backtracking(
-    page, live_server, quest_targets
-):
-    open_game(page, live_server)
-    completed = set()
-    for direction in ("advance", "back"):
-        for _ in range(70):
-            state = page.evaluate("""() => ({
-              screen: Number(document.querySelector('#journey').dataset.screenIndex),
-              beat: Number(document.querySelector('#journey').dataset.beatIndex),
-              count: document.querySelector('.game-screen.is-current-screen')
-                .querySelectorAll('.dialogue-beat').length
-            })""")
-            if state["screen"] > 0:
-                completed.add(state["screen"])
-            expected = [
-                key
-                for key, (kind, screen) in quest_targets.items()
-                if kind == "story" and screen in completed
-            ]
-            actual = page.locator(".achievement-note.is-unlocked").evaluate_all(
-                "nodes => nodes.map(node => node.dataset.quest)"
-            )
-            assert actual == expected, state
-            if direction == "advance" and state["screen"] == 13:
-                page.locator('[data-action="advance"]').click()
-                expect(page.locator("#bonus .achievement-note:visible")).to_have_count(13)
-                expect(page.locator('[data-quest-kind="discovery"]:visible')).to_have_count(0)
-                expect(page.locator(".quest-empty")).to_be_hidden()
-                page.locator("#bonus .overlay-body").evaluate(
-                    "node => { node.scrollTop = node.scrollHeight; }"
-                )
-                expect(page.locator('#bonus [data-action="close-panels"]')).to_be_in_viewport()
-                page.keyboard.press("Escape")
-                expect(page.locator('[data-action="advance"]')).to_be_focused()
-                break
-            if direction == "back" and state["screen"] == 0:
-                break
-            page.locator(f'[data-action="{direction}"]').click()
-        else:
-            raise AssertionError("The bounded journey did not reach its end")
-    page.reload()
-    expect(page.locator(".achievement-note.is-unlocked")).to_have_count(0)
-
-
-@pytest.mark.parametrize("width,height", [(320, 568), (390, 844), (1440, 1000)])
-def test_easter_eggs_follow_building_windows_and_popup_over_the_scene(
-    page, live_server, width, height, story_document, quest_targets, discovery_positions
-):
-    page.set_viewport_size({"width": width, "height": height})
-    open_game(page, live_server)
-    for discovery_id, (x, y) in discovery_positions.items():
-        target = quest_targets[discovery_id][1]
-        while int(page.locator("#journey").get_attribute("data-screen-index")) < target:
-            advance_to_next_screen(page)
-        before = page.evaluate(HUD)
-        screen = page.locator(".game-screen.is-current-screen")
-        dialogue_before = screen.locator(".dialogue-card").bounding_box()
-        if target in {4, 6}:
-            expect(screen.locator(".dialogue-beat")).to_have_count(4 if target == 4 else 2)
-        hotspot = page.locator(f'[data-discovery="{discovery_id}"]')
-        expect(page.locator(".scene-hotspot:visible")).to_have_count(
-            sum(kind == "discovery" and dest == target for kind, dest in quest_targets.values())
-        )
-        boxes = [node.bounding_box() for node in page.locator(".scene-hotspot:visible").all()]
-        for index, a in enumerate(boxes):
-            for b in boxes[index + 1 :]:
-                assert (
-                    a["x"] + a["width"] <= b["x"] + 0.01
-                    or b["x"] + b["width"] <= a["x"] + 0.01
-                    or a["y"] + a["height"] <= b["y"] + 0.01
-                    or b["y"] + b["height"] <= a["y"] + 0.01
-                )
-        rect = hotspot.bounding_box()
-        art = page.locator(".scene-art").bounding_box()
-        assert rect["width"] == pytest.approx(48, abs=0.001)
-        assert rect["height"] == pytest.approx(48, abs=0.001)
-        assert abs(rect["x"] + rect["width"] / 2 - (art["x"] + art["width"] * x / 320)) < 1
-        assert abs(rect["y"] + rect["height"] / 2 - (art["y"] + art["height"] * y / 180)) < 1
-        hotspot.focus()
-        page.keyboard.press("Enter")
-        popup = page.locator(f"#discovery-{discovery_id}")
-        expect(popup).to_be_visible()
-        expect(page.locator(".discovery-panel:visible")).to_have_count(1)
-        expected = next(
-            item for item in story_document["discoveries"] if item["id"] == discovery_id
-        )
-        expect(popup.locator(".discovery-copy")).to_have_text(expected["body"].split("\n\n"))
-        expect(popup.locator(".discovery-list > li")).to_have_text(expected.get("list_items", []))
-        assert page.evaluate(HUD) == before
-        expect(page.locator(".is-current-screen .dialogue-card")).to_be_visible()
-        dialogue_after = screen.locator(".dialogue-card").bounding_box()
-        assert dialogue_after == pytest.approx(dialogue_before, abs=1)
-        scene = page.locator(".scene-panel").bounding_box()
-        box = popup.bounding_box()
-        assert scene["x"] <= box["x"] and box["x"] + box["width"] <= scene["x"] + scene["width"] + 1
-        assert (
-            scene["y"] <= box["y"] and box["y"] + box["height"] <= scene["y"] + scene["height"] + 1
-        )
-        popup.evaluate("node => { node.scrollTop = node.scrollHeight; }")
-        expect(
-            popup.locator(".discovery-copy, .discovery-list > li, .project-links a").last
-        ).to_be_in_viewport()
-        if discovery_id == "gec-extras":
-            expect(
-                popup.locator('a[href="https://github.com/pranavprem/ZuariSAPDetail"]')
-            ).to_have_count(1)
-            expect(popup.locator('a[href="https://github.com/pranavprem/fyp"]')).to_have_count(1)
-        elif discovery_id == "green-belt":
-            expect(popup.locator("a")).to_have_count(0)
-        page.keyboard.press("Escape")
-        expect(popup).to_be_hidden()
-        expect(hotspot).to_be_focused()
-        assert page.evaluate(HUD) == before
-
-
-def test_coldplay_is_found_at_gec_and_the_journal_returns_there(page, live_server, snapshots):
-    open_game(page, live_server)
-    go_to_event(page, 3)
-    expect(page.locator(".scene-hotspot:visible")).to_have_count(3)
-    cameo = page.locator('[data-discovery="coldplay"]')
-    expect(page.locator("#quest-coldplay")).not_to_have_class(re.compile("is-unlocked"))
-    before = assert_hud(page, snapshots[4])
-    cameo.click()
-    popup = page.locator("#discovery-coldplay")
-    expect(popup.locator(".panel-kicker")).to_have_text("GEC / Coldplay & Oxfam")
-    expect(popup.locator("a")).to_have_attribute("href", "https://youtu.be/ogItgrO9GSg?t=221")
-    expect(page.locator("#quest-coldplay")).to_have_class(re.compile("is-unlocked"))
-    assert page.evaluate(HUD) == before
-    page.keyboard.press("Escape")
-    expect(cameo).to_be_focused()
-    go_to_event(page, 5)
-    expect(cameo).to_be_hidden()
-    expect(page.locator(".scene-hotspot:visible")).to_have_count(1)
-    page.locator('[data-action="toggle-quests"]').click()
-    page.locator('#quest-coldplay [data-action="revisit"]').click()
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "4")
-    expect(page.locator("#world-label")).to_have_text("Goa")
-    expect(popup).to_be_visible()
-    expect(popup.locator("h3")).to_be_focused()
-    assert_hud(page, snapshots[4])
-
-
-def test_sjsu_projects_are_optional_and_keep_their_public_links(page, live_server, snapshots):
-    page.set_viewport_size({"width": 375, "height": 667})
-    open_game(page, live_server)
-    go_to_event(page, 6)
-    screen = page.locator(".is-current-screen")
-    projects = screen.locator("#beat-sjsu-unlocked-2")
-    expect(screen.locator(".chapter-preview")).to_contain_text(
-        "enterprise software, cloud technologies, and virtualization, "
-        "with some data mining on the side"
-    )
-    expect(projects).to_be_hidden()
-    screen.get_by_role("button", name="Random projects", exact=True).click()
-    expect(projects).to_be_visible()
-    expect(projects.locator("a")).to_have_text(["SpartanBot", "Karma Mining"])
-    expect(projects).to_contain_text("Alexa skills and using AWS Lambda for serverless projects")
-    expect(projects).to_contain_text("Heroku was my PaaS of choice.")
-    assert_hud(page, snapshots[7])
-    expect(projects).not_to_contain_text("Opportunity Hack")
-    page.keyboard.press("Escape")
-    expect(screen.locator(".chapter-preview")).to_be_visible()
-    expect(screen.get_by_role("button", name="Random projects", exact=True)).to_be_focused()
-    page.locator('[data-discovery="opportunity-hack"]').click()
-    popup = page.locator("#discovery-opportunity-hack")
-    expect(popup.locator("h3")).to_have_text("PayPal: 2nd place")
-    assert popup.evaluate("""node => {
-      const copy = node.querySelector('.discovery-copy');
-      return copy.getBoundingClientRect().top + parseFloat(getComputedStyle(copy).fontSize)
-        <= node.getBoundingClientRect().bottom - 2;
-    }""")
-    expect(popup).to_contain_text("AWS Lambda for serverless processing. We placed second.")
-    expect(popup.get_by_role("link", name="Opportunity Hack project")).to_have_attribute(
-        "href", "https://github.com/pranavprem/Parks-RecSanJose"
-    )
-    assert_hud(page, snapshots[7])
-
-
-def test_discoveries_are_unique_outside_the_quest_log(page, live_server, story_document):
-    open_game(page, live_server)
-    copy = page.locator("#journey").evaluate(r"""node => {
-      const clone = node.cloneNode(true);
-      clone.querySelector('#bonus').remove();
-      return clone.textContent.replace(/\s+/g, ' ').trim();
-    }""")
-    for discovery in story_document["discoveries"]:
-        for paragraph in discovery["body"].split("\n\n"):
-            assert copy.count(paragraph) == 1, discovery["id"]
-        for item in discovery.get("list_items", []):
-            assert copy.count(item) == 1, discovery["id"]
-    expect(page.locator(".loot")).to_have_count(0)
-    assert (
-        "Green Belt"
-        not in page.locator('[data-checkpoint="automation-unlocked"] .dialogue-card').text_content()
-    )
-    assert (
-        "Opportunity Hack"
-        not in page.locator('[data-checkpoint="sjsu-unlocked"] .dialogue-card').text_content()
-    )
-    assert "Coldplay" not in " ".join(page.locator(".dialogue-card").all_text_contents())
-
-
-def test_log_revisits_every_story_and_discovery_without_losing_entries(
-    page, live_server, quest_targets, snapshots
-):
-    open_game(page, live_server)
-    initial_url = page.url
-    history_length = page.evaluate("history.length")
-    # A locked, programmatically activated entry cannot skip ahead or add a URL fragment.
-    page.locator('#quest-continuing-unlocked [data-action="revisit"]').dispatch_event("click")
-    page.locator("#quest-continuing-unlocked").evaluate("node => node.classList.add('is-unlocked')")
-    page.locator('#quest-continuing-unlocked [data-action="revisit"]').dispatch_event("click")
-    expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-    for target in range(1, 14):
-        while int(page.locator("#journey").get_attribute("data-screen-index")) < target:
-            advance_to_next_screen(page)
-        for discovery_id, (kind, screen) in quest_targets.items():
-            if kind == "discovery" and screen == target:
-                page.locator(f'[data-discovery="{discovery_id}"]').click()
-                expect(page.locator(f"#discovery-{discovery_id}")).to_be_visible()
-                page.keyboard.press("Escape")
-    expect(page.locator(".achievement-note.is-unlocked")).to_have_count(24)
-    for quest_id, (kind, target) in quest_targets.items():
-        page.locator('[data-action="toggle-quests"]').click()
-        expect(page.locator(".achievement-note:visible")).to_have_count(24)
-        page.locator(f'#quest-{quest_id} [data-action="revisit"]').click()
-        expect(page.locator("#bonus")).to_be_hidden()
-        expect(page.locator("#journey")).to_have_attribute("data-screen-index", str(target))
-        expect(page.locator("#journey")).to_have_attribute("data-beat-index", "-1")
-        assert_hud(page, snapshots[min(target, 12)])
-        if kind == "discovery":
-            popup = page.locator(f"#discovery-{quest_id}")
-            expect(popup).to_be_visible()
-            expect(popup.locator("h3")).to_be_focused()
-            page.keyboard.press("Escape")
-            expect(page.locator(f'[data-discovery="{quest_id}"]')).to_be_focused()
-        else:
-            expect(page.locator(".is-current-screen h2").first).to_be_focused()
-        assert page.url == initial_url
-        assert page.evaluate("history.length") == history_length
-        expect(page.locator(".achievement-note.is-unlocked")).to_have_count(24)
-    page.reload()
-    expect(page.locator(".achievement-note.is-unlocked")).to_have_count(0)
-
-
-@pytest.mark.parametrize("event,card", [(2, "unexpected-detour"), (9, "fog-arrives")])
-def test_encounters_are_bounded_nonblocking_and_respect_motion_changes(
-    page, live_server, event, card, snapshots
-):
     page.add_init_script(
-        "document.addEventListener('animationend', event => event.stopImmediatePropagation(), true)"
+        "document.addEventListener('readystatechange', () => {"
+        " document.documentElement.style.fontSize = '200%'; });"
     )
-    open_game(page, live_server)
-    go_to_event(page, event)
-    encounter = page.locator(f'[data-encounter="{card}"]')
-    expect(encounter).to_be_visible()
-    timings = encounter.evaluate(
-        "node => node.getAnimations({subtree: true}).map(a => a.effect.getTiming())"
-    )
-    assert len(timings) == 1
-    assert 0 < timings[0]["duration"] <= 2000 and timings[0]["iterations"] == 1
-    assert_hud(page, snapshots[event + 1])
-    page.wait_for_timeout(2050)
-    assert encounter.evaluate("node => node.getAnimations({subtree: true}).length") == 0
-    page.locator('[data-action="toggle-quests"]').click()
-    page.keyboard.press("Escape")
-    assert encounter.evaluate("node => node.getAnimations({subtree: true}).length") == 0
-    advance_to_next_screen(page)
-    expect(encounter).to_be_hidden()
-    page.locator('[data-action="back"]').click()
-    expect(encounter).to_be_visible()
-    page.emulate_media(reduced_motion="reduce")
-    expect(encounter).to_be_visible()
-    expect(encounter).not_to_have_class(re.compile("can-animate"))
-    assert encounter.evaluate("node => node.getAnimations({subtree: true}).length") == 0
-    page.emulate_media(reduced_motion="no-preference")
-    settle(page)
-    assert encounter.evaluate("node => node.getAnimations({subtree: true}).length") == 0
-    advance_to_next_screen(page)
-    page.locator('[data-action="back"]').click()
-    assert encounter.evaluate("node => node.getAnimations({subtree: true}).length") == 1
-    # No event callback, delay, or combat action can hold navigation closed.
-    advance_to_next_screen(page)
-    expect(encounter).to_be_hidden()
-    page.emulate_media(reduced_motion="reduce")
-    page.locator('[data-action="back"]').click()
-    expect(encounter).to_be_visible()
-    assert encounter.evaluate("node => node.getAnimations({subtree: true}).length") == 0
+    open_world(page, live_server)
+    for card, paragraphs in paragraphs_of(story_document):
+        go_to_stop(page, f"moment-{card['id']}")
+        section = page.locator(f"#moment-{card['id']}")
+        if section.locator("details.more").count():
+            section.locator("details.more > summary").click()
+        last = section.locator(f"#beat-{card['id']}-{len(paragraphs) - 1}")
+        last.scroll_into_view_if_needed()
+        expect(last).to_be_in_viewport()
+        assert page.evaluate("document.documentElement.scrollWidth") <= 320
 
 
-def test_touch_cancellation_vertical_drags_and_buttons_do_not_advance(page, live_server):
-    open_game(page, live_server)
-    for mode in ("cancel", "vertical", "short", "button"):
-        page.evaluate(
-            """mode => {
-          const target = document.querySelector(mode === 'button'
-            ? '[data-action="toggle-quests"]' : '.game-shell');
-          const fire = (name, x, y) => target.dispatchEvent(new PointerEvent(name, {
-            pointerType: 'touch', isPrimary: true, pointerId: 1,
-            clientX: x, clientY: y, bubbles: true
-          }));
-          fire('pointerdown', 200, 200);
-          if (mode === 'cancel') fire('pointercancel', 200, 200);
-          fire('pointerup', mode === 'short' ? 180 : 100, mode === 'vertical' ? 350 : 200);
-        }""",
-            mode,
-        )
-        expect(page.locator("#journey")).to_have_attribute("data-screen-index", "0")
-
-
-@pytest.mark.parametrize("value", ["0", "14", "NaN"])
-def test_invalid_quest_metadata_restores_the_complete_catalog(
-    page, live_server, story_document, snapshots, value
-):
-    def replace_unlock(route):
-        response = route.fetch()
-        source = re.sub(
-            r'data-target-screen="\d+"', f'data-target-screen="{value}"', response.text(), count=1
-        )
-        route.fulfill(response=response, body=source)
-
-    page.route(live_server + "/", replace_unlock)
-    page.goto(live_server + "/")
-    expect(page.locator("html")).not_to_have_class("enhanced")
-    assert_complete_story(page, story_document, snapshots, visible=True)
-
-
-def test_pending_stylesheet_preserves_server_content_and_enhances_after_load(page, live_server):
-    pending = []
-    page.route("**/static/story.css*", lambda route: pending.append(route))
-    page.goto(live_server + "/", wait_until="commit")
-    expect(page.locator(".story-card")).to_have_count(12)
-    expect(page.locator(".achievement-note")).to_have_count(24)
-    expect(page.locator("html")).not_to_have_class("enhanced")
-    assert len(pending) == 1
-    pending[0].continue_()
-    page.wait_for_load_state("load")
-    expect(page.locator("html")).to_have_class("enhanced")
-    expect(page.locator("#character-sheet")).to_be_visible()
-
-
-@pytest.mark.parametrize(
-    "old,new",
-    [
-        ('id="chapter-map"', 'id="missing-map"'),
-        ('class="overlay-body"', 'class="missing-overlay-body"'),
-        ('data-map-screen="1"', 'data-map-screen="14"'),
-        ('data-map-screen="1"', 'data-map-screen="01"'),
-        ('data-map-screen="1"', 'data-map-screen="NaN"'),
-        ('data-beat="0"', 'data-beat="900"'),
-        ('data-beat="0"', 'data-beat="00"'),
-        ('data-action="topic"', 'data-action="unknown"'),
-        ('aria-controls="beat-school-unlocked-0"', 'aria-controls="character-sheet"'),
-        ('data-scene-art="san-jose-home"', 'data-scene-art="missing-home"'),
-        ('data-quest-kind="story"', 'data-quest-kind="unknown"'),
-        ('data-quest="school-unlocked"', 'data-quest="first-script"'),
-        ('data-x="267"', 'data-x="NaN"'),
-        ('data-x="267"', 'data-x="900"'),
-        ('data-discovery="gec-extras"', 'data-discovery="unknown"'),
-        ('aria-controls="discovery-gec-extras"', 'aria-controls="character-sheet"'),
-        ('href="#moment-first-script"', 'href="#moment-school-unlocked"'),
-    ],
-)
-def test_malformed_discovery_or_jump_data_restores_full_story(
-    page, live_server, story_document, snapshots, old, new
-):
-    def replace_metadata(route):
-        response = route.fetch()
-        source = response.text()
-        assert old in source
-        route.fulfill(response=response, body=source.replace(old, new, 1))
-
-    page.route(live_server + "/", replace_metadata)
-    page.goto(live_server + "/")
-    expect(page.locator("html")).not_to_have_class("enhanced")
-    assert_complete_story(page, story_document, snapshots, visible=True)
+def test_forced_colors_keep_the_sheet_and_extras_usable(page, live_server, snapshots):
+    page.emulate_media(forced_colors="active")
+    open_world(page, live_server)
+    go_to_stop(page, "moment-college-unlocked")
+    assert_state(page, expected_states(snapshots)[4])
+    colours = page.evaluate("""() => {
+      const pips = document.querySelectorAll('[data-stat="coding"] .stat-pips i');
+      return [getComputedStyle(pips[0]).backgroundColor, getComputedStyle(pips[9]).backgroundColor];
+    }""")
+    assert colours[0] != colours[1]
+    page.locator('.hotspot[data-extra-target="coldplay"]').dispatch_event("click")
+    expect(page.locator("#discovery-coldplay summary")).to_be_focused()

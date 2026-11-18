@@ -293,24 +293,25 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
     document = parse_html(client.get("/").get_data(as_text=True))
     assert document.select("html")[0]["lang"] == "en"
     assert len(document.select("h1")) == len(document.select("main")) == 1
-    assert len(document.select("section", class_="chapter")) == 11
-    assert len(document.select("article", class_="story-card")) == 12
+    stops = document.select("section", class_="stop")
+    assert [stop["data-stop"] for stop in stops] == [
+        "title",
+        *(card["id"] for chapter in story_document["chapters"] for card in chapter["cards"]),
+        "epilogue",
+    ]
     assert len(document.select(class_="chapter-stats")) == 12
-    assert not document.select(class_="chapter-snapshot")
-    assert len(document.select(class_="achievement-note")) == 24
-    assert not document.select(class_="loot")
-    assert len(document.select(class_="quest-milestone")) == 11
-    assert len(document.select(class_="stat")) == 5
-    assert not document.select(class_="inventory-ledger")
+    assert len(document.select("li", **{"data-stat": "coding"})) == 1
+    assert len([attrs for _, attrs in document.elements if "data-stat" in attrs]) == 5
     assert json.loads(document.select(id="journey")[0]["data-game"]) == game
     for chapter in story_document["chapters"]:
         assert chapter["heading"] in document.text
         assert chapter["period_label"] in document.text
         for card in chapter["cards"]:
-            assert " ".join(card["body"].split()) in document.text
-            assert card["summary"] in document.text
+            # A stop's first paragraph is its lead; the rest sit behind its disclosure.
+            for paragraph in card["body"].split("\n\n"):
+                assert paragraph in document.text
     for badge in story_document["badges"]:
-        assert badge["description"] in document.text
+        assert badge["label"] in document.text
     allowed_links = {
         "https://www.linkedin.com/in/pranavprem/",
         "https://github.com/pranavprem",
@@ -326,37 +327,31 @@ def test_server_html_is_complete_semantic_and_links_are_reviewed(
     for discovery in story_document["discoveries"]:
         assert discovery["heading"] in document.text
         assert " ".join(discovery["body"].split()) in document.text
-        assert discovery["summary"] in document.text
         allowed_links.update(discovery["links"].values())
-        allowed_links.add("#discovery-" + discovery["id"])
     allowed_links.update(
         "#moment-" + card["id"]
         for chapter in story_document["chapters"]
         for card in chapter["cards"]
     )
-    allowed_links.add("#epilogue")
+    allowed_links.update({"#epilogue", "#top"})
     assert {link["href"] for link in document.select("a")} == allowed_links
     assert len(document.select("a", href="https://github.com/pranavprem")) == 2
-    slots = [attrs for _, attrs in document.elements if "data-badge" in attrs]
-    assert len(slots) == 11
-    assert all(attrs.get("aria-hidden") == "true" and "aria-label" not in attrs for attrs in slots)
-    assert all("earned" not in attrs.get("class", "").split() for attrs in slots)
-    assert document.select(id="character-sheet")[0]["aria-live"] == "off"
-    assert "Opening screen" in document.text
+    stamps = [attrs for _, attrs in document.elements if "data-badge" in attrs]
+    assert [stamp["data-badge"] for stamp in stamps] == [
+        badge["id"] for badge in story_document["badges"]
+    ]
+    # The visual sheet repeats the per-stop stat lists, so only one is announced.
+    assert document.select(id="sheet")[0]["aria-hidden"] == "true"
     assert not document.select(id="traveler")
     assert not document.select(id="companion")
     assert len(document.select(class_="object-sprite")) == 11
+    # Sound was explicitly rejected by the owner; the page has no media at all.
+    assert not document.select("audio") and not document.select("video")
     controls = document.select("button")
-    assert {control.get("data-action") for control in controls} == {
-        "advance",
-        "back",
-        "close-panels",
-        "close-discovery",
-        "inspect",
-        "toggle-quests",
-        "toggle-map",
-        "topic",
-    }
+    assert len(controls) == 11
+    assert all(
+        "hotspot" in control["class"].split() and "hidden" in control for control in controls
+    )
     assert all(control.get("type") == "button" for control in controls)
     for tag, attrs in document.elements:
         assert tag not in {
@@ -399,8 +394,6 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
     payload = '"><img src=x onerror=alert(1)></script><script>alert(2)</script>&{{7*7}}'
     card = story_document["chapters"][0]["cards"][0]
     card.update(body=payload, heading=payload, summary=payload)
-    topic_payload = "<svg onload=alert(1)>"
-    story_document["chapters"][1]["cards"][0]["beat_labels"][0] = topic_payload
     validate_story(story_document)
     story, game = prepare_story(story_document)
     # Even impossible authored IDs must be safely serialized by the template boundary.
@@ -410,7 +403,6 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
     document = parse_html(source)
     assert payload in document.text
     assert payload not in source
-    assert topic_payload in document.text and topic_payload not in source
     assert json.loads(document.select(id="journey")[0]["data-game"]) == game
     script_url = f"/static/story.js?v={app.extensions['portfolio']['asset_versions']['story.js']}"
     assert document.select("script") == [{"type": "module", "src": script_url}]
@@ -418,22 +410,31 @@ def test_hostile_text_and_projection_remain_inert(app, story_document, parse_htm
     assert not any(name.startswith("on") for _, attrs in document.elements for name in attrs)
 
 
-def test_overviews_topics_and_chapter_map_are_server_rendered(client, parse_html, story_document):
-    document = parse_html(client.get("/").get_data(as_text=True))
-    links = document.select("a", **{"data-action": "jump"})
-    assert [int(link["data-map-screen"]) for link in links] == list(range(1, 14))
-    assert links[0]["href"] == "#moment-first-script"
-    assert links[-1]["href"] == "#epilogue"
-    assert "hidden" in document.select(id="chapter-map")[0]
-    assert all("hidden" in node for node in document.select(class_="chapter-preview"))
-    for card in (card for chapter in story_document["chapters"] for card in chapter["cards"]):
-        count = len(card["beat_labels"])
-        for index in range(count):
-            assert document.select(id=f"beat-{card['id']}-{index}")
-        if count > 1:
-            assert document.select("button", **{"aria-controls": f"overview-{card['id']}"})
-            for index in range(count):
-                assert document.select("button", **{"aria-controls": f"beat-{card['id']}-{index}"})
+def test_route_leads_and_disclosures_are_server_rendered(client, parse_html, story_document):
+    source = client.get("/").get_data(as_text=True)
+    document = parse_html(source)
+    cards = [card for chapter in story_document["chapters"] for card in chapter["cards"]]
+    route = re.search(r'<details class="route" id="route">(.*?)</details>', source, re.S)
+    assert route is not None
+    assert [link["href"] for link in parse_html(route[1]).select("a")] == [
+        *("#moment-" + card["id"] for card in cards),
+        "#epilogue",
+    ]
+    # The route menu starts closed; every story disclosure starts open so the
+    # document is complete before, or without, the script.
+    assert "open" not in document.select("details", class_="route")[0]
+    disclosures = document.select("details", class_="more") + document.select(
+        "details", class_="extra"
+    )
+    assert len(document.select("details", class_="extra")) == 11
+    assert all("open" in disclosure for disclosure in disclosures)
+    for card in cards:
+        paragraphs = card["body"].split("\n\n")
+        for index in range(len(paragraphs)):
+            assert len(document.select(id=f"beat-{card['id']}-{index}")) == 1
+        assert "lead" in document.select(id=f"beat-{card['id']}-0")[0]["class"].split()
+    for index in range(4):
+        assert len(document.select(id=f"beat-epilogue-{index}")) == 1
 
 
 def test_rendered_source_claims_keep_authorized_scope(client, parse_html):
@@ -480,7 +481,7 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "(Docker, Kubernetes, and the AWS public cloud)",
         "I liked making Alexa skills and using AWS Lambda for serverless projects.",
         "Heroku was my PaaS of choice.",
-        "placed second at PayPal's Opportunity Hack",
+        "We placed second.",
         "Alexa-powered project for the City of San Jose, "
         "using AWS Lambda for serverless processing",
         "imposter syndrome",
@@ -517,9 +518,7 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
         "Einstein Copilot",
         "configurable AI agent",
         "Atlas Reasoning Engine",
-        "I work on Atlas, the reasoning engine behind Agentforce",
-        "enterprise software, cloud technologies, and virtualization",
-        "with some data mining on the side",
+        "I work on its Atlas Reasoning Engine",
         "AgentScript",
         "more deterministic in an LLM world",
         "voice, MCP, native context, memory",
@@ -596,9 +595,9 @@ def test_editorial_corrections_and_removed_robotic_copy(client, parse_html):
 
 def test_hobby_list_and_retired_repository_removal_are_server_rendered(client, parse_html):
     source = client.get("/").get_data(as_text=True)
-    hobby = re.search(r'<aside[^>]+id="discovery-hobbies"[^>]*>(.*?)</aside>', source, re.S)
+    hobby = re.search(r'<details[^>]+id="discovery-hobbies"[^>]*>(.*?)</details>', source, re.S)
     assert hobby is not None
-    listing = re.search(r'<ul class="discovery-list">(.*?)</ul>', hobby[1], re.S)
+    listing = re.search(r'<ul class="extra-list">(.*?)</ul>', hobby[1], re.S)
     assert listing is not None
     document = parse_html(listing[1])
     assert len(document.select("li")) == 11
@@ -615,34 +614,38 @@ def test_hobby_list_and_retired_repository_removal_are_server_rendered(client, p
     assert len(github_links - {"https://github.com/pranavprem"}) == 13
 
 
-def test_hud_discoveries_and_quest_targets_are_server_rendered(
+def test_scene_hotspots_and_extras_are_server_rendered(
     client, parse_html, quest_targets, discovery_positions
 ):
     document = parse_html(client.get("/").get_data(as_text=True))
-    assert not document.select(id="scene-object-label")
-    assert not document.select("button", **{"data-action": "toggle-stats"})
-    assert "aria-hidden" not in document.select(id="character-sheet")[0]
-    home = document.select("image", **{"data-scene-art": "san-jose-home"})
-    assert len(home) == 1
-    assert home[0]["href"].startswith("/static/art/san-jose-home.svg?v=")
-    assert len(document.select(class_="fallback-landscape")) == 12
-    assert {
-        item["data-quest"]: (item["data-quest-kind"], int(item["data-target-screen"]))
-        for item in document.select(class_="achievement-note")
-    } == quest_targets
-    assert [item["data-quest"] for item in document.select(class_="achievement-note")] == list(
-        quest_targets
+    tiles = document.select("img", class_="tile")
+    assert [tile["data-tile"] for tile in tiles] == [
+        "goa",
+        "pune",
+        "san-jose",
+        "bay-area",
+        "san-jose-home",
+    ]
+    assert all(
+        tile["src"].startswith(f"/static/art/{tile['data-tile']}.svg?v=") and tile["alt"] == ""
+        for tile in tiles
     )
-    hotspots = document.select(class_="scene-hotspot")
+    assert len(document.select(class_="postcard")) == 13
+    hotspots = document.select(class_="hotspot")
     assert {
-        item["data-discovery"]: (float(item["data-x"]), float(item["data-y"])) for item in hotspots
+        item["data-extra-target"]: (float(item["data-x"]), float(item["data-y"]))
+        for item in hotspots
     } == discovery_positions
-    assert all(document.select(id=item["aria-controls"]) for item in hotspots)
-    assert len(document.select(class_="discovery-panel")) == 11
-    assert {item["data-encounter"] for item in document.select(class_="scene-encounter")} == {
-        "unexpected-detour",
-        "fog-arrives",
+    assert {item["data-extra-target"]: int(item["data-screen"]) for item in hotspots} == {
+        quest: screen for quest, (kind, screen) in quest_targets.items() if kind == "discovery"
     }
+    for item in hotspots:
+        assert item["aria-controls"] == "discovery-" + item["data-extra-target"]
+        assert len(document.select("details", id=item["aria-controls"])) == 1
+        assert item["aria-label"].startswith("Extra: ")
+    assert {
+        (item["data-encounter"], item["data-tile"]) for item in document.select(class_="encounter")
+    } == {("unexpected-detour", "goa"), ("fog-arrives", "bay-area")}
 
 
 def test_discovery_and_log_copy_and_project_labels_are_autoescaped(app, story_document, parse_html):
@@ -661,7 +664,7 @@ def test_discovery_and_log_copy_and_project_labels_are_autoescaped(app, story_do
         source = render_template("index.html", story=story, game=game)
     document = parse_html(source)
     assert payload in document.text and payload not in source
-    assert document.select("ul", class_="discovery-list")
+    assert document.select("ul", class_="extra-list")
     assert not any(
         name.startswith("on") for _, attributes in document.elements for name in attributes
     )

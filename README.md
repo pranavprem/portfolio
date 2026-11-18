@@ -1,7 +1,7 @@
 **Pranav Prem**
 A life in side quests: a warm, original full-screen pixel-game autobiography for `pranavprem.com`, built with Python rather than a frontend application platform.
 
-The point is to meet a person by exploring his story, not browse a resume with animations. A short route presents thirteen overviews; optional named topics keep the complete prose available without requiring every paragraph to be a slide. The Chapters map opens the whole route immediately. Games in Goa, illness, college, HSBC, SJSU, Google, Salesforce, and personal projects back in San Jose remain intact. The full main prose stays within 900 words, with a separate 550-word cap on the short route including titles. The Quest log collects 13 visited story summaries and 11 found discoveries. The voice is direct and dryly funny, without a lesson after every event or repeated reward paragraphs.
+The point is to meet a person by exploring his story, not browse a resume with animations. The page is one continuous pixel world: the reader scrolls from Goa through Pune, San Jose, and San Francisco to a house back in San Jose, and each of fourteen stops shows a heading, one short paragraph, and at most one milestone stamp. The rest of each chapter and its extras sit behind a More disclosure. Five stats change as the reader travels. The collapsed route is 465 visible words; nothing was deleted from the full story. This replaced the earlier click-through chapter adventure on 2026-11-18; older sections of this README and the docs that mention overviews, topics, the Chapters map, the Quest log, or popups describe that retired interface unless they say otherwise. [docs/handoff.md](docs/handoff.md) owns current status.
 
 Source repository: `https://github.com/pranavprem/portfolio` (public, owner-approved). The latest published SJSU revision is `86039d2aebbc61eb9f0f1e0fd1388ca51cab6457` on `origin/master`; all four exact-SHA jobs passed in [39749040932](https://github.com/pranavprem/portfolio/actions/runs/39749040932). It retains the earlier study-focus correction, explicit Atlas work, GitHub profile links, reader-controlled pacing, and grouped printing topic. [The handoff](docs/handoff.md) records release scans, local checks, and the earlier font/layout recovery.
 
@@ -31,20 +31,15 @@ The owner explicitly requires a complete, AI-agent-ready handoff so he never has
 
 **The Experience**
 
-- Enhanced mode is a full-viewport chapter adventure. Start/Next/Back, Left/Right arrows, Enter/Space, and horizontal swipes move one story screen. Thirteen advances reach home from the title instead of the previous 35 required advances through 36 text screens. No topic or discovery is mandatory, and document scrolling does not drive progression.
-- Text is part of the game scene: each screen combines the current landscape, chapter object, period, heading, dialogue, reward, and controls. All five stat bars stay visible in the HUD, including while the Quest log is open. Place captions no longer repeat object names. There are no branching choices, combat, timers, saved progress, forms, downloads, hover-only reveals, or remote embeds.
-- Eleven authored glints reveal scene popups: GEC extras, games/CyanogenMod, Coldplay, Green Belt/CI-CD, Opportunity Hack, MS/research detail, Google tools, promotions, awards, gaming, and a separate hobby list. Each is a native labeled 48px button; the popup leaves dialogue visible and Escape/Close restores focus. GEC has three non-overlapping glints; Pune has only Green Belt/CI-CD. Optional facts appear once in the game and are summarized again only in the Quest log. There are no catalog-only discoveries or repeated reward paragraphs.
-- Multi-paragraph chapters open on a short summary. Named topic buttons reveal their paragraphs, with Back to overview or Escape to return. Single-paragraph chapters show their original prose directly. College's four distinct beats and automation's two remain available without compulsory slides; Green Belt and the GEC extras remain scene discoveries. SJSU's overview names enterprise software, cloud technologies, virtualization, and data mining on the side. The 110% detail names Prof. Paul Nguyen's Cloud Technologies class (Docker, Kubernetes, AWS); Random projects covers Alexa skills/AWS Lambda, SpartanBot, Karma Mining, and Heroku as the SJSU PaaS choice. The second-place PayPal Opportunity Hack discovery separately describes its Alexa-powered AWS Lambda/serverless project.
-- Chapters opens a thirteen-stop map from the first screen. Its links can jump directly to work, home, or any other story stop. The separate Quest log records only visited overviews and opened discoveries; skipped chapters are not marked visited. Journal return links reopen the overview or popup. Neither control changes URL/history or mutates stats; the selected screen supplies its absolute snapshot. Reload clears the journal. All 24 summaries and all discovery content remain in fallback/print output.
-- Eleven chapters span Goa, Pune, San Jose, and San Francisco. Chapter 09 has separate contribution and sustainable-COVID-cadence cards, giving twelve stat checkpoints. The ending and optional catalog are not new chapters.
-- Desktop uses a quieter scene/story split; mobile stacks the landscape and story above fixed thumb controls. A compact HUD keeps all five meters and the milestone count visible, without the decorative badge rack competing for phone space. Topic rows adapt to their two-to-five choices. Overviews fit ordinary phone heights; short/enlarged views and long optional notes/popups can scroll internally. Safe areas and at least 48px control targets remain.
-- Every paragraph, fact, achievement, link, and stat equivalent is server-rendered. JavaScript only selects screens/beats and updates presentation. No-JS, invalid-projection, resource-failure, and print modes expose the complete document with in-flow landscapes and semantic snapshots.
-- Eleven original objects follow the chapters: controller, backpack, compass, laptop, Java mug, automation gear, books, toolkit, cloud terminal, bot console, and agent nodes. Objects move between authored landmarks; milestone rewards use one bounded hop and static sparks. The owner's new mosquito/COVID encounters are a narrow exception to the earlier no-living-sprites rule: original decorative symbols make a single pass of at most two seconds on scene entry. They do not imply a COVID infection, gate navigation, or simulate damage. Reduced motion shows static symbols and disables other effects.
-- Dark mode follows `prefers-color-scheme` without a toggle or storage. Original art includes the NCS elephant, a multi-building GEC campus, and Salesforce Tower. Work chapters end in San Francisco (`bay-area`), then the epilogue returns to a separate San Jose home illustration with a gaming corner, printer bench, home controls, and homelab. It is symbolic art, not a real house/floor plan or device specification.
-- The ending keeps the final stats. Its overview starts on the front path; choosing the house, agent, or printing topics selects the matching authored marker position. Separate gaming and hobby discoveries sit on the monitor and guitar. The hobby list ends with "Making lists. You may have noticed." Back/map/log jumps restore the correct work/home scene; reduced motion removes transitions. No new chapter or stat checkpoint was added.
-- "For my wages..." introduces paid CRM/agent-platform work, including Atlas, the reasoning engine behind Agentforce; "But for fun..." introduces the personal homelab and house projects. The GitHub profile is linked alongside LinkedIn on the opening and ending screens. The owner-described mostly defunct/not-running local-AI repositories no longer appear in runtime copy or links. Their qualified history remains in the full source ledger; a public repository is not proof of current operation.
-- Cream paper, green ink, amber details, system serif headings, segmented meters, and original chapter objects provide the game language. No living avatar, mascot, borrowed game assets, employer logos, remote fonts, sound, combat, or game proficiency is involved.
-- The ending has three topics: My house, My agents, and 3D printing. Printing combines the named tools, retail-therapy line, and `I'm 40% PLA` portrait in one panel, rather than separate tabs or a repeated overview joke. The tiny generic robot is original, not copied Futurama artwork.
+- Enhanced mode is a scrolling world. Five original scenes form one strip; ordinary scrolling pans the scene and walks the current chapter's object between authored landmarks. Left/Right arrows jump one stop. There is no Next button and no scroll-jacking.
+- Each stop shows a period, a heading, its first paragraph, and a milestone stamp where one was earned. More reveals the remaining paragraphs and that stop's extras. All disclosures are native `<details>`.
+- Eleven extras glow as window buttons in the scene and are also listed under More: GEC extras, games/CyanogenMod, Coldplay, Green Belt/CI-CD, Opportunity Hack, MS/research detail, Google tools, promotions, awards, gaming, and the hobby list.
+- The Stops menu lists all thirteen destinations as ordinary anchor links from the first screen.
+- One compact sheet shows all five stats for the stop being read, plus the change since the previous stop. Quiet chapters cool the scene. A mosquito and virus symbols appear once at dengue and COVID.
+- Wide screens fill the window with the scene and float the stop as a placard; phones pin the scene to the top with the sheet beneath and the story scrolling below.
+- Every paragraph, link, and stat equivalent is server-rendered. Without JavaScript, with a failed asset, with invalid data, or in print, the page is a complete linear document with a postcard per stop and every disclosure open.
+- Dark mode follows `prefers-color-scheme` without a toggle or storage. The site is silent: no audio or video, by owner request.
+- "For my wages..." introduces paid CRM/agent-platform work, including Atlas; "But for fun..." opens the ending about the house, agents, and 3D printing, which keeps the final stats.
 
 The five read-only meters use absolute integers from 0 through 10. They are narrative shorthand, not medical measurements, years, or certifications. Health uses internal key `vitality`; Experience uses `experience`. Automancy and Side Quests have been removed as stats. The title and hobby references to side quests remain part of the story.
 
@@ -337,7 +332,7 @@ There is no independent achievement catalog. Each card has a `summary` reused fo
 
 Main-card and discovery `body` values are plain text with one to eight nonempty mini-paragraphs separated by exactly `\n\n`, at most 600 characters total. Other controls and empty paragraphs fail validation. Summaries are at most 350 characters. Python prepares `paragraphs`; Jinja escapes every segment, including contextual links. Discovery positions are finite numeric coordinates within x `48..272`, y `48..132`; browser checks verify 48px targets and separation. The visible core has a 900-word budget; preserve the full source account in `docs/story.md`.
 
-Cards require one distinct 1-32-character plain-text `beat_labels` entry per paragraph. Keep labels descriptive and source-grounded; adding/removing a paragraph requires updating its label too. Overview/topic UI starts hidden until the `reader-paced` CSS sentinel and all DOM/projection metadata validate. The map and topic actions cache validated node identities and bounded destinations, not arbitrary selectors. Invalid/missing controls or an old stylesheet restore full reading. Keyboard/touch input never waits for animation completion.
+Cards require one distinct 1-32-character plain-text `beat_labels` entry per paragraph. Labels are validated but no longer displayed. A card's first paragraph is its default-visible lead, so a paragraph break is an editorial decision about what readers see without opening More. The script enhances only when the `--ui: world` stylesheet sentinel, the projection, and the expected stops, tiles, sheet rows, and route links all validate; otherwise the linear document stays.
 
 The template's fixed `inline_projects` allowlist can link multiple reviewed project names within a paragraph. Its bounded `project_text` macro partitions literal labels and leaves all surrounding prose autoescaped; never replace this with string-built HTML, `|safe`, or a Markdown parser. SJSU's SpartanBot and Karma Mining links stay in its optional detail, while Opportunity Hack remains its separate discovery. CUSR/Dragonstone Pizzeria are source-ledger history, not current featured links.
 
@@ -379,49 +374,7 @@ Playwright browser installation is a development/CI download. On a Linux test ru
 Required verification includes absolute snapshots and badge prefixes at every threshold, down/up/random jumps, reload/history restoration, no-JS and failed-module fallback, reduced-motion changes, enforced CSP and same-origin-only requests, empty browser storage, safe static/request boundaries, and original art review. Test Chromium/Firefox/WebKit at 320, 375, 390, 768, 1024, and 1440 CSS-pixel widths, short landscape, safe areas, 200% text enlargement, and 400% zoom/reflow. Verify HUD clearance, stable slot/card geometry, readable numeric stats, and no idle animation loop. Automated axe checks do not replace keyboard/find/selection, contrast, forced colors, print, screen-reader, and real mobile Safari/Android review. The architecture contains the full test matrix and unmeasured performance budgets.
 
 **Linux Font Checks**
-macOS system fonts are not a substitute for Ubuntu's fallback fonts. The compact-overview regression stresses body wrapping and an extra heading line without changing font size; hosted CI also exercises the real Linux defaults. For a local Linux WebKit reproduction, use an isolated scratch directory outside the checkout containing only this `Dockerfile` and a `.dockerignore` with `**` followed by `!Dockerfile`:
-
-```dockerfile
-FROM mcr.microsoft.com/playwright:v1.62.0-noble@sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core=2.37-8 fonts-liberation=1:2.1.5-3 && rm -rf /var/lib/apt/lists/*
-USER pwuser
-```
-
-The base image alone did not reproduce the failure: its serif fallback differed from the hosted runner. DejaVu Serif/Sans reproduced it. This is optional developer tooling, not a new app image, production dependency, or workspace bind mount. With the local app already rebuilt on loopback port 8000:
-
-```sh
-docker build -t portfolio-layout-check /absolute/scratch/portfolio-layout-check
-docker run --rm -d --init --name portfolio-layout-check --user pwuser --cap-drop ALL --security-opt no-new-privileges:true --read-only --tmpfs /tmp:rw,exec,nosuid,size=512m --shm-size=512m --memory=2g --pids-limit=256 -e NPM_CONFIG_CACHE=/tmp/npm -e XDG_CACHE_HOME=/tmp/cache -p 127.0.0.1:3000:3000 portfolio-layout-check npx --yes playwright@1.62.0 run-server --host 0.0.0.0 --port 3000
-docker logs portfolio-layout-check
-```
-
-Wait for the server's `Listening` message before connecting; if it does not appear within 30 seconds, inspect this temporary container's status/logs rather than waiting indefinitely. The executable tmpfs is needed for the development-only npm CLI, not for the application. From the checkout root, the existing regression functions can run against that browser and the local app without copying repository files into the container:
-
-```sh
-.venv/bin/python -c '
-from playwright.sync_api import sync_playwright
-from tests.test_browser import (
-    test_overviews_fit_and_every_optional_topic_remains_reachable as check_overviews,
-    test_compact_overviews_with_wide_system_font_keep_actions_visible as check_fonts,
-)
-with sync_playwright() as p:
-    browser = p.webkit.connect("ws://127.0.0.1:3000/", expose_network="<loopback>", timeout=15000)
-    for scheme in ("light", "dark"):
-        for width, height in ((320, 568), (375, 663), (375, 667), (390, 844), (1440, 1000)):
-            page = browser.new_page(color_scheme=scheme, reduced_motion="reduce")
-            check_overviews(page, "http://127.0.0.1:8000", width, height)
-            page.close()
-        page = browser.new_page(color_scheme=scheme, reduced_motion="reduce")
-        check_fonts(page, "http://127.0.0.1:8000")
-        page.close()
-    browser.close()
-print("12 Linux WebKit layout checks passed")
-'
-docker stop portfolio-layout-check
-```
-
-Stop the temporary server even if a check fails. These targeted invocations do not replace the complete pytest suite, hosted Firefox/Chromium jobs, or physical-device review.
+macOS system fonts are not a substitute for Ubuntu's fallback fonts; hosted CI exercises the real Linux defaults. The scrolling world is less font-sensitive than the retired fixed-viewport screens because stops are ordinary flowing content, but wrapping still differs. `test_layout_fits_without_sideways_scrolling` and `test_text_enlargement_keeps_everything_reachable` are the layout regressions to run against a Linux engine. The earlier isolated Playwright image recipe (pinned `mcr.microsoft.com/playwright` plus `fonts-dejavu-core` and `fonts-liberation`, run read-only with no workspace mount) is preserved in Git history at `86039d2` and in [docs/retrospective.md](docs/retrospective.md); it has not been re-run against this redesign.
 
 **Security And Privacy**
 

@@ -1,3 +1,15 @@
+// Progressive enhancement only: the server HTML is already the complete story.
+// This module turns it into one scrolling world, and backs out (leaving the
+// linear document) whenever the page or its data is not what it expects.
+
+const TILE_WIDTH = 320;
+const TILE_HEIGHT = 180;
+// Scenes are separate places, so they sit apart like frames on a film strip.
+const TILE_GAP = 8;
+const MARKER_HALF_WIDTH = 16;
+// Scene units kept between an extra's window and the edge of the view.
+const EDGE_MARGIN = 12;
+const TILE_IDS = ["goa", "pune", "san-jose", "bay-area", "san-jose-home"];
 const STAT_KEYS = [
   "coding",
   "enthusiasm",
@@ -5,821 +17,425 @@ const STAT_KEYS = [
   "charisma",
   "experience",
 ];
+// Share of each stop spent walking to the next one; the rest holds still to read.
+const TRAVEL_SHARE = 0.45;
 
-const REGIONS = {
-  goa: "Goa",
-  pune: "Pune",
-  "san-jose": "San Jose",
-  "bay-area": "San Francisco",
-};
+const isPoint = (value) =>
+  value !== null &&
+  typeof value === "object" &&
+  Number.isFinite(value.x) &&
+  Number.isFinite(value.y);
 
-const OBJECT_BY_CHAPTER = {
-  spawn: "controller",
-  school: "backpack",
-  detour: "compass",
-  college: "laptop",
-  "java-forge": "java-mug",
-  automation: "automation-gear",
-  sjsu: "books",
-  "developer-ally": "toolkit",
-  "cloud-and-fog": "cloud-terminal",
-  "bot-workshop": "bot-console",
-  continuing: "agent-nodes",
-};
+const isStats = (value) =>
+  value !== null &&
+  typeof value === "object" &&
+  STAT_KEYS.every(
+    (key) =>
+      Number.isInteger(value[key]) && value[key] >= 0 && value[key] <= 10,
+  );
 
-const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+/** Reject projection data this script was not written for. */
+export function isValidGame(game) {
+  return (
+    game !== null &&
+    typeof game === "object" &&
+    game.schema_version === 2 &&
+    game.initial !== null &&
+    typeof game.initial === "object" &&
+    isStats(game.initial.stats) &&
+    isPoint(game.initial.position) &&
+    TILE_IDS.includes(game.initial.region_id) &&
+    Array.isArray(game.events) &&
+    game.events.length > 0 &&
+    game.events.every(
+      (event) =>
+        event !== null &&
+        typeof event === "object" &&
+        typeof event.id === "string" &&
+        typeof event.chapter_id === "string" &&
+        isStats(event.stats_after) &&
+        isPoint(event.position) &&
+        TILE_IDS.includes(event.region_id) &&
+        typeof event.mood === "string",
+    ) &&
+    game.epilogue_scene !== null &&
+    typeof game.epilogue_scene === "object" &&
+    TILE_IDS.includes(game.epilogue_scene.art_key) &&
+    Array.isArray(game.epilogue_scene.positions) &&
+    game.epilogue_scene.positions.length > 0 &&
+    game.epilogue_scene.positions.every(isPoint)
+  );
+}
 
-// The selected chapter is the save state. Absolute snapshots keep backtracking exact.
-export function deriveState(game, eventIndex) {
-  const index = clamp(eventIndex, -1, game.events.length - 1);
-  const event = index < 0 ? game.initial : game.events[index];
+/** World x of a scene-local x: scenes sit side by side in story order. */
+export function worldX(tileId, x) {
+  return TILE_IDS.indexOf(tileId) * (TILE_WIDTH + TILE_GAP) + x;
+}
+
+/**
+ * Absolute state for a stop: 0 is the title, 1..n the authored events, n+1 the
+ * ending. Stats are snapshots, never sums, so any jump lands on the same values.
+ */
+export function deriveStop(game, stopIndex) {
+  const last = game.events.length + 1;
+  const index = Math.min(Math.max(Math.trunc(stopIndex) || 0, 0), last);
+  if (index === 0) {
+    const { stats, region_id: tile, position, mood } = game.initial;
+    return {
+      id: "title",
+      tile,
+      stats,
+      mood,
+      chapter: 0,
+      x: worldX(tile, position.x),
+      y: position.y,
+    };
+  }
+  const chapters = [...new Set(game.events.map((event) => event.chapter_id))];
+  if (index === last) {
+    const final = game.events.at(-1);
+    const tile = game.epilogue_scene.art_key;
+    const position = game.epilogue_scene.positions[0];
+    return {
+      id: "epilogue",
+      tile,
+      stats: final.stats_after,
+      mood: final.mood,
+      chapter: chapters.length - 1,
+      x: worldX(tile, position.x),
+      y: position.y,
+    };
+  }
+  const event = game.events[index - 1];
   return {
-    index,
-    stats: index < 0 ? event.stats : event.stats_after,
-    badges: index < 0 ? event.badges : event.badges_after,
-    region: event.region_id,
+    id: event.id,
+    tile: event.region_id,
+    stats: event.stats_after,
     mood: event.mood,
-    object: OBJECT_BY_CHAPTER[event.chapter_id] ?? "controller",
-    position: { ...event.position },
+    chapter: chapters.indexOf(event.chapter_id),
+    x: worldX(event.region_id, event.position.x),
+    y: event.position.y,
   };
 }
 
-function validGame(game, markers, badgeIds) {
-  if (
-    game?.schema_version !== 2 ||
-    !game.initial ||
-    !Array.isArray(game.events) ||
-    game.epilogue_scene?.region_id !== "san-jose" ||
-    game.epilogue_scene?.art_key !== "san-jose-home" ||
-    !Array.isArray(game.epilogue_scene?.positions) ||
-    game.epilogue_scene.positions.length !== 3 ||
-    !game.epilogue_scene.positions.every(
-      (position) =>
-        Number.isFinite(position?.x) &&
-        position.x >= 20 &&
-        position.x <= 300 &&
-        Number.isFinite(position?.y) &&
-        position.y >= 0 &&
-        position.y <= 180,
-    ) ||
-    game.events.length !== markers.length ||
-    !markers.length
-  )
-    return false;
-
-  const snapshots = [game.initial, ...game.events];
-  const orderedBadges = [...badgeIds];
-  const validSnapshots = snapshots.every((event, index) => {
-    const stats = index === 0 ? event.stats : event.stats_after;
-    const badges = index === 0 ? event.badges : event.badges_after;
-    const previousExperience =
-      index < 2
-        ? game.initial.stats.experience
-        : snapshots[index - 1].stats_after.experience;
-    return (
-      stats &&
-      Object.keys(stats).length === STAT_KEYS.length &&
-      STAT_KEYS.every(
-        (key) =>
-          Number.isInteger(stats[key]) && stats[key] >= 0 && stats[key] <= 10,
-      ) &&
-      (index === 0 || stats.experience >= previousExperience) &&
-      Object.hasOwn(REGIONS, event.region_id) &&
-      ["bright", "quiet", "fog"].includes(event.mood) &&
-      Number.isFinite(event.position?.x) &&
-      event.position.x >= 20 &&
-      event.position.x <= 300 &&
-      Number.isFinite(event.position?.y) &&
-      event.position.y >= 0 &&
-      event.position.y <= 180 &&
-      Array.isArray(badges) &&
-      new Set(badges).size === badges.length &&
-      badges.every((id, badgeIndex) => id === orderedBadges[badgeIndex]) &&
-      (index < 2 || badges.length >= snapshots[index - 1].badges_after.length)
-    );
-  });
-
-  return (
-    validSnapshots &&
-    game.initial.badges.length === 0 &&
-    game.events.every((event) =>
-      Object.hasOwn(OBJECT_BY_CHAPTER, event.chapter_id),
-    ) &&
-    new Set(game.events.map((event) => event.id)).size === markers.length &&
-    game.events.every(
-      (event, index) =>
-        event.id === markers[index].dataset.checkpoint &&
-        event.chapter_id === markers[index].closest(".chapter").id,
-    )
-  );
+/** Which stop is being read at a scroll position, and how far the walk to the next has gone. */
+export function locate(tops, end, line) {
+  let index = 0;
+  while (index < tops.length - 1 && tops[index + 1] <= line) index += 1;
+  if (index === tops.length - 1) return { index, travel: 0 };
+  const top = tops[index];
+  const bottom = Math.min(tops[index + 1], end);
+  const walk = Math.max((bottom - top) * TRAVEL_SHARE, 1);
+  const raw = Math.min(Math.max((line - (bottom - walk)) / walk, 0), 1);
+  // Smoothstep: ease out of one stop and into the next.
+  return { index, travel: raw * raw * (3 - 2 * raw) };
 }
 
-function startJourney(root) {
-  const html = document.documentElement;
-  const gameShell = root.querySelector(".game-shell");
-  const screens = [...root.querySelectorAll(".game-screen")];
-  const chapters = [...root.querySelectorAll(".chapter")];
-  const fallbackOnly = [
-    ...root.querySelectorAll(
-      ".chapter-header, .fallback-landscape, .chapter-stats",
-    ),
-  ];
-  const markers = [...root.querySelectorAll("[data-checkpoint]")];
-  const statRows = [...root.querySelectorAll("[data-stat]")];
-  const badgeSlots = [...root.querySelectorAll("[data-badge]")];
-  const art = [...root.querySelectorAll("[data-scene-art]")];
-  const objectSprites = [...root.querySelectorAll("[data-object-sprite]")];
-  const encounters = [...root.querySelectorAll("[data-encounter]")];
-  const status = document.getElementById("sheet-status");
-  const questLog = document.getElementById("bonus");
-  const chapterMap = document.getElementById("chapter-map");
-  const panels = [questLog, chapterMap].filter(Boolean);
-  const panelButtons = [
-    ...root.querySelectorAll(
-      '[data-action="toggle-map"], [data-action="toggle-quests"]',
-    ),
-  ];
-  // Navigation uses validated node identity, not attributes on subsequently inserted controls.
-  const mapLinks = new Map(
-    [...root.querySelectorAll('[data-action="jump"]')].map((link) => [
-      link,
-      Number(link.dataset.mapScreen),
-    ]),
+function readGame(journey) {
+  try {
+    const game = JSON.parse(journey.dataset.game);
+    return isValidGame(game) ? game : null;
+  } catch {
+    return null;
+  }
+}
+
+function start() {
+  const root = document.documentElement;
+  const journey = document.getElementById("journey");
+  const stage = document.getElementById("stage");
+  const world = document.getElementById("world");
+  const marker = document.getElementById("marker");
+  const place = document.getElementById("place");
+  const route = document.getElementById("route");
+  const routeCount = document.getElementById("route-count");
+  if (
+    !journey ||
+    !stage ||
+    !world ||
+    !marker ||
+    !place ||
+    !route ||
+    !routeCount
+  )
+    return;
+  // A stale or missing stylesheet cannot lay out the world; stay linear.
+  if (window.getComputedStyle(root).getPropertyValue("--ui").trim() !== "world")
+    return;
+
+  const game = readGame(journey);
+  if (!game) return;
+  const sections = [...journey.querySelectorAll("[data-stop]")];
+  const stops = sections.map((_, index) => deriveStop(game, index));
+  if (
+    sections.length !== game.events.length + 2 ||
+    sections.some((section, index) => section.dataset.stop !== stops[index].id)
+  ) {
+    return;
+  }
+
+  const viewport = stage.querySelector(".viewport");
+  const tiles = [...world.querySelectorAll(".tile")];
+  const sprites = [...marker.querySelectorAll(".object-sprite")];
+  const statRows = STAT_KEYS.map((key) =>
+    stage.querySelector(`[data-stat="${key}"]`),
   );
-  const topicActions = new Map(
-    [...root.querySelectorAll('[data-action="topic"]')].map((button) => [
-      button,
-      {
-        screen: screens.indexOf(button.closest(".game-screen")),
-        beat: Number(button.dataset.beat),
-      },
-    ]),
-  );
-  const questEntries = [...questLog.querySelectorAll("[data-quest]")];
-  const gameSurfaces = [
-    ...root.querySelectorAll(
-      ".game-hud, .scene-panel, .story-deck, .game-controls",
-    ),
-  ];
-  const questsButton = root.querySelector('[data-action="toggle-quests"]');
-  const inspectButtons = [...root.querySelectorAll('[data-action="inspect"]')];
-  const quests = new Map(
-    questEntries.map((node) => [
-      node.dataset.quest,
-      {
-        node,
-        kind: node.dataset.questKind,
-        screen: Number(node.dataset.targetScreen),
-      },
-    ]),
-  );
-  const discoveries = new Map(
-    inspectButtons.map((button) => [
-      button.dataset.discovery,
-      {
-        button,
-        panel: document.getElementById(button.getAttribute("aria-controls")),
-        screen: Number(button.dataset.screen),
-        x: Number(button.dataset.x),
-        y: Number(button.dataset.y),
-      },
-    ]),
-  );
-  const completedScreens = new Set();
-  const foundDiscoveries = new Set();
-  const backButton = root.querySelector('[data-action="back"]');
-  const advanceLabel = document.getElementById("advance-label");
-  const beatProgress = document.getElementById("beat-progress");
-  const chapterProgress = document.getElementById("chapter-progress-fill");
+  const routeLinks = [...route.querySelectorAll("a")];
+  const hotspots = [...world.querySelectorAll(".hotspot")];
+  const encounters = [...world.querySelectorAll(".encounter")];
+  if (
+    !viewport ||
+    tiles.length !== TILE_IDS.length ||
+    tiles.some((tile, index) => tile.dataset.tile !== TILE_IDS[index]) ||
+    sprites.length === 0 ||
+    statRows.some((row) => !row) ||
+    routeLinks.length !== sections.length - 1
+  ) {
+    return;
+  }
+
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const beatIndexes = screens.map(() => -1);
-  let game;
-  let screenIndex = 0;
-  let lastEventIndex = null;
-  let touchStart = null;
-  let focusedContent = null;
-  let panelTrigger = questsButton;
-  let activePanel = null;
-  let topicTrigger = null;
-  let activeDiscovery = null;
-  let rewardAllowed = false;
+  const labels = Object.fromEntries(
+    sections.map((section, index) => [
+      stops[index].tile,
+      section.querySelector(".postcard figcaption")?.textContent ??
+        place.textContent,
+    ]),
+  );
+  labels[stops[0].tile] = place.textContent;
 
-  function eventIndexForScreen() {
-    if (screenIndex === 0) return -1;
-    return Math.min(screenIndex - 1, game.events.length - 1);
-  }
+  let unit = 1;
+  // Left edge of the visible scene at each stop, in scene units.
+  let cameras = stops.map(() => 0);
+  let overlay = false;
+  let tops = [];
+  let end = 0;
+  let active = -1;
+  let frame = 0;
 
-  function currentScreen() {
-    return screens[screenIndex];
-  }
+  // Hotspots and encounters live in world coordinates so they travel with the scene.
+  const placeInWorld = (element, x, y) => {
+    element.style.transform = `translate3d(${Math.round(x * unit)}px, ${Math.round(y * unit)}px, 0)`;
+  };
 
-  function currentBeats() {
-    return [...currentScreen().querySelectorAll(".dialogue-beat")];
-  }
-
-  function closePanels(returnFocus = false) {
-    const wasOpen = activePanel !== null;
-    panels.forEach((panel) => {
-      panel.classList.remove("is-open");
-      panel.setAttribute("aria-hidden", "true");
-      panel.inert = true;
-      panel.removeAttribute("role");
-      panel.removeAttribute("aria-modal");
-    });
-    panelButtons.forEach((button) =>
-      button.setAttribute("aria-expanded", "false"),
+  function measure() {
+    // Round up to whole tile pixels so neighbouring scenes never show a seam.
+    unit =
+      Math.ceil((viewport.clientHeight / TILE_HEIGHT) * TILE_WIDTH) /
+      TILE_WIDTH;
+    stage.style.setProperty("--u", `${unit}px`);
+    const offset = window.scrollY;
+    tops = sections.map(
+      (section) => section.getBoundingClientRect().top + offset,
     );
-    activePanel = null;
-    gameSurfaces.forEach((surface) => {
-      surface.inert = false;
-    });
-    if (returnFocus && wasOpen) panelTrigger.focus();
-  }
-
-  function openPanel(panel, trigger) {
-    closeDiscovery();
-    closePanels();
-    touchStart = null;
-    panelTrigger = trigger;
-    activePanel = panel;
-    panel.classList.add("is-open");
-    panel.removeAttribute("aria-hidden");
-    panel.inert = false;
-    panel.setAttribute("role", "dialog");
-    panel.setAttribute("aria-modal", "true");
-    panel.scrollTop = 0;
-    panel.querySelector(".overlay-body").scrollTop = 0;
-    panelButtons.forEach((button) =>
-      button.setAttribute(
-        "aria-expanded",
-        String(button.getAttribute("aria-controls") === panel.id),
-      ),
-    );
-    gameSurfaces.forEach((surface) => {
-      surface.inert = true;
-    });
-    panel.querySelector(".panel-close").focus();
-  }
-
-  function focusContent(node) {
-    focusedContent?.removeAttribute("tabindex");
-    focusedContent = node;
-    focusedContent?.setAttribute("tabindex", "-1");
-    focusedContent?.focus({ preventScroll: true });
-  }
-
-  function selectTopic(beat, trigger = null) {
-    closeDiscovery();
-    beatIndexes[screenIndex] = beat;
-    topicTrigger = trigger;
-    render();
-    focusContent(
-      beat < 0
-        ? currentScreen().querySelector(".chapter-preview")
-        : currentBeats()[beat],
-    );
-  }
-
-  function closeDiscovery(returnFocus = false) {
-    if (!activeDiscovery) return;
-    const { button, panel } = discoveries.get(activeDiscovery);
-    panel.classList.remove("is-open");
-    activeDiscovery = null;
-    currentScreen().classList.remove("is-inspecting");
-    render();
-    if (returnFocus) button.focus();
-  }
-
-  function openDiscovery(id) {
-    const discovery = discoveries.get(id);
-    if (!discovery || discovery.screen !== screenIndex) return;
-    closeDiscovery();
-    activeDiscovery = id;
-    foundDiscoveries.add(id);
-    discovery.panel.classList.add("is-open");
-    currentScreen().classList.add("is-inspecting");
-    render();
-    discovery.panel.scrollTop = 0;
-    const heading = discovery.panel.querySelector("h3");
-    heading.setAttribute("tabindex", "-1");
-    heading.focus({ preventScroll: true });
-  }
-
-  function renderState(state) {
-    // Home shares the final stats, not the final work scene.
-    const home =
-      currentScreen().dataset.screenKind === "ending"
-        ? game.epilogue_scene
-        : null;
-    const region = home ? home.region_id : state.region;
-    const scene = home ? home.art_key : state.region;
-    const position = home
-      ? home.positions[Math.max(0, beatIndexes[screenIndex])]
-      : state.position;
-    if (state.index !== lastEventIndex) {
-      statRows.forEach((row) => {
-        const value = state.stats[row.dataset.stat];
-        row.querySelector(".stat-value").textContent = value;
-        row
-          .querySelectorAll(".stat-pips > span")
-          .forEach((pip, index) =>
-            pip.classList.toggle("filled", index < value),
-          );
-      });
-      badgeSlots.forEach((slot) => {
-        const earned = state.badges.includes(slot.dataset.badge);
-        slot.classList.toggle("earned", earned);
-      });
-      document.getElementById("badge-count").textContent = String(
-        state.badges.length,
-      ).padStart(2, "0");
-      art.forEach((image) =>
-        image.classList.toggle("current", image.dataset.sceneArt === scene),
-      );
-      objectSprites.forEach((object) =>
-        object.classList.toggle(
-          "current",
-          object.dataset.objectSprite === state.object,
-        ),
-      );
-      document.getElementById("world-label").textContent = REGIONS[region];
-      document.getElementById("overworld").dataset.region = region;
-      encounters.forEach((encounter) => {
-        const active =
-          encounter.dataset.encounter === currentScreen().dataset.checkpoint;
-        encounter.classList.toggle("is-active", active);
-        encounter.classList.toggle(
-          "can-animate",
-          active && !reducedMotion.matches,
-        );
-      });
-      document.getElementById("overworld").dataset.mood = state.mood;
-      root.dataset.checkpointIndex = state.index;
-      lastEventIndex = state.index;
+    end = sections.at(-1).getBoundingClientRect().bottom + offset;
+    const spans = stops.map((stop) => [stop.x, stop.x]);
+    for (const hotspot of hotspots) {
+      const screen = Number(hotspot.dataset.screen);
+      const stop = stops[screen];
+      const x = Number(hotspot.dataset.x);
+      const y = Number(hotspot.dataset.y);
+      if (stop && Number.isFinite(x) && Number.isFinite(y)) {
+        const sceneX = worldX(stop.tile, x);
+        placeInWorld(hotspot, sceneX, y);
+        spans[screen] = [
+          Math.min(spans[screen][0], sceneX),
+          Math.max(spans[screen][1], sceneX),
+        ];
+      }
     }
-    document
-      .getElementById("journey-object-track")
-      .setAttribute("transform", `translate(${position.x} ${position.y})`);
+    // Wide layout: the stage is the whole window, so frame the scene in the
+    // space the placard leaves free rather than behind it.
+    overlay = stage.clientHeight >= window.innerHeight - 1;
+    const width = viewport.clientWidth;
+    const visible = width / unit;
+    const card = sections[0].querySelector(".card");
+    const cardRight = overlay && card ? card.getBoundingClientRect().right : 0;
+    const focus = width > 0 ? (cardRight + width) / 2 / width : 0.5;
+    const total = worldX(TILE_IDS.at(-1), TILE_WIDTH);
+    const clamp = (value, low, high) => Math.min(Math.max(value, low), high);
+    cameras = spans.map(([left, right], index) => {
+      let camera = (left + right) / 2 - visible * focus;
+      // Keep every extra on screen when the scene is wide enough to hold them.
+      if (right - left + 2 * EDGE_MARGIN <= visible) {
+        camera = clamp(
+          camera,
+          right + EDGE_MARGIN - visible,
+          left - EDGE_MARGIN,
+        );
+      }
+      // The traveller outranks the extras: it is never framed off the scene.
+      const reach = MARKER_HALF_WIDTH + 1;
+      camera = clamp(
+        camera,
+        stops[index].x + reach - visible,
+        stops[index].x - reach,
+      );
+      return clamp(camera, 0, Math.max(total - visible, 0));
+    });
+    for (const encounter of encounters) {
+      placeInWorld(
+        encounter,
+        worldX(encounter.dataset.tile, Number(encounter.dataset.x)),
+        Number(encounter.dataset.y),
+      );
+    }
+  }
+
+  function activate(index) {
+    active = index;
+    const stop = stops[index];
+    const before = index > 0 ? stops[index - 1].stats : null;
+    stage.dataset.stop = stop.id;
+    stage.dataset.mood = stop.mood;
+    place.textContent = labels[stop.tile] ?? "";
+    routeCount.textContent =
+      index === 0 ? "" : `${index} / ${stops.length - 1}`;
+    sprites.forEach((sprite, spriteIndex) => {
+      sprite.classList.toggle(
+        "current",
+        spriteIndex === Math.min(stop.chapter, sprites.length - 1),
+      );
+    });
+    STAT_KEYS.forEach((key, row) => {
+      const value = stop.stats[key];
+      const change = before ? value - before[key] : 0;
+      const delta = statRows[row].querySelector(".stat-delta");
+      statRows[row].querySelector(".stat-value").textContent = String(value);
+      statRows[row]
+        .querySelectorAll(".stat-pips i")
+        .forEach((pip, pipIndex) => {
+          pip.classList.toggle("on", pipIndex < value);
+        });
+      // The arrow carries direction so the change never depends on colour alone.
+      delta.textContent =
+        change > 0 ? `▲${change}` : change < 0 ? `▼${-change}` : "";
+      delta.classList.toggle("up", change > 0);
+      delta.classList.toggle("down", change < 0);
+    });
+    routeLinks.forEach((link, linkIndex) => {
+      if (linkIndex === index - 1) link.setAttribute("aria-current", "true");
+      else link.removeAttribute("aria-current");
+    });
+    for (const hotspot of hotspots) {
+      hotspot.hidden = Number(hotspot.dataset.screen) !== index;
+    }
   }
 
   function render() {
-    const screen = currentScreen();
-    const beats = currentBeats();
-    const beatIndex = clamp(beatIndexes[screenIndex], -1, beats.length - 1);
-    const dialogueChanged =
-      root.dataset.screenIndex !== String(screenIndex) ||
-      root.dataset.beatIndex !== String(beatIndex);
-    beatIndexes[screenIndex] = beatIndex;
-    const eventIndex = eventIndexForScreen();
+    frame = 0;
+    const readingTop = overlay ? 0 : stage.clientHeight;
+    const line =
+      window.scrollY + readingTop + (window.innerHeight - readingTop) * 0.5;
+    const { index, travel } = locate(tops, end, line);
+    if (index !== active) activate(index);
 
-    screens.forEach((candidate, index) => {
-      const current = index === screenIndex;
-      candidate.classList.toggle("is-current-screen", current);
-      candidate.setAttribute("aria-hidden", String(!current));
+    const from = stops[index];
+    const to = stops[Math.min(index + 1, stops.length - 1)];
+    const progress = reducedMotion.matches ? 0 : travel;
+    const x = from.x + (to.x - from.x) * progress;
+    const y = from.y + (to.y - from.y) * progress;
+    const nextIndex = Math.min(index + 1, stops.length - 1);
+    const camera =
+      cameras[index] + (cameras[nextIndex] - cameras[index]) * progress;
+    world.style.transform = `translate3d(${-Math.round(camera * unit)}px, 0, 0)`;
+    placeInWorld(marker, x, y);
+  }
+
+  const schedule = () => {
+    if (!frame) frame = requestAnimationFrame(render);
+  };
+
+  function goTo(index) {
+    const target = sections[Math.min(Math.max(index, 0), sections.length - 1)];
+    target.scrollIntoView({
+      behavior: reducedMotion.matches ? "auto" : "smooth",
+      block: "start",
     });
-    chapters.forEach((chapter) => {
-      const current = chapter.contains(screen);
-      chapter.classList.toggle("is-current-chapter", current);
-      chapter.setAttribute("aria-hidden", String(!current));
-    });
-    beats.forEach((beat, index) =>
-      beat.classList.toggle(
-        "is-current-beat",
-        index === beatIndex || (beatIndex < 0 && beats.length === 1),
-      ),
+  }
+
+  function openExtra(hotspot) {
+    const extra = document.getElementById(
+      hotspot.getAttribute("aria-controls"),
     );
-    screen.classList.toggle("is-overview", beatIndex === -1);
-    const preview = screen.querySelector(".chapter-preview");
-    if (preview) preview.hidden = beatIndex !== -1;
-    screen.querySelectorAll(".chapter-topics").forEach((node) => {
-      node.hidden = false;
-    });
-    topicActions.forEach((topic, button) => {
-      if (topic.screen === screenIndex) {
-        button.setAttribute("aria-pressed", String(topic.beat === beatIndex));
-        button.hidden = topic.beat === -1 && beatIndex === -1;
-      }
-    });
-    if (dialogueChanged)
-      screen.querySelector(".title-card, .dialogue-card").scrollTop = 0;
-
-    document
-      .getElementById("journey-marker")
-      .classList.toggle(
-        "is-celebrating",
-        screen.dataset.screenKind === "chapter" &&
-          screen.dataset.milestone === "true" &&
-          rewardAllowed &&
-          !reducedMotion.matches,
-      );
-
-    renderState(deriveState(game, eventIndex));
-    const chapter = screen.closest(".chapter");
-    status.textContent = chapter
-      ? `Chapter ${chapter.dataset.chapterNumber} / 11 - ${REGIONS[chapter.dataset.region]}`
-      : screen.dataset.screenKind === "ending"
-        ? "Epilogue - San Jose"
-        : "Title screen";
-    chapterProgress.style.width = `${(screenIndex / (screens.length - 1)) * 100}%`;
-    root.dataset.screenIndex = screenIndex;
-    root.dataset.beatIndex = beatIndex;
-    beatProgress.textContent =
-      screenIndex === 0
-        ? "13 stops"
-        : `Stop ${screenIndex} / ${screens.length - 1}`;
-    backButton.disabled = screenIndex === 0;
-    inspectButtons.forEach((button) => {
-      const active =
-        discoveries.get(button.dataset.discovery).screen === screenIndex;
-      button.hidden = !active;
-      button.setAttribute(
-        "aria-expanded",
-        String(active && activeDiscovery === button.dataset.discovery),
-      );
-    });
-    const discoveryCount = [...discoveries.values()].filter(
-      (discovery) => discovery.screen === screenIndex,
-    ).length;
-    document.getElementById("discovery-hint").hidden = discoveryCount === 0;
-    document.getElementById("discovery-count").textContent = discoveryCount;
-    if (screenIndex > 0) completedScreens.add(screenIndex);
-    mapLinks.forEach((target, link) => {
-      link.classList.toggle("is-visited", completedScreens.has(target));
-      if (target === screenIndex) link.setAttribute("aria-current", "step");
-      else link.removeAttribute("aria-current");
-    });
-    quests.forEach((quest, id) => {
-      quest.node.classList.toggle(
-        "is-unlocked",
-        quest.kind === "story"
-          ? completedScreens.has(quest.screen)
-          : foundDiscoveries.has(id),
-      );
-    });
-    questLog.classList.toggle(
-      "is-empty",
-      !questEntries.some((entry) => entry.classList.contains("is-unlocked")),
-    );
-
-    if (screen.classList.contains("is-inspecting")) {
-      advanceLabel.textContent = "Return to story";
-    } else if (screenIndex === 0) {
-      advanceLabel.textContent = "Start in Goa";
-    } else if (screen.dataset.screenKind === "ending") {
-      advanceLabel.textContent = "Quest log";
-    } else {
-      advanceLabel.textContent =
-        screenIndex === screens.length - 2 ? "Head home" : "Next stop";
-    }
-  }
-
-  function moveToScreen(nextIndex) {
-    closeDiscovery();
-    const previousScreen = currentScreen();
-    previousScreen.classList.remove("is-inspecting");
-    screenIndex = clamp(nextIndex, 0, screens.length - 1);
-    beatIndexes[screenIndex] = -1;
-    topicTrigger = null;
-    rewardAllowed = !reducedMotion.matches;
-    lastEventIndex = null;
-    touchStart = null;
-    render();
-    focusContent(currentScreen().querySelector("h1, h2, h3"));
-  }
-
-  function advance(trigger = document.activeElement) {
-    if (activePanel) return;
-    const screen = currentScreen();
-    if (screen.classList.contains("is-inspecting")) {
-      closeDiscovery(true);
+    if (!extra || !journey.contains(extra) || !extra.matches("details.extra"))
       return;
-    }
-    if (screenIndex < screens.length - 1) moveToScreen(screenIndex + 1);
-    else openPanel(questLog, trigger);
-  }
-
-  function back() {
-    if (activePanel) return;
-    const screen = currentScreen();
-    if (screen.classList.contains("is-inspecting")) {
-      closeDiscovery(true);
-      return;
-    }
-    if (screenIndex > 0) moveToScreen(screenIndex - 1);
-  }
-
-  function fallback() {
-    closePanels();
-    html.classList.remove("enhanced");
-    screens.forEach((screen) => {
-      screen.classList.remove("is-current-screen", "is-inspecting");
-      screen.removeAttribute("aria-hidden");
-    });
-    root
-      .querySelectorAll(".chapter")
-      .forEach((chapter) => chapter.classList.remove("is-current-chapter"));
-    chapters.forEach((chapter) => chapter.removeAttribute("aria-hidden"));
-    fallbackOnly.forEach((node) => node.removeAttribute("aria-hidden"));
-    questLog.inert = false;
-    questLog.removeAttribute("aria-hidden");
-    root
-      .querySelectorAll(
-        ".chapter-preview, .chapter-topics, .browse-button, .scene-hint",
-      )
-      .forEach((node) => {
-        node.hidden = true;
+    const more = extra.closest("details.more");
+    if (more) more.open = true;
+    extra.open = true;
+    extra.querySelector("summary")?.focus({ preventScroll: true });
+    // Opening changes the layout; scroll once it has settled or the browser drops the request.
+    requestAnimationFrame(() => {
+      extra.scrollIntoView({
+        behavior: reducedMotion.matches ? "auto" : "smooth",
+        block: "nearest",
       });
-    if (chapterMap) chapterMap.hidden = true;
-    status.textContent = "Opening stats. The complete story follows.";
+    });
   }
 
-  try {
-    game = JSON.parse(root.dataset.game);
-    const validScreen = (value) =>
-      Number.isInteger(value) && value >= 1 && value < screens.length;
-    const storyQuests = [...quests.entries()].filter(
-      ([, quest]) => quest.kind === "story",
+  const details = [...journey.querySelectorAll("details")];
+  for (const element of details) element.open = false;
+  for (const hint of journey.querySelectorAll(".scroll-hint"))
+    hint.hidden = false;
+  root.classList.add("is-world");
+
+  for (const hotspot of hotspots) {
+    hotspot.addEventListener("click", () => openExtra(hotspot));
+    const extra = document.getElementById(
+      hotspot.getAttribute("aria-controls"),
     );
+    extra?.addEventListener("toggle", () => {
+      hotspot.setAttribute("aria-expanded", String(extra.open));
+    });
+  }
+
+  route.addEventListener("click", (event) => {
+    if (event.target.closest("a")) route.open = false;
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && route.open) {
+      route.open = false;
+      route.querySelector("summary").focus();
+      return;
+    }
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+      return;
     if (
-      window
-        .getComputedStyle(html)
-        .getPropertyValue("--chapter-adventure")
-        .trim() !== "reader-paced" ||
-      screens.length !== markers.length + 2 ||
-      !chapterMap ||
-      panels.some((panel) => !panel.querySelector(".overlay-body")) ||
-      mapLinks.size !== screens.length - 1 ||
-      [...mapLinks].some(
-        ([link, target], index) =>
-          target !== index + 1 ||
-          link.dataset.mapScreen !== String(target) ||
-          !chapterMap.contains(link) ||
-          link.getAttribute("href") !== `#${screens[target].id}`,
-      ) ||
-      [...topicActions.values()].some((topic) => !validScreen(topic.screen)) ||
-      screens.some((screen, index) => {
-        const beats = [...screen.querySelectorAll(".dialogue-beat")];
-        const buttons = [...screen.querySelectorAll('[data-action="topic"]')];
-        if (beats.length === 1) return buttons.length !== 0;
-        return (
-          buttons.length !== beats.length + 1 ||
-          buttons.some((button, position) => {
-            const topic = topicActions.get(button);
-            const expectedBeat = position === beats.length ? -1 : position;
-            const controlled =
-              expectedBeat === -1
-                ? screen.querySelector(".chapter-preview")
-                : beats[expectedBeat];
-            return (
-              topic.screen !== index ||
-              topic.beat !== expectedBeat ||
-              button.dataset.beat !== String(topic.beat) ||
-              !controlled?.id ||
-              button.getAttribute("aria-controls") !== controlled.id
-            );
-          })
-        );
-      }) ||
-      art.length !== 5 ||
-      new Set(art.map((image) => image.dataset.sceneArt)).size !== 5 ||
-      art.some(
-        (image) =>
-          !Object.hasOwn(REGIONS, image.dataset.sceneArt) &&
-          image.dataset.sceneArt !== "san-jose-home",
-      ) ||
-      questEntries.length !== 24 ||
-      quests.size !== 24 ||
-      inspectButtons.length !== 11 ||
-      discoveries.size !== 11 ||
-      root.querySelectorAll("[data-discovery-panel]").length !== 11 ||
-      storyQuests.length !== game.events.length + 1 ||
-      new Set(storyQuests.map(([, quest]) => quest.screen)).size !==
-        storyQuests.length ||
-      [...quests].some(([id, quest]) => {
-        if (
-          !/^[a-z][a-z0-9-]{0,63}$/.test(id) ||
-          !validScreen(quest.screen) ||
-          quest.node.dataset.targetScreen !== String(quest.screen)
-        )
-          return true;
-        const screen = screens[quest.screen];
-        const link = quest.node.querySelector('[data-action="revisit"]');
-        if (quest.kind === "story")
-          return (
-            id !== (screen.dataset.checkpoint ?? "epilogue") ||
-            link?.getAttribute("href") !== `#${screen.id}`
-          );
-        if (quest.kind !== "discovery") return true;
-        const discovery = discoveries.get(id);
-        return (
-          !discovery ||
-          discovery.screen !== quest.screen ||
-          discovery.button.dataset.screen !== String(discovery.screen) ||
-          discovery.panel?.id !== `discovery-${id}` ||
-          discovery.panel.dataset.discoveryPanel !== id ||
-          !screen.contains(discovery.panel) ||
-          link?.getAttribute("href") !== `#discovery-${id}` ||
-          !Number.isFinite(discovery.x) ||
-          discovery.x < 48 ||
-          discovery.x > 272 ||
-          !Number.isFinite(discovery.y) ||
-          discovery.y < 48 ||
-          discovery.y > 132
-        );
-      }) ||
-      statRows.length !== STAT_KEYS.length ||
-      statRows.some((row, index) => row.dataset.stat !== STAT_KEYS[index]) ||
-      !validGame(
-        game,
-        markers,
-        new Set(badgeSlots.map((slot) => slot.dataset.badge)),
-      ) ||
-      game.epilogue_scene.positions.length !==
-        screens.at(-1).querySelectorAll(".dialogue-beat").length
-    )
-      throw new Error("Invalid story projection");
-
-    html.classList.add("enhanced");
-    chapterMap.hidden = false;
-    root.querySelectorAll(".browse-button").forEach((button) => {
-      button.hidden = false;
-    });
-    discoveries.forEach(({ button, x, y }) => {
-      button.style.left = `${(x / 320) * 100}%`;
-      button.style.top = `${(y / 180) * 100}%`;
-    });
-    fallbackOnly.forEach((node) => node.setAttribute("aria-hidden", "true"));
-    closePanels();
-    render();
-
-    root.addEventListener("click", (event) => {
-      const trigger = event.target.closest("[data-action]");
-      const action = trigger?.dataset.action;
-      if (!action) return;
-      if (action === "jump") {
-        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
-          return;
-        event.preventDefault();
-        const target = mapLinks.get(trigger);
-        if (!Number.isInteger(target)) return;
-        closePanels();
-        moveToScreen(target);
-      } else if (action === "topic") {
-        const topic = topicActions.get(trigger);
-        if (!topic || topic.screen !== screenIndex || activePanel) return;
-        selectTopic(topic.beat, trigger);
-      } else if (action === "revisit") {
-        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
-          return;
-        event.preventDefault();
-        const entry = trigger.closest("[data-quest]");
-        const quest = quests.get(entry?.dataset.quest);
-        if (
-          !quest ||
-          quest.node !== entry ||
-          !(quest.kind === "story"
-            ? completedScreens.has(quest.screen)
-            : foundDiscoveries.has(entry.dataset.quest))
-        )
-          return;
-        closePanels();
-        moveToScreen(quest.screen);
-        if (quest.kind === "discovery") openDiscovery(entry.dataset.quest);
-      } else if (action === "advance") advance(trigger);
-      else if (action === "back") back();
-      else if (action === "inspect") {
-        if (activeDiscovery === trigger.dataset.discovery) {
-          closeDiscovery(true);
-          return;
-        }
-        openDiscovery(trigger.dataset.discovery);
-      } else if (action === "close-discovery") {
-        closeDiscovery(true);
-      } else if (action === "toggle-quests") {
-        openPanel(questLog, trigger);
-      } else if (action === "toggle-map") {
-        openPanel(chapterMap, trigger);
-      } else if (action === "close-panels") closePanels(true);
-    });
-
-    document.addEventListener("keydown", (event) => {
-      if (event.defaultPrevented || event.isComposing) return;
-      if (
-        event.key === "Escape" &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.shiftKey
-      ) {
-        if (activePanel) closePanels(true);
-        else if (activeDiscovery) closeDiscovery(true);
-        else if (beatIndexes[screenIndex] >= 0) {
-          const trigger = topicTrigger;
-          selectTopic(-1);
-          trigger?.focus();
-        }
-        return;
-      }
-      if (activePanel) {
-        if (
-          event.key === "Tab" &&
-          !event.altKey &&
-          !event.ctrlKey &&
-          !event.metaKey
-        ) {
-          const targets = [
-            ...activePanel.querySelectorAll("button, a[href]"),
-          ].filter((node) => node.getClientRects().length);
-          const edge = event.shiftKey ? targets[0] : targets.at(-1);
-          if (document.activeElement === edge) {
-            event.preventDefault();
-            (event.shiftKey ? targets.at(-1) : targets[0]).focus();
-          }
-        }
-        return;
-      }
-      if (
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        (typeof event.target?.closest === "function" &&
-          event.target.closest(
-            "a, button, input, textarea, select, [contenteditable]",
-          ))
+      event.target.closest?.(
+        "a, button, summary, input, textarea, select, [contenteditable]",
       )
-        return;
-      if (["ArrowRight", "Enter", " "].includes(event.key)) {
-        event.preventDefault();
-        advance();
-      } else if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        back();
-      }
-    });
+    ) {
+      return;
+    }
+    if (event.key === "ArrowRight") goTo(active + 1);
+    else if (event.key === "ArrowLeft") goTo(active - 1);
+    else return;
+    event.preventDefault();
+  });
 
-    gameShell.addEventListener(
-      "pointerdown",
-      (event) => {
-        touchStart = null;
-        if (
-          event.pointerType === "touch" &&
-          event.isPrimary &&
-          !activePanel &&
-          !event.target.closest(
-            "a, button, input, textarea, select, [contenteditable], .discovery-panel",
-          )
-        )
-          touchStart = {
-            id: event.pointerId,
-            x: event.clientX,
-            y: event.clientY,
-          };
-      },
-      { passive: true },
-    );
-    gameShell.addEventListener(
-      "pointerup",
-      (event) => {
-        if (
-          !touchStart ||
-          event.pointerType !== "touch" ||
-          event.pointerId !== touchStart.id
-        )
-          return;
-        const x = event.clientX - touchStart.x;
-        const y = event.clientY - touchStart.y;
-        touchStart = null;
-        if (Math.abs(x) < 52 || Math.abs(y) > Math.abs(x) * 0.75) return;
-        if (x < 0) advance();
-        else back();
-      },
-      { passive: true },
-    );
-    gameShell.addEventListener("pointercancel", () => {
-      touchStart = null;
+  // Closed extras do not print; open them for paper and restore the reader's state after.
+  let openBeforePrint = [];
+  window.addEventListener("beforeprint", () => {
+    openBeforePrint = details.map((element) => element.open);
+    for (const element of details) element.open = true;
+  });
+  window.addEventListener("afterprint", () => {
+    details.forEach((element, index) => {
+      element.open = openBeforePrint[index] ?? false;
     });
-    reducedMotion.addEventListener("change", () => {
-      // Restoring motion does not replay an encounter already entered with reduced motion.
-      encounters.forEach((encounter) =>
-        encounter.classList.remove("can-animate"),
-      );
-      rewardAllowed = false;
-      render();
-    });
-    window.addEventListener("pageshow", render);
-  } catch {
-    fallback();
-  }
+  });
+
+  const remeasure = () => {
+    measure();
+    schedule();
+  };
+  new ResizeObserver(remeasure).observe(journey);
+  window.addEventListener("resize", remeasure);
+  window.addEventListener("scroll", schedule, { passive: true });
+  reducedMotion.addEventListener("change", schedule);
+  measure();
+  render();
 }
 
-const journey = document.getElementById("journey");
-if (journey) {
-  // WebKit can execute a module before the stylesheet is applied. Until load,
-  // the complete server document stays readable rather than hiding behind a gate.
-  if (document.readyState === "complete") startJourney(journey);
-  else
-    window.addEventListener("load", () => startJourney(journey), {
-      once: true,
-    });
-}
+if (typeof document !== "undefined") start();

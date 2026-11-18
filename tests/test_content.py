@@ -904,10 +904,16 @@ def test_sjsu_projects_share_one_optional_topic_without_becoming_a_project_dump(
         "cards"
     ][0]
     paragraphs = card["body"].split("\n\n")
-    assert card["beat_labels"] == ["The 110% story", "Becoming a TA", "Random projects"]
-    assert len(paragraphs) == 3
-    assert "110%, the maximum possible" in paragraphs[0]
-    assert "Docker/Python autograder and live student leaderboards" in paragraphs[1]
+    assert card["beat_labels"] == [
+        "Why SJSU",
+        "The 110% story",
+        "Becoming a TA",
+        "Random projects",
+    ]
+    assert len(paragraphs) == 4
+    assert paragraphs[0] == "SJSU was affordable and gave me the challenge I wanted."
+    assert "110%, the maximum possible" in paragraphs[1]
+    assert "Docker/Python autograder and live student leaderboards" in paragraphs[2]
     focus = (
         "enterprise software, cloud technologies, and virtualization, "
         "with some data mining on the side"
@@ -915,21 +921,21 @@ def test_sjsu_projects_share_one_optional_topic_without_becoming_a_project_dump(
     assert card["summary"].startswith(f"At SJSU, I majored in {focus}.")
     course = "Prof. Paul Nguyen's Cloud Technologies class"
     assert course in card["summary"]
-    assert f"{course} (Docker, Kubernetes, and the AWS public cloud)" in paragraphs[0]
-    assert "was his only student to do it" in paragraphs[0]
-    assert paragraphs[2].startswith(
+    assert f"{course} (Docker, Kubernetes, and the AWS public cloud)" in paragraphs[1]
+    assert "was his only student to do it" in paragraphs[1]
+    assert paragraphs[3].startswith(
         "I liked making Alexa skills and using AWS Lambda for serverless projects."
     )
-    assert "Heroku was my PaaS of choice." in paragraphs[2]
+    assert "Heroku was my PaaS of choice." in paragraphs[3]
     assert "explored chatbots, pizza ordering, rail tickets, and Reddit data" not in card["summary"]
     for project in ("SpartanBot", "Karma Mining"):
-        assert project in paragraphs[2]
+        assert project in paragraphs[3]
         assert project not in card["summary"]
-    assert "Alexa-powered campus chatbot" in paragraphs[2]
-    assert "scored and sorted Reddit comments" in paragraphs[2]
+    assert "Alexa-powered campus chatbot" in paragraphs[3]
+    assert "scored and sorted Reddit comments" in paragraphs[3]
     for omitted in ("CUSR", "Dragonstone Pizzeria"):
         assert omitted not in card["body"] + card["summary"]
     assert "Opportunity Hack" not in card["body"]
     assert not any(
-        scale in paragraphs[2] for scale in ("2.5 billion", "40 containers", "five regions")
+        scale in paragraphs[3] for scale in ("2.5 billion", "40 containers", "five regions")
     )
